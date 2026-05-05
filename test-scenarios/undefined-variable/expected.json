@@ -1,0 +1,11 @@
+{
+  "name": "undefined-variable",
+  "task": "Fix undefined variable",
+  "expect": {
+    "finalStatus": "pass",
+    "classificationType": "undefined-variable",
+    "strategy": "safe-replacement",
+    "shouldNotUseAiRepair": true,
+    "finalIndexContains": "typeof testVar !== \"undefined\" ? testVar : undefined"
+  }
+}

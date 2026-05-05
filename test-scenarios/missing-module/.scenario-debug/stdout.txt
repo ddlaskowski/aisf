@@ -1,17 +1,24 @@
 Running software-factory pipeline...
 Mode detected: bugfix
-Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module\.factory\runs\2026-05-05T19-03-47-922Z
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module\.factory\runs\2026-05-05T19-11-20-450Z
 Repository has existing uncommitted changes.
-M ../../package.json
- M ../../src/agents/builder.ts
- M ../../src/ai/generateCode.ts
- M ../../src/cli.ts
- M ../../src/orchestrator/approvals.ts
+M ../../scripts/run-scenarios.js
  M ../../src/orchestrator/runTask.ts
- M ../../src/types/index.ts
-?? ../../scripts/
-?? ../../src/failure/
-?? ../
+ M ../duplicate-declaration/.scenario-debug/result.json
+ M ../duplicate-declaration/.scenario-debug/stderr.txt
+ M ../duplicate-declaration/.scenario-debug/stdout.txt
+ M ../duplicate-declaration/index.js
+ M .scenario-debug/result.json
+ M .scenario-debug/stderr.txt
+ M .scenario-debug/stdout.txt
+ D package-lock.json
+ M package.json
+ M ../retry-stop/.scenario-debug/result.json
+ M ../retry-stop/.scenario-debug/stderr.txt
+ M ../retry-stop/.scenario-debug/stdout.txt
+ M ../retry-stop/index.js
+?? ../../src/fixers/
+?? ../undefined-variable/
 Auto-approved due to --yes / SOFTWARE_FACTORY_YES
 Running bugfix pre-validation...
 Running validation: node index.js
@@ -19,12 +26,12 @@ Pre-validation failure classified: missing-module -> install-dependency (high co
 Installing missing dependency: express
 Re-running after install...
 Running validation: node index.js
-Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module\.factory\runs\2026-05-05T19-03-47-922Z\final-report.md
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module\.factory\runs\2026-05-05T19-11-20-450Z\final-report.md
 Suggested commit message: fix: fix app
 Run completed.
 
 Final Summary
-Run ID: 2026-05-05T19-03-47-922Z
+Run ID: 2026-05-05T19-11-20-450Z
 Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module
 Task: Fix app
 Attempts: 2

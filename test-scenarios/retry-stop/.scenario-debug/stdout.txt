@@ -1,32 +1,36 @@
 Running software-factory pipeline...
 Mode detected: bugfix
-Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\.factory\runs\2026-05-05T19-03-52-755Z
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\.factory\runs\2026-05-05T19-11-26-572Z
 Repository has existing uncommitted changes.
-M ../../package.json
- M ../../src/agents/builder.ts
- M ../../src/ai/generateCode.ts
- M ../../src/cli.ts
- M ../../src/orchestrator/approvals.ts
+M ../../scripts/run-scenarios.js
  M ../../src/orchestrator/runTask.ts
- M ../../src/types/index.ts
-?? ../../scripts/
-?? ../../src/failure/
-?? ../
+ M ../duplicate-declaration/.scenario-debug/result.json
+ M ../duplicate-declaration/.scenario-debug/stderr.txt
+ M ../duplicate-declaration/.scenario-debug/stdout.txt
+ M ../missing-module/.scenario-debug/result.json
+ M ../missing-module/.scenario-debug/stderr.txt
+ M ../missing-module/.scenario-debug/stdout.txt
+ M .scenario-debug/result.json
+ M .scenario-debug/stderr.txt
+ M .scenario-debug/stdout.txt
+ M index.js
+?? ../../src/fixers/
+?? ../undefined-variable/
 Auto-approved due to --yes / SOFTWARE_FACTORY_YES
 Running bugfix pre-validation...
 Running validation: node index.js
 Pre-validation failure classified: unknown -> ai-fix (low confidence)
 AI generating multi-file operations...
 {
-  "id": "resp_00cbdd045d1a1c030069fa3f1996d481969df93aa1f686dfb6",
+  "id": "resp_004f7399bc0708bc0069fa40e0045481909e338edb381f37ac",
   "object": "response",
-  "created_at": 1778007833,
+  "created_at": 1778008288,
   "status": "completed",
   "background": false,
   "billing": {
     "payer": "developer"
   },
-  "completed_at": 1778007838,
+  "completed_at": 1778008290,
   "error": null,
   "frequency_penalty": 0,
   "incomplete_details": null,
@@ -37,7 +41,7 @@ AI generating multi-file operations...
   "moderation": null,
   "output": [
     {
-      "id": "msg_00cbdd045d1a1c030069fa3f1bb9b08196b0f38a277e9ad1ec",
+      "id": "msg_004f7399bc0708bc0069fa40e0d0ac8190aef278586eebaa0c",
       "type": "message",
       "status": "completed",
       "content": [
@@ -112,12 +116,12 @@ Applying changes and running post-approval steps...
 Running validation: node index.js
 Applied operation path: index.js
 Commit candidate path: index.js
-Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\.factory\runs\2026-05-05T19-03-52-755Z\final-report.md
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\.factory\runs\2026-05-05T19-11-26-572Z\final-report.md
 Suggested commit message: fix: fix app
 Run completed.
 
 Final Summary
-Run ID: 2026-05-05T19-03-52-755Z
+Run ID: 2026-05-05T19-11-26-572Z
 Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop
 Task: Fix app
 Attempts: 1

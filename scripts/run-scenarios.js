@@ -5,7 +5,7 @@ const { spawnSync } = require("node:child_process");
 const projectRoot = path.resolve(__dirname, "..");
 const cliPath = path.join(projectRoot, "dist", "cli.js");
 const scenariosRoot = path.join(projectRoot, "test-scenarios");
-const scenarioNames = ["missing-module", "duplicate-declaration", "retry-stop"];
+const scenarioNames = ["missing-module", "duplicate-declaration", "undefined-variable", "retry-stop"];
 const optionalScenarioNames = new Set(["retry-stop"]);
 
 function readJson(filePath) {
@@ -85,6 +85,25 @@ function scaffoldScenarioFixtures() {
         expect: {
           finalStatus: "fail",
           retryStopReason: "Same failure repeated twice"
+        }
+      }
+    },
+    "undefined-variable": {
+      index: "console.log(testVar);\n",
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "undefined-variable",
+        task: "Fix undefined variable",
+        expect: {
+          finalStatus: "pass",
+          classificationType: "undefined-variable",
+          strategy: "safe-replacement",
+          shouldNotUseAiRepair: true,
+          finalIndexContains: 'typeof testVar !== "undefined" ? testVar : undefined'
         }
       }
     }
@@ -282,6 +301,14 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
 
   if (expect.shouldNotUseAiRepair && runResult.stdout.includes("Runtime error passed to AI")) {
     failures.push('Expected stdout not to contain "Runtime error passed to AI"');
+  }
+
+  if (expect.finalIndexContains) {
+    const indexPath = path.join(scenarioRepoPath, "index.js");
+    const indexContent = fs.existsSync(indexPath) ? fs.readFileSync(indexPath, "utf8") : "";
+    if (!indexContent.includes(expect.finalIndexContains)) {
+      failures.push(`Expected index.js to contain ${JSON.stringify(expect.finalIndexContains)}`);
+    }
   }
 
   return {

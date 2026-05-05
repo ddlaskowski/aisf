@@ -29,6 +29,7 @@ import { requestApplyApproval, shouldAutoApprove } from "./approvals.js";
 import { createRunId, initRun, saveStateFile } from "./state.js";
 import { classifyFailure, type FailureMemoryEntry } from "../failure/failureClassifier.js";
 import { shouldContinueRetry } from "../failure/retryControl.js";
+import { generateSafeReplacementPatch } from "../fixers/safeReplacement.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -63,6 +64,70 @@ function isInstallableMissingModule(moduleName: string): boolean {
 function findErrorFileFromStack(runtimeError: string): string | null {
   const match = runtimeError.match(/([A-Za-z]:\\[^:\n]+?\.(?:js|ts|cjs|mjs)|[\w./\\-]+\.(?:js|ts|cjs|mjs)):\d+:\d+/);
   return match ? match[1] : null;
+}
+
+async function readFailureTargetFile(
+  repoPath: string,
+  runtimeError: string
+): Promise<{ relPath: string; content: string } | null> {
+  const fileFromStack = findErrorFileFromStack(runtimeError);
+  const targetPath = fileFromStack
+    ? path.isAbsolute(fileFromStack)
+      ? fileFromStack
+      : path.resolve(repoPath, fileFromStack)
+    : path.resolve(repoPath, "index.js");
+
+  const rel = path.relative(repoPath, targetPath);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    return null;
+  }
+
+  const exists = await fs.pathExists(targetPath);
+  if (!exists) {
+    return null;
+  }
+
+  const stat = await fs.stat(targetPath);
+  if (!stat.isFile()) {
+    return null;
+  }
+
+  return {
+    relPath: rel.split(path.sep).join("/"),
+    content: await fs.readFile(targetPath, "utf8")
+  };
+}
+
+async function buildSafeReplacementFix(
+  repoPath: string,
+  runtimeError: string,
+  symbol?: string
+): Promise<ChangeOperation[] | null> {
+  if (!symbol) {
+    return null;
+  }
+
+  const targetFile = await readFailureTargetFile(repoPath, runtimeError);
+  if (!targetFile) {
+    return null;
+  }
+
+  const result = generateSafeReplacementPatch({
+    fileContent: targetFile.content,
+    symbol
+  });
+
+  if (!result.applied || !result.operations?.length) {
+    return null;
+  }
+
+  console.log(`Applied safe-replacement for symbol: ${symbol}`);
+  return result.operations.map((op) => ({
+    type: op.type,
+    path: targetFile.relPath,
+    patch: op.patch,
+    reason: op.reason
+  }));
 }
 
 function shortTaskSummary(task: string): string {
@@ -399,6 +464,31 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
             buildFailureMemoryEntry(attempts, prevalidationFailure, false, "Deterministic patch produced no operations")
           );
         }
+      } else if (prevalidationFailure.strategy === "safe-replacement") {
+        const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
+        const safeReplacementOps = await buildSafeReplacementFix(
+          repoPath,
+          runtimeErrorForPrevalidation,
+          prevalidationFailure.details.symbol
+        );
+        if (safeReplacementOps && safeReplacementOps.length > 0) {
+          initialChanges = { operations: safeReplacementOps };
+        } else {
+          initialChanges = parseWithSchema(
+            changesSchema,
+            await builderAgent(brief, plan, repoSummary, review, {
+              runDir: state.runDir,
+              repoPath,
+              mode,
+              recentCommandResults: commandResults,
+              previousOperations: [],
+              selfHealingAttempt,
+              failureClassification: prevalidationFailure,
+              failureMemory
+            }),
+            "PreValidationRepairChangeset"
+          );
+        }
       } else {
         initialChanges = parseWithSchema(
           changesSchema,
@@ -576,16 +666,24 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       console.log("Deterministic duplicate-declaration fixer generated patch operations.");
       candidateChanges = { operations: deterministicOps };
     } else {
-      candidateChanges = await builderAgent(brief, plan, repoSummary, review, {
-        runDir: state.runDir,
-        repoPath,
-        mode,
-        recentCommandResults: commandResults,
-        previousOperations,
-        selfHealingAttempt,
-        failureClassification: failure,
-        failureMemory
-      });
+      const safeReplacementOps =
+        failure.strategy === "safe-replacement"
+          ? await buildSafeReplacementFix(repoPath, runtimeErrorForRetry, failure.details.symbol)
+          : null;
+      if (safeReplacementOps && safeReplacementOps.length > 0) {
+        candidateChanges = { operations: safeReplacementOps };
+      } else {
+        candidateChanges = await builderAgent(brief, plan, repoSummary, review, {
+          runDir: state.runDir,
+          repoPath,
+          mode,
+          recentCommandResults: commandResults,
+          previousOperations,
+          selfHealingAttempt,
+          failureClassification: failure,
+          failureMemory
+        });
+      }
     }
 
     const fixChanges = parseWithSchema(changesSchema, candidateChanges, `SelfHealingChangeset${selfHealingAttempt}`);

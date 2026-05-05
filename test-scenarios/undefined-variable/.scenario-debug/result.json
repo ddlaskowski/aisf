@@ -2,10 +2,10 @@
   "status": 0,
   "signal": null,
   "cliPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\dist\\cli.js",
-  "scenarioRepoPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\retry-stop",
-  "runsDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\retry-stop\\.factory\\runs",
+  "scenarioRepoPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\undefined-variable",
+  "runsDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\undefined-variable\\.factory\\runs",
   "runsDirExists": true,
-  "latestRunDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\retry-stop\\.factory\\runs\\2026-05-05T19-11-26-572Z",
+  "latestRunDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\undefined-variable\\.factory\\runs\\2026-05-05T19-11-25-581Z",
   "finalReportExists": true,
   "classificationFilesFound": [
     "failure-classification-prevalidation.json"
