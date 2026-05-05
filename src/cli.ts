@@ -10,7 +10,8 @@ import { runTask } from "./orchestrator/runTask.js";
 const runInputSchema = z.object({
   repo: z.string().min(1),
   task: z.string().min(1),
-  branch: z.boolean().optional()
+  branch: z.boolean().optional(),
+  commit: z.boolean().optional()
 });
 
 const program = new Command();
@@ -25,6 +26,7 @@ program
   .requiredOption("--repo <path>", "Path to target repository")
   .requiredOption("--task <task>", "Task description")
   .option("--branch", "Create factory branch before applying changes")
+  .option("--commit", "Auto-commit relevant files after successful validation")
   .action(async (options) => {
     try {
       const parsed = runInputSchema.parse(options);
@@ -43,7 +45,8 @@ program
       const summary = await runTask({
         repoPath,
         task: parsed.task.trim(),
-        createBranch: !!parsed.branch
+        createBranch: !!parsed.branch,
+        autoCommit: !!parsed.commit
       });
 
       console.log(chalk.bold("\nFinal Summary"));

@@ -11,7 +11,15 @@ import { readRepoSummary } from "../tools/repoReader.js";
 import { applyOperation } from "../tools/fileEditor.js";
 import { runAllowedCommands } from "../tools/commandRunner.js";
 import { getChangedFiles, getDiffSummary, getGitDiffStat } from "../tools/diffTool.js";
-import { buildFactoryBranchName, createBranch, getGitStatusShort, hasUncommittedChanges, isGitRepo } from "../tools/gitTool.js";
+import {
+  buildFactoryBranchName,
+  commit as gitCommit,
+  createBranch,
+  getGitStatusShort,
+  hasUncommittedChanges,
+  isGitRepo,
+  stageFiles
+} from "../tools/gitTool.js";
 import { parseWithSchema } from "../tools/jsonGuard.js";
 import { briefSchema } from "../schemas/brief.schema.js";
 import { planSchema } from "../schemas/plan.schema.js";
@@ -29,6 +37,19 @@ function detectMode(task: string): "feature" | "bugfix" {
 function extractRuntimeError(commandResults: { status: string; stderr: string; stdout: string }[]): string {
   const failedForRetry = commandResults.filter((r) => r.status === "failed");
   return failedForRetry.map((r) => (r.stderr && r.stderr.trim() ? r.stderr : r.stdout)).find((m) => m && m.trim()) ?? "";
+}
+
+function extractMissingModuleName(runtimeError: string): string | null {
+  const match = runtimeError.match(/Cannot find module ['"]([^'"]+)['"]/i);
+  return match ? match[1] : null;
+}
+
+function isInstallableMissingModule(moduleName: string): boolean {
+  if (moduleName.startsWith(".") || moduleName.startsWith("/") || moduleName.includes("node:")) {
+    return false;
+  }
+
+  return /^(@[a-z0-9._-]+\/)?[a-z0-9._-]+$/i.test(moduleName);
 }
 
 function findErrorFileFromStack(runtimeError: string): string | null {
@@ -141,7 +162,8 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   const input: FactoryRunInput = {
     repoPath: inputData.repoPath,
     task: inputData.task,
-    createBranch: !!inputData.createBranch
+    createBranch: !!inputData.createBranch,
+    autoCommit: !!inputData.autoCommit
   };
 
   const repoPath = path.resolve(input.repoPath);
@@ -264,10 +286,49 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   await saveStateFile(state.runDir, "review.json", review);
 
   let selfHealingAttempt = 0;
+  let dependencyInstallCount = 0;
+  const installedDependencies = new Set<string>();
   while (review.verdict === "fail" && selfHealingAttempt < 2) {
+    const runtimeErrorForRetry = extractRuntimeError(commandResults);
+    const missingModule = extractMissingModuleName(runtimeErrorForRetry);
+    if (
+      missingModule &&
+      isInstallableMissingModule(missingModule) &&
+      dependencyInstallCount < 2 &&
+      !installedDependencies.has(missingModule)
+    ) {
+      const hasPackageJson = await fs.pathExists(path.join(repoPath, "package.json"));
+      if (!hasPackageJson) {
+        console.log(`Dependency install skipped: package.json not found for missing dependency ${missingModule}.`);
+        notes.push(`Skipped installing ${missingModule} because package.json was not found.`);
+      } else {
+        dependencyInstallCount += 1;
+        installedDependencies.add(missingModule);
+        console.log(`Installing missing dependency: ${missingModule}`);
+        const installResults = await runAllowedCommands([`npm install ${missingModule}`], repoPath);
+        await saveStateFile(state.runDir, `dependency-install-${dependencyInstallCount}.json`, installResults);
+
+        console.log("Re-running after install...");
+        const validationResults = await runAllowedCommands(["node index.js"], repoPath);
+        commandResults = [...installResults, ...validationResults];
+        await saveStateFile(state.runDir, `command-results-after-install-${dependencyInstallCount}.json`, commandResults);
+
+        diffSummary = await getDiffSummary(repoPath);
+        review = parseWithSchema(
+          reviewSchema,
+          await reviewerAgent(brief, plan, commandResults, diffSummary),
+          `ReviewResultAfterDependencyInstall${dependencyInstallCount}`
+        );
+        await saveStateFile(state.runDir, `review-after-install-${dependencyInstallCount}.json`, review);
+        attempts += 1;
+        continue;
+      }
+    } else if (missingModule && !isInstallableMissingModule(missingModule)) {
+      notes.push(`Did not install missing module ${missingModule}; it is not an allowed external npm package.`);
+    }
+
     selfHealingAttempt += 1;
     console.log(`Self-healing attempt ${selfHealingAttempt}`);
-    const runtimeErrorForRetry = extractRuntimeError(commandResults);
     if (runtimeErrorForRetry) {
       console.log("Runtime error passed to AI:");
       console.log(runtimeErrorForRetry);
@@ -350,8 +411,72 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
 
   const gitDiffStat = await getGitDiffStat(repoPath);
   const gitChangedFiles = await getChangedFiles(repoPath);
+  for (const opPath of appliedPaths) {
+    console.log(`Applied operation path: ${opPath}`);
+  }
   const changedFiles = gitChangedFiles.length > 0 ? uniqueSorted(gitChangedFiles) : uniqueSorted(appliedPaths);
   const commitMessage = buildCommitMessage(mode, input.task);
+
+  const commitEligibleFiles = changedFiles.filter((f) => {
+    console.log(`Commit candidate path: ${f}`);
+    const n = f.replace(/\\/g, "/").toLowerCase();
+    if (n.startsWith(".factory/")) return false;
+    if (n.startsWith("node_modules/")) return false;
+    if (n === ".env" || n.startsWith(".env")) return false;
+    return true;
+  });
+
+  const commitResult: {
+    attempted: boolean;
+    skippedReason?: string;
+    committed: boolean;
+    commitMessage?: string;
+    committedFiles: string[];
+    error?: string;
+  } = {
+    attempted: !!input.autoCommit,
+    committed: false,
+    committedFiles: []
+  };
+
+  if (input.autoCommit) {
+    if (!gitRepo) {
+      commitResult.skippedReason = "repository is not a git repo";
+      console.log("Auto-commit skipped: repository is not a git repo.");
+    } else if (summary.reviewStatus !== "pass") {
+      commitResult.skippedReason = "validation failed";
+      console.log("Auto-commit skipped: validation failed.");
+    } else if (changedFiles.length === 0) {
+      commitResult.skippedReason = "no files changed";
+      console.log("Auto-commit skipped: no files changed.");
+    } else if (commitEligibleFiles.length === 0) {
+      commitResult.skippedReason = "no eligible files to commit";
+      console.log("Auto-commit skipped: no eligible files to commit.");
+    } else {
+      try {
+        console.log(`Auto-commit working directory: ${repoPath}`);
+        await stageFiles(repoPath, commitEligibleFiles);
+        await gitCommit(repoPath, commitMessage);
+        commitResult.committed = true;
+        commitResult.commitMessage = commitMessage;
+        commitResult.committedFiles = commitEligibleFiles;
+        console.log(`Auto-commit created: ${commitMessage}`);
+        console.log("Committed files:");
+        for (const file of commitEligibleFiles) {
+          console.log(`- ${file}`);
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        commitResult.skippedReason = "git commit failed";
+        commitResult.error = msg;
+        console.log(`Auto-commit skipped: ${msg}`);
+      }
+    }
+  } else {
+    commitResult.skippedReason = "auto-commit not requested";
+  }
+
+  await saveStateFile(state.runDir, "commit-result.json", commitResult);
 
   const finalReport = [
     `# Final Report`,
@@ -366,6 +491,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Existing uncommitted changes: ${hadUncommittedChanges ? "yes" : "no"}`,
     `- Branch created: ${branchCreated ? "yes" : "no"}`,
     `- Branch name: ${branchCreated ? branchName : "n/a"}`,
+    `- Auto-commit: ${commitResult.committed ? "yes" : commitResult.attempted ? "skipped" : "no"}`,
+    `- Commit message: ${commitResult.commitMessage ?? commitMessage}`,
+    `- Committed files: ${commitResult.committedFiles.length ? commitResult.committedFiles.join(", ") : "None"}`,
     `- Successful commands: ${successfulCommands.length ? successfulCommands.join(", ") : "None"}`,
     `- Skipped commands: ${skippedCommands.length ? skippedCommands.join(", ") : "None"}`,
     `- Failed commands: ${failedCommands.length ? failedCommands.join(", ") : "None"}`,

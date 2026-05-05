@@ -2,6 +2,7 @@ export interface FactoryRunInput {
   repoPath: string;
   task: string;
   createBranch?: boolean;
+  autoCommit?: boolean;
 }
 
 export interface Brief {

@@ -16,6 +16,20 @@ const ALLOWLIST = new Set([
 
 type ScriptName = "test" | "build" | "lint";
 
+function isAllowedInstallCommand(command: string): boolean {
+  const parts = command.trim().split(/\s+/).filter(Boolean);
+  if (parts.length !== 3 || parts[0] !== "npm" || parts[1] !== "install") {
+    return false;
+  }
+
+  const packageName = parts[2];
+  if (packageName.startsWith(".") || packageName.startsWith("/") || packageName.includes("node:")) {
+    return false;
+  }
+
+  return /^(@[a-z0-9._-]+\/)?[a-z0-9._-]+$/i.test(packageName);
+}
+
 function parseCommand(command: string): { cmd: string; args: string[] } {
   const parts = command.trim().split(/\s+/).filter(Boolean);
   return {
@@ -83,7 +97,8 @@ export async function runAllowedCommands(commands: string[], cwd: string): Promi
   const scripts = await readPackageScripts(cwd);
 
   for (const command of commands) {
-    if (!ALLOWLIST.has(command)) {
+    const isInstallCommand = isAllowedInstallCommand(command);
+    if (!ALLOWLIST.has(command) && !isInstallCommand) {
       results.push({
         command,
         status: "skipped",
@@ -93,6 +108,46 @@ export async function runAllowedCommands(commands: string[], cwd: string): Promi
         exitCode: 0,
         reason: "Command is not in allowlist"
       });
+      continue;
+    }
+
+    if (isInstallCommand) {
+      const hasPackageJson = await fs.pathExists(path.join(cwd, "package.json"));
+      if (!hasPackageJson) {
+        results.push({
+          command,
+          status: "skipped",
+          success: false,
+          stdout: "",
+          stderr: "",
+          exitCode: 0,
+          reason: "package.json not found"
+        });
+        continue;
+      }
+
+      const { cmd, args } = parseCommand(command);
+      try {
+        const res = await execa(cmd, args, { cwd });
+        results.push({
+          command,
+          status: "success",
+          success: true,
+          stdout: res.stdout ?? "",
+          stderr: res.stderr ?? "",
+          exitCode: 0
+        });
+      } catch (err) {
+        const e = err as { stdout?: string; stderr?: string; message?: string; exitCode?: number };
+        results.push({
+          command,
+          status: "failed",
+          success: false,
+          stdout: e.stdout ?? "",
+          stderr: e.stderr ?? e.message ?? "",
+          exitCode: typeof e.exitCode === "number" ? e.exitCode : 1
+        });
+      }
       continue;
     }
 

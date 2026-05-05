@@ -1,18 +1,21 @@
 ﻿# 🏭 AI Software Factory
 
 AI-powered local development agent that can:
-- generate code
-- apply changes safely
-- run real validation
-- detect runtime errors
-- fix bugs automatically
-- produce final diff & commit-ready reports
+
+* generate code
+* apply changes safely
+* run real validation
+* detect runtime errors
+* fix bugs automatically
+* install missing dependencies
+* auto-commit working solutions
+* produce final diff & reports
 
 ---
 
 ## ✨ Current Version
 
-**v1.2 — Self-Healing AI Dev Agent**
+**v1.3 — Self-Healing + Auto-Commit + Dependency Installer**
 
 ---
 
@@ -28,61 +31,157 @@ into a full automated pipeline:
 
 ```
 AI → propose changes → approval → apply → run code → detect errors
-→ retry → fix → validate → success
+→ install deps → retry → fix → validate → commit → success
 ```
 
 ---
 
 ## ⚙️ Features
 
-### 🧩 AI Code Generation
-- Multi-file support
-- Structured JSON operations
-- Create / Modify / Patch support
+### 🧩 1. AI Code Generation
 
-### 🔧 Patch System
-- insertAfter
-- insertBefore
-- replace
-- fallback-safe patching
+* Multi-file support
+* Structured JSON operations
+* Create / Modify / Patch support
 
-### 🧪 Real Validation
+---
+
+### 🔧 2. Patch System (Safe Editing)
+
+* insertAfter
+* insertBefore
+* replace
+* fallback-safe patching
+
+---
+
+### 🧪 3. Real Validation Mode
+
 Runs:
-```bash
+
+```
 node index.js
 ```
 
-### 🔁 Self-Healing Loop
-Automatically retries up to 3 attempts.
+Detects:
 
-### 🧠 Deterministic Fixers
-Handles:
-- duplicate declarations
-- missing variables
-- runtime patterns
+* SyntaxError
+* ReferenceError
+* Runtime issues
 
-### 📊 Final Report
+---
+
+### 🔁 4. Self-Healing Loop
+
+* Automatically retries failed runs
+* Passes real runtime error to AI
+* Max 3 attempts per run
+
+---
+
+### 🧠 5. Deterministic Fixers (Critical)
+
+Built-in logic handles:
+
+* Duplicate declarations
+* Missing variables
+* Common runtime patterns
+
+Example:
+
+```
+SyntaxError: Identifier 'X' has already been declared
+```
+
+👉 Avoids blind AI guessing
+
+---
+
+### 📦 6. Dependency Installer (v1.3B)
+
+Automatically detects missing modules:
+
+```
+Error: Cannot find module 'express'
+```
+
+Then:
+
+```
+npm install express
+```
+
+Flow:
+
+```
+Run → fail → detect missing dep → install → retry
+```
+
+Safety:
+
+* skips local paths (`./file`)
+* skips built-ins (`node:fs`)
+* max 2 installs per run
+
+---
+
+### 📊 7. Final Report Mode
+
+After each run:
+
+* changed files
+* diff stat
+* command results
+* attempts count
+* suggested commit message
+
 Saved to:
+
 ```
 .factory/runs/<runId>/final-report.md
 ```
 
-### 🧾 Commit Message Generator
+---
+
+### 🧾 8. Commit Message Generator
+
 Examples:
+
 ```
 fix: fix the bug in index.js
 feat: add logger utility
 ```
 
-### 🛡️ Git Safety Mode
-Optional:
-```bash
---branch
+---
+
+### 🛡️ 9. Git Safety Mode
+
+* detects uncommitted changes
+* warns before execution
+* supports branch mode
+
+---
+
+### 🚀 10. Auto-Commit (v1.3)
+
+Automatically commits working changes:
+
 ```
+git add <files>
+git commit -m "fix: ..."
+```
+
+Features:
+
+* uses `git status` as source of truth
+* safe path normalization
+* ignores `.factory/` artifacts
 
 ---
 
 ## 🚀 Usage
+
+### Basic
 
 ```bash
 npm run dev -- run --repo ../test-repo --task "Fix the bug in index.js"
@@ -90,40 +189,95 @@ npm run dev -- run --repo ../test-repo --task "Fix the bug in index.js"
 
 ---
 
-## 📂 Structure
+### With Auto-Commit
+
+```bash
+npm run dev -- run --repo ../test-repo --task "Fix the bug in index.js" --commit
+```
+
+---
+
+### With Branch
+
+```bash
+npm run dev -- run --repo ../test-repo --task "Fix the bug in index.js" --branch
+```
+
+---
+
+## 📂 Project Structure
 
 ```
 src/
   agents/
+    planner.ts
+    builder.ts
+    reviewer.ts
   ai/
+    generateCode.ts
   orchestrator/
+    runTask.ts
   tools/
+    fileEditor.ts
+    commandRunner.ts
+    diffTool.ts
+    gitTool.ts
   schemas/
+    changes.schema.ts
+```
+
+---
+
+## 🔥 Example Flow
+
+Task:
+
+```
+Fix the bug in index.js
+```
+
+Pipeline:
+
+```
+→ AI proposes PATCH
+→ Apply changes
+→ Run node index.js
+→ Error detected
+→ Install missing dependency
+→ Self-healing retry
+→ Deterministic fix applied
+→ Validation passes
+→ Auto-commit
 ```
 
 ---
 
 ## ⚠️ Limitations
 
-- Requires approval
-- No dependency install yet
-- No test generation yet
+* Requires human approval (for now)
+* No test generation yet
+* Limited dependency intelligence
+* Patch system still evolving
 
 ---
 
 ## 🧭 Roadmap
 
-v1.3:
-- Auto-commit
-- Dependency install
+### v1.4
 
-v1.4:
-- Test generation
+* Failure Intelligence Layer
+* Smart retry (no repeated fixes)
+* Error classification
 
-v2.0:
-- Multi-agent system (Planner / Coder / Debugger)
-- Parallel tasks
-- Project scaffolding
+### v1.5
+
+* Test generation & execution
+
+### v2.0
+
+* Multi-agent system
+* Parallel tasks
+* Project scaffolding
 
 ---
 

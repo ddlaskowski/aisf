@@ -42,7 +42,7 @@ export async function getChangedFiles(repoPath: string): Promise<string[]> {
 
   try {
     const status = await execa("git", ["status", "--short"], { cwd: repoPath });
-    const lines = status.stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const lines = status.stdout.split(/\r?\n/).filter((line) => line.trim().length > 0);
     return lines.map((line) => {
       const body = line.slice(3).trim();
       if (body.includes(" -> ")) {
