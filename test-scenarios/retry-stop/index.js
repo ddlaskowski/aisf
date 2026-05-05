@@ -1,1 +1,1 @@
-// throw new Error("Custom failure");
+// throw new Error("Custom failure"); // Commented out to fix the error

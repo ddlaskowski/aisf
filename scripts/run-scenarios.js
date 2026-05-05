@@ -5,7 +5,14 @@ const { spawnSync } = require("node:child_process");
 const projectRoot = path.resolve(__dirname, "..");
 const cliPath = path.join(projectRoot, "dist", "cli.js");
 const scenariosRoot = path.join(projectRoot, "test-scenarios");
-const scenarioNames = ["missing-module", "duplicate-declaration", "undefined-variable", "not-a-function", "retry-stop"];
+const scenarioNames = [
+  "missing-module",
+  "duplicate-declaration",
+  "undefined-variable",
+  "not-a-function",
+  "access-before-init",
+  "retry-stop"
+];
 const optionalScenarioNames = new Set(["retry-stop"]);
 
 function readJson(filePath) {
@@ -123,6 +130,25 @@ function scaffoldScenarioFixtures() {
           strategy: "guard-call",
           shouldNotUseAiRepair: true,
           finalIndexContains: 'typeof handler === "function" && handler();'
+        }
+      }
+    },
+    "access-before-init": {
+      index: "console.log(value);\nconst value = 123;\n",
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "access-before-init",
+        task: "Fix initialization order",
+        expect: {
+          finalStatus: "pass",
+          classificationType: "access-before-initialization",
+          strategy: "reorder-init",
+          shouldNotUseAiRepair: true,
+          finalIndexContains: "const value = 123;\nconsole.log(value);"
         }
       }
     }

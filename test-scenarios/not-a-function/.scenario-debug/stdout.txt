@@ -1,6 +1,6 @@
 Running software-factory pipeline...
 Mode detected: bugfix
-Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\not-a-function\.factory\runs\2026-05-05T19-15-43-173Z
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\not-a-function\.factory\runs\2026-05-05T19-19-36-165Z
 Repository has existing uncommitted changes.
 M ../../scripts/run-scenarios.js
  M ../../src/orchestrator/runTask.ts
@@ -10,6 +10,10 @@ M ../../scripts/run-scenarios.js
  M ../missing-module/.scenario-debug/result.json
  M ../missing-module/.scenario-debug/stderr.txt
  M ../missing-module/.scenario-debug/stdout.txt
+ M .scenario-debug/result.json
+ M .scenario-debug/stderr.txt
+ M .scenario-debug/stdout.txt
+ M index.js
  M ../retry-stop/.scenario-debug/result.json
  M ../retry-stop/.scenario-debug/stderr.txt
  M ../retry-stop/.scenario-debug/stdout.txt
@@ -17,8 +21,8 @@ M ../../scripts/run-scenarios.js
  M ../undefined-variable/.scenario-debug/result.json
  M ../undefined-variable/.scenario-debug/stderr.txt
  M ../undefined-variable/.scenario-debug/stdout.txt
-?? ../../src/fixers/guardCall.ts
-?? ./
+?? ../../src/fixers/reorderInit.ts
+?? ../access-before-init/
 Auto-approved due to --yes / SOFTWARE_FACTORY_YES
 Running bugfix pre-validation...
 Running validation: node index.js
@@ -33,12 +37,12 @@ Applying changes and running post-approval steps...
 Running validation: node index.js
 Applied operation path: index.js
 Commit candidate path: index.js
-Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\not-a-function\.factory\runs\2026-05-05T19-15-43-173Z\final-report.md
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\not-a-function\.factory\runs\2026-05-05T19-19-36-165Z\final-report.md
 Suggested commit message: fix: fix invalid function call
 Run completed.
 
 Final Summary
-Run ID: 2026-05-05T19-15-43-173Z
+Run ID: 2026-05-05T19-19-36-165Z
 Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\not-a-function
 Task: Fix invalid function call
 Attempts: 1

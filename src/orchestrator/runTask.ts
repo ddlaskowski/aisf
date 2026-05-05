@@ -31,6 +31,7 @@ import { classifyFailure, type FailureMemoryEntry } from "../failure/failureClas
 import { shouldContinueRetry } from "../failure/retryControl.js";
 import { generateSafeReplacementPatch } from "../fixers/safeReplacement.js";
 import { generateGuardCallPatch } from "../fixers/guardCall.js";
+import { generateReorderInitPatch } from "../fixers/reorderInit.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -155,6 +156,38 @@ async function buildGuardCallFix(
   }
 
   console.log(`Applied guard-call for symbol: ${symbol}`);
+  return result.operations.map((op) => ({
+    type: op.type,
+    path: targetFile.relPath,
+    patch: op.patch,
+    reason: op.reason
+  }));
+}
+
+async function buildReorderInitFix(
+  repoPath: string,
+  runtimeError: string,
+  symbol?: string
+): Promise<ChangeOperation[] | null> {
+  if (!symbol) {
+    return null;
+  }
+
+  const targetFile = await readFailureTargetFile(repoPath, runtimeError);
+  if (!targetFile) {
+    return null;
+  }
+
+  const result = generateReorderInitPatch({
+    fileContent: targetFile.content,
+    symbol
+  });
+
+  if (!result.applied || !result.operations?.length) {
+    return null;
+  }
+
+  console.log(`Applied reorder-init for symbol: ${symbol}`);
   return result.operations.map((op) => ({
     type: op.type,
     path: targetFile.relPath,
@@ -547,6 +580,31 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
             "PreValidationRepairChangeset"
           );
         }
+      } else if (prevalidationFailure.strategy === "reorder-init") {
+        const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
+        const reorderInitOps = await buildReorderInitFix(
+          repoPath,
+          runtimeErrorForPrevalidation,
+          prevalidationFailure.details.symbol
+        );
+        if (reorderInitOps && reorderInitOps.length > 0) {
+          initialChanges = { operations: reorderInitOps };
+        } else {
+          initialChanges = parseWithSchema(
+            changesSchema,
+            await builderAgent(brief, plan, repoSummary, review, {
+              runDir: state.runDir,
+              repoPath,
+              mode,
+              recentCommandResults: commandResults,
+              previousOperations: [],
+              selfHealingAttempt,
+              failureClassification: prevalidationFailure,
+              failureMemory
+            }),
+            "PreValidationRepairChangeset"
+          );
+        }
       } else {
         initialChanges = parseWithSchema(
           changesSchema,
@@ -738,16 +796,24 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         if (guardCallOps && guardCallOps.length > 0) {
           candidateChanges = { operations: guardCallOps };
         } else {
-          candidateChanges = await builderAgent(brief, plan, repoSummary, review, {
-            runDir: state.runDir,
-            repoPath,
-            mode,
-            recentCommandResults: commandResults,
-            previousOperations,
-            selfHealingAttempt,
-            failureClassification: failure,
-            failureMemory
-          });
+          const reorderInitOps =
+            failure.strategy === "reorder-init"
+              ? await buildReorderInitFix(repoPath, runtimeErrorForRetry, failure.details.symbol)
+              : null;
+          if (reorderInitOps && reorderInitOps.length > 0) {
+            candidateChanges = { operations: reorderInitOps };
+          } else {
+            candidateChanges = await builderAgent(brief, plan, repoSummary, review, {
+              runDir: state.runDir,
+              repoPath,
+              mode,
+              recentCommandResults: commandResults,
+              previousOperations,
+              selfHealingAttempt,
+              failureClassification: failure,
+              failureMemory
+            });
+          }
         }
       }
     }

@@ -1,0 +1,11 @@
+{
+  "name": "access-before-init",
+  "task": "Fix initialization order",
+  "expect": {
+    "finalStatus": "pass",
+    "classificationType": "access-before-initialization",
+    "strategy": "reorder-init",
+    "shouldNotUseAiRepair": true,
+    "finalIndexContains": "const value = 123;\nconsole.log(value);"
+  }
+}

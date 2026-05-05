@@ -1,20 +1,18 @@
 Running software-factory pipeline...
 Mode detected: bugfix
-Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\duplicate-declaration\.factory\runs\2026-05-05T19-19-34-322Z
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\access-before-init\.factory\runs\2026-05-05T19-19-37-035Z
 Repository has existing uncommitted changes.
 M ../../scripts/run-scenarios.js
  M ../../src/orchestrator/runTask.ts
- M .scenario-debug/result.json
- M .scenario-debug/stderr.txt
- M .scenario-debug/stdout.txt
- M index.js
+ M ../duplicate-declaration/.scenario-debug/result.json
+ M ../duplicate-declaration/.scenario-debug/stderr.txt
+ M ../duplicate-declaration/.scenario-debug/stdout.txt
  M ../missing-module/.scenario-debug/result.json
  M ../missing-module/.scenario-debug/stderr.txt
  M ../missing-module/.scenario-debug/stdout.txt
  M ../not-a-function/.scenario-debug/result.json
  M ../not-a-function/.scenario-debug/stderr.txt
  M ../not-a-function/.scenario-debug/stdout.txt
- M ../not-a-function/index.js
  M ../retry-stop/.scenario-debug/result.json
  M ../retry-stop/.scenario-debug/stderr.txt
  M ../retry-stop/.scenario-debug/stdout.txt
@@ -22,31 +20,30 @@ M ../../scripts/run-scenarios.js
  M ../undefined-variable/.scenario-debug/result.json
  M ../undefined-variable/.scenario-debug/stderr.txt
  M ../undefined-variable/.scenario-debug/stdout.txt
- M ../undefined-variable/index.js
 ?? ../../src/fixers/reorderInit.ts
-?? ../access-before-init/
+?? ./
 Auto-approved due to --yes / SOFTWARE_FACTORY_YES
 Running bugfix pre-validation...
 Running validation: node index.js
-Pre-validation failure classified: duplicate-declaration -> deterministic-patch (high confidence)
-Deterministic duplicate-declaration fixer generated patch operations.
+Pre-validation failure classified: access-before-initialization -> reorder-init (high confidence)
+Applied reorder-init for symbol: value
 
 Proposed file operations:
-- PATCH index.js (Deterministic fix for duplicate declaration)
+- PATCH index.js (Move value initialization before first console.log usage)
 Auto-approved due to --yes / SOFTWARE_FACTORY_YES
 Changes approved. Applying file operations...
 Applying changes and running post-approval steps...
 Running validation: node index.js
 Applied operation path: index.js
 Commit candidate path: index.js
-Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\duplicate-declaration\.factory\runs\2026-05-05T19-19-34-322Z\final-report.md
-Suggested commit message: fix: fix duplicate logger declaration
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\access-before-init\.factory\runs\2026-05-05T19-19-37-035Z\final-report.md
+Suggested commit message: fix: fix initialization order
 Run completed.
 
 Final Summary
-Run ID: 2026-05-05T19-19-34-322Z
-Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\duplicate-declaration
-Task: Fix duplicate logger declaration
+Run ID: 2026-05-05T19-19-37-035Z
+Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\access-before-init
+Task: Fix initialization order
 Attempts: 1
 Applied changes: 1
 Final status: pass

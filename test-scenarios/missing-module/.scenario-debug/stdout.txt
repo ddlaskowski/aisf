@@ -1,6 +1,6 @@
 Running software-factory pipeline...
 Mode detected: bugfix
-Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module\.factory\runs\2026-05-05T19-15-36-145Z
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module\.factory\runs\2026-05-05T19-19-29-991Z
 Repository has existing uncommitted changes.
 M ../../scripts/run-scenarios.js
  M ../../src/orchestrator/runTask.ts
@@ -13,6 +13,10 @@ M ../../scripts/run-scenarios.js
  M .scenario-debug/stdout.txt
  D package-lock.json
  M package.json
+ M ../not-a-function/.scenario-debug/result.json
+ M ../not-a-function/.scenario-debug/stderr.txt
+ M ../not-a-function/.scenario-debug/stdout.txt
+ M ../not-a-function/index.js
  M ../retry-stop/.scenario-debug/result.json
  M ../retry-stop/.scenario-debug/stderr.txt
  M ../retry-stop/.scenario-debug/stdout.txt
@@ -21,8 +25,8 @@ M ../../scripts/run-scenarios.js
  M ../undefined-variable/.scenario-debug/stderr.txt
  M ../undefined-variable/.scenario-debug/stdout.txt
  M ../undefined-variable/index.js
-?? ../../src/fixers/guardCall.ts
-?? ../not-a-function/
+?? ../../src/fixers/reorderInit.ts
+?? ../access-before-init/
 Auto-approved due to --yes / SOFTWARE_FACTORY_YES
 Running bugfix pre-validation...
 Running validation: node index.js
@@ -30,12 +34,12 @@ Pre-validation failure classified: missing-module -> install-dependency (high co
 Installing missing dependency: express
 Re-running after install...
 Running validation: node index.js
-Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module\.factory\runs\2026-05-05T19-15-36-145Z\final-report.md
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module\.factory\runs\2026-05-05T19-19-29-991Z\final-report.md
 Suggested commit message: fix: fix app
 Run completed.
 
 Final Summary
-Run ID: 2026-05-05T19-15-36-145Z
+Run ID: 2026-05-05T19-19-29-991Z
 Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\missing-module
 Task: Fix app
 Attempts: 2
