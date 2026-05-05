@@ -5,7 +5,7 @@ const { spawnSync } = require("node:child_process");
 const projectRoot = path.resolve(__dirname, "..");
 const cliPath = path.join(projectRoot, "dist", "cli.js");
 const scenariosRoot = path.join(projectRoot, "test-scenarios");
-const scenarioNames = ["missing-module", "duplicate-declaration", "undefined-variable", "retry-stop"];
+const scenarioNames = ["missing-module", "duplicate-declaration", "undefined-variable", "not-a-function", "retry-stop"];
 const optionalScenarioNames = new Set(["retry-stop"]);
 
 function readJson(filePath) {
@@ -104,6 +104,25 @@ function scaffoldScenarioFixtures() {
           strategy: "safe-replacement",
           shouldNotUseAiRepair: true,
           finalIndexContains: 'typeof testVar !== "undefined" ? testVar : undefined'
+        }
+      }
+    },
+    "not-a-function": {
+      index: "const handler = null;\nhandler();\n",
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "not-a-function",
+        task: "Fix invalid function call",
+        expect: {
+          finalStatus: "pass",
+          classificationType: "not-a-function",
+          strategy: "guard-call",
+          shouldNotUseAiRepair: true,
+          finalIndexContains: 'typeof handler === "function" && handler();'
         }
       }
     }

@@ -30,6 +30,7 @@ import { createRunId, initRun, saveStateFile } from "./state.js";
 import { classifyFailure, type FailureMemoryEntry } from "../failure/failureClassifier.js";
 import { shouldContinueRetry } from "../failure/retryControl.js";
 import { generateSafeReplacementPatch } from "../fixers/safeReplacement.js";
+import { generateGuardCallPatch } from "../fixers/guardCall.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -122,6 +123,38 @@ async function buildSafeReplacementFix(
   }
 
   console.log(`Applied safe-replacement for symbol: ${symbol}`);
+  return result.operations.map((op) => ({
+    type: op.type,
+    path: targetFile.relPath,
+    patch: op.patch,
+    reason: op.reason
+  }));
+}
+
+async function buildGuardCallFix(
+  repoPath: string,
+  runtimeError: string,
+  symbol?: string
+): Promise<ChangeOperation[] | null> {
+  if (!symbol) {
+    return null;
+  }
+
+  const targetFile = await readFailureTargetFile(repoPath, runtimeError);
+  if (!targetFile) {
+    return null;
+  }
+
+  const result = generateGuardCallPatch({
+    fileContent: targetFile.content,
+    symbol
+  });
+
+  if (!result.applied || !result.operations?.length) {
+    return null;
+  }
+
+  console.log(`Applied guard-call for symbol: ${symbol}`);
   return result.operations.map((op) => ({
     type: op.type,
     path: targetFile.relPath,
@@ -489,6 +522,31 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
             "PreValidationRepairChangeset"
           );
         }
+      } else if (prevalidationFailure.strategy === "guard-call") {
+        const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
+        const guardCallOps = await buildGuardCallFix(
+          repoPath,
+          runtimeErrorForPrevalidation,
+          prevalidationFailure.details.symbol
+        );
+        if (guardCallOps && guardCallOps.length > 0) {
+          initialChanges = { operations: guardCallOps };
+        } else {
+          initialChanges = parseWithSchema(
+            changesSchema,
+            await builderAgent(brief, plan, repoSummary, review, {
+              runDir: state.runDir,
+              repoPath,
+              mode,
+              recentCommandResults: commandResults,
+              previousOperations: [],
+              selfHealingAttempt,
+              failureClassification: prevalidationFailure,
+              failureMemory
+            }),
+            "PreValidationRepairChangeset"
+          );
+        }
       } else {
         initialChanges = parseWithSchema(
           changesSchema,
@@ -673,16 +731,24 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       if (safeReplacementOps && safeReplacementOps.length > 0) {
         candidateChanges = { operations: safeReplacementOps };
       } else {
-        candidateChanges = await builderAgent(brief, plan, repoSummary, review, {
-          runDir: state.runDir,
-          repoPath,
-          mode,
-          recentCommandResults: commandResults,
-          previousOperations,
-          selfHealingAttempt,
-          failureClassification: failure,
-          failureMemory
-        });
+        const guardCallOps =
+          failure.strategy === "guard-call"
+            ? await buildGuardCallFix(repoPath, runtimeErrorForRetry, failure.details.symbol)
+            : null;
+        if (guardCallOps && guardCallOps.length > 0) {
+          candidateChanges = { operations: guardCallOps };
+        } else {
+          candidateChanges = await builderAgent(brief, plan, repoSummary, review, {
+            runDir: state.runDir,
+            repoPath,
+            mode,
+            recentCommandResults: commandResults,
+            previousOperations,
+            selfHealingAttempt,
+            failureClassification: failure,
+            failureMemory
+          });
+        }
       }
     }
 

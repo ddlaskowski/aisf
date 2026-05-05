@@ -1,6 +1,6 @@
 Running software-factory pipeline...
 Mode detected: bugfix
-Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\undefined-variable\.factory\runs\2026-05-05T19-15-42-229Z
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\not-a-function\.factory\runs\2026-05-05T19-15-43-173Z
 Repository has existing uncommitted changes.
 M ../../scripts/run-scenarios.js
  M ../../src/orchestrator/runTask.ts
@@ -14,34 +14,33 @@ M ../../scripts/run-scenarios.js
  M ../retry-stop/.scenario-debug/stderr.txt
  M ../retry-stop/.scenario-debug/stdout.txt
  M ../retry-stop/index.js
- M .scenario-debug/result.json
- M .scenario-debug/stderr.txt
- M .scenario-debug/stdout.txt
- M index.js
+ M ../undefined-variable/.scenario-debug/result.json
+ M ../undefined-variable/.scenario-debug/stderr.txt
+ M ../undefined-variable/.scenario-debug/stdout.txt
 ?? ../../src/fixers/guardCall.ts
-?? ../not-a-function/
+?? ./
 Auto-approved due to --yes / SOFTWARE_FACTORY_YES
 Running bugfix pre-validation...
 Running validation: node index.js
-Pre-validation failure classified: undefined-variable -> safe-replacement (high confidence)
-Applied safe-replacement for symbol: testVar
+Pre-validation failure classified: not-a-function -> guard-call (high confidence)
+Applied guard-call for symbol: handler
 
 Proposed file operations:
-- PATCH index.js (Safe replacement for undefined variable testVar in console.log)
+- PATCH index.js (Guard invalid function call handler)
 Auto-approved due to --yes / SOFTWARE_FACTORY_YES
 Changes approved. Applying file operations...
 Applying changes and running post-approval steps...
 Running validation: node index.js
 Applied operation path: index.js
 Commit candidate path: index.js
-Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\undefined-variable\.factory\runs\2026-05-05T19-15-42-229Z\final-report.md
-Suggested commit message: fix: fix undefined variable
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\not-a-function\.factory\runs\2026-05-05T19-15-43-173Z\final-report.md
+Suggested commit message: fix: fix invalid function call
 Run completed.
 
 Final Summary
-Run ID: 2026-05-05T19-15-42-229Z
-Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\undefined-variable
-Task: Fix undefined variable
+Run ID: 2026-05-05T19-15-43-173Z
+Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\not-a-function
+Task: Fix invalid function call
 Attempts: 1
 Applied changes: 1
 Final status: pass

@@ -1,0 +1,11 @@
+{
+  "name": "not-a-function",
+  "task": "Fix invalid function call",
+  "expect": {
+    "finalStatus": "pass",
+    "classificationType": "not-a-function",
+    "strategy": "guard-call",
+    "shouldNotUseAiRepair": true,
+    "finalIndexContains": "typeof handler === \"function\" && handler();"
+  }
+}
