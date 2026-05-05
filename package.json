@@ -10,7 +10,8 @@
     "dev": "tsx src/cli.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/cli.js",
-    "lint": "echo \"lint not configured yet\""
+    "lint": "echo \"lint not configured yet\"",
+    "test:scenarios": "node scripts/run-scenarios.js"
   },
   "keywords": [
     "cli",

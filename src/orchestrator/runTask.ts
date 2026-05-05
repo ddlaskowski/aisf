@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "fs-extra";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import type { ChangeOperation, FactoryRunInput, ReviewResult, RunSummary } from "../types/index.js";
+import type { ChangeOperation, Changeset, CommandResult, FactoryRunInput, ReviewResult, RunSummary } from "../types/index.js";
 import { intakeAgent } from "../agents/intake.js";
 import { plannerAgent } from "../agents/planner.js";
 import { builderAgent } from "../agents/builder.js";
@@ -25,8 +25,10 @@ import { briefSchema } from "../schemas/brief.schema.js";
 import { planSchema } from "../schemas/plan.schema.js";
 import { changesSchema } from "../schemas/changes.schema.js";
 import { reviewSchema } from "../schemas/review.schema.js";
-import { requestApplyApproval } from "./approvals.js";
+import { requestApplyApproval, shouldAutoApprove } from "./approvals.js";
 import { createRunId, initRun, saveStateFile } from "./state.js";
+import { classifyFailure, type FailureMemoryEntry } from "../failure/failureClassifier.js";
+import { shouldContinueRetry } from "../failure/retryControl.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -39,9 +41,15 @@ function extractRuntimeError(commandResults: { status: string; stderr: string; s
   return failedForRetry.map((r) => (r.stderr && r.stderr.trim() ? r.stderr : r.stdout)).find((m) => m && m.trim()) ?? "";
 }
 
-function extractMissingModuleName(runtimeError: string): string | null {
-  const match = runtimeError.match(/Cannot find module ['"]([^'"]+)['"]/i);
-  return match ? match[1] : null;
+function classifyCommandFailure(
+  commandResults: { status: string; stderr: string; stdout: string; exitCode?: number | null }[]
+): ReturnType<typeof classifyFailure> {
+  const failedValidationResult = commandResults.find((r) => r.status === "failed");
+  return classifyFailure({
+    stdout: failedValidationResult?.stdout ?? "",
+    stderr: failedValidationResult?.stderr ?? extractRuntimeError(commandResults),
+    exitCode: failedValidationResult?.exitCode ?? null
+  });
 }
 
 function isInstallableMissingModule(moduleName: string): boolean {
@@ -69,9 +77,61 @@ function uniqueSorted(items: string[]): string[] {
   return Array.from(new Set(items)).sort((a, b) => a.localeCompare(b));
 }
 
-async function confirmContinueWithDirtyRepo(statusBefore: string): Promise<boolean> {
+function buildFailureMemoryEntry(
+  attempt: number,
+  failure: ReturnType<typeof classifyFailure>,
+  changeApplied: boolean,
+  note: string
+): FailureMemoryEntry {
+  return {
+    attempt,
+    type: failure.type,
+    strategy: failure.strategy,
+    message: failure.details.rawMessage,
+    symbol: failure.details.symbol,
+    moduleName: failure.details.moduleName,
+    changeApplied,
+    note
+  };
+}
+
+async function rememberFailure(
+  runDir: string,
+  memory: FailureMemoryEntry[],
+  entry: FailureMemoryEntry
+): Promise<void> {
+  const existingIndex = memory.findIndex((item) => item.attempt === entry.attempt);
+  if (existingIndex >= 0) {
+    memory[existingIndex] = entry;
+  } else {
+    memory.push(entry);
+  }
+  await saveStateFile(runDir, "failure-memory.json", memory);
+}
+
+async function saveRetryStop(
+  runDir: string,
+  attempt: number,
+  reason: string,
+  currentFailure: ReturnType<typeof classifyFailure>,
+  failureMemory: FailureMemoryEntry[]
+): Promise<void> {
+  await saveStateFile(runDir, "retry-stop.json", {
+    attempt,
+    reason,
+    currentFailure,
+    failureMemory
+  });
+}
+
+async function confirmContinueWithDirtyRepo(statusBefore: string, autoApprove = false): Promise<boolean> {
   console.log("Repository has existing uncommitted changes.");
   console.log(statusBefore || "(no status output)");
+  if (shouldAutoApprove(autoApprove)) {
+    console.log("Auto-approved due to --yes / SOFTWARE_FACTORY_YES");
+    return true;
+  }
+
   const rl = readline.createInterface({ input, output });
   try {
     const ans = await rl.question("Continue anyway? (y/N): ");
@@ -163,7 +223,8 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     repoPath: inputData.repoPath,
     task: inputData.task,
     createBranch: !!inputData.createBranch,
-    autoCommit: !!inputData.autoCommit
+    autoCommit: !!inputData.autoCommit,
+    autoApprove: !!inputData.autoApprove
   };
 
   const repoPath = path.resolve(input.repoPath);
@@ -181,7 +242,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let branchName = "";
 
   if (gitRepo && hadUncommittedChanges) {
-    const continueAnyway = await confirmContinueWithDirtyRepo(statusBefore);
+    const continueAnyway = await confirmContinueWithDirtyRepo(statusBefore, input.autoApprove);
     if (!continueAnyway) {
       const summary: RunSummary = {
         runId: state.runId,
@@ -232,21 +293,141 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   const plan = parseWithSchema(planSchema, await plannerAgent(brief, repoSummary), "Plan");
   await saveStateFile(state.runDir, "plan.json", plan);
 
-  const initialChanges = parseWithSchema(
-    changesSchema,
-    await builderAgent(brief, plan, repoSummary, undefined, { runDir: state.runDir, repoPath, mode }),
-    "Changeset"
-  );
-  await saveStateFile(state.runDir, "changes.json", initialChanges);
-
   let notes: string[] = [];
   let totalAppliedChanges = 0;
   let attempts = 1;
-  let previousOperations = initialChanges.operations.map((op) => ({ type: op.type, path: op.path, reason: op.reason }));
+  let selfHealingAttempt = 0;
+  let dependencyInstallCount = 0;
+  const installedDependencies = new Set<string>();
+  const failureMemory: FailureMemoryEntry[] = [];
+  const maxRetryAttempts = 3;
+  let retryStopReason: string | undefined;
   const appliedPaths: string[] = [];
+  let commandResults: CommandResult[] | undefined;
+  let review: ReviewResult | undefined;
+  let initialChanges: Changeset = { operations: [] };
+
+  if (mode === "bugfix") {
+    console.log("Running bugfix pre-validation...");
+    commandResults = await runAllowedCommands(["node index.js"], repoPath);
+    await saveStateFile(state.runDir, "command-results-prevalidation.json", commandResults);
+
+    let prevalidationDiffSummary = await getDiffSummary(repoPath);
+    review = parseWithSchema(
+      reviewSchema,
+      await reviewerAgent(brief, plan, commandResults, prevalidationDiffSummary),
+      "ReviewResultAfterPreValidation"
+    );
+    await saveStateFile(state.runDir, "review-prevalidation.json", review);
+
+    if (review.verdict === "pass") {
+      notes.push("Bugfix pre-validation passed; no repair needed.");
+    } else {
+      const prevalidationFailure = classifyCommandFailure(commandResults);
+      console.log(
+        `Pre-validation failure classified: ${prevalidationFailure.type} -> ${prevalidationFailure.strategy} (${prevalidationFailure.confidence} confidence)`
+      );
+      await saveStateFile(state.runDir, "failure-classification-prevalidation.json", prevalidationFailure);
+      await rememberFailure(
+        state.runDir,
+        failureMemory,
+        buildFailureMemoryEntry(attempts, prevalidationFailure, false, "Bugfix pre-validation failed before repair strategy")
+      );
+
+      const missingModule =
+        prevalidationFailure.strategy === "install-dependency" ? prevalidationFailure.details.moduleName : null;
+      if (
+        missingModule &&
+        isInstallableMissingModule(missingModule) &&
+        dependencyInstallCount < 2 &&
+        !installedDependencies.has(missingModule)
+      ) {
+        const hasPackageJson = await fs.pathExists(path.join(repoPath, "package.json"));
+        if (!hasPackageJson) {
+          console.log(`Dependency install skipped: package.json not found for missing dependency ${missingModule}.`);
+          notes.push(`Skipped installing ${missingModule} because package.json was not found.`);
+          await rememberFailure(
+            state.runDir,
+            failureMemory,
+            buildFailureMemoryEntry(
+              attempts,
+              prevalidationFailure,
+              false,
+              "Dependency install skipped because package.json was not found"
+            )
+          );
+        } else {
+          dependencyInstallCount += 1;
+          installedDependencies.add(missingModule);
+          console.log(`Installing missing dependency: ${missingModule}`);
+          const installResults = await runAllowedCommands([`npm install ${missingModule}`], repoPath);
+          await saveStateFile(state.runDir, `dependency-install-${dependencyInstallCount}.json`, installResults);
+
+          console.log("Re-running after install...");
+          const validationResults = await runAllowedCommands(["node index.js"], repoPath);
+          commandResults = [...installResults, ...validationResults];
+          await saveStateFile(state.runDir, `command-results-after-install-${dependencyInstallCount}.json`, commandResults);
+
+          prevalidationDiffSummary = await getDiffSummary(repoPath);
+          review = parseWithSchema(
+            reviewSchema,
+            await reviewerAgent(brief, plan, commandResults, prevalidationDiffSummary),
+            `ReviewResultAfterDependencyInstall${dependencyInstallCount}`
+          );
+          await saveStateFile(state.runDir, `review-after-install-${dependencyInstallCount}.json`, review);
+          attempts += 1;
+          if (review.verdict === "fail") {
+            const postInstallFailure = classifyCommandFailure(commandResults);
+            await rememberFailure(
+              state.runDir,
+              failureMemory,
+              buildFailureMemoryEntry(attempts, postInstallFailure, true, "Validation still failed after dependency install")
+            );
+          }
+        }
+      } else if (prevalidationFailure.strategy === "deterministic-patch") {
+        const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
+        const deterministicOps = await buildDeterministicDuplicateDeclarationFix(repoPath, runtimeErrorForPrevalidation);
+        if (deterministicOps && deterministicOps.length > 0) {
+          console.log("Deterministic duplicate-declaration fixer generated patch operations.");
+          initialChanges = { operations: deterministicOps };
+        } else {
+          notes.push("Deterministic patch strategy could not produce file operations.");
+          await rememberFailure(
+            state.runDir,
+            failureMemory,
+            buildFailureMemoryEntry(attempts, prevalidationFailure, false, "Deterministic patch produced no operations")
+          );
+        }
+      } else {
+        initialChanges = parseWithSchema(
+          changesSchema,
+          await builderAgent(brief, plan, repoSummary, review, {
+            runDir: state.runDir,
+            repoPath,
+            mode,
+            recentCommandResults: commandResults,
+            previousOperations: [],
+            selfHealingAttempt,
+            failureClassification: prevalidationFailure,
+            failureMemory
+          }),
+          "PreValidationRepairChangeset"
+        );
+      }
+    }
+  } else {
+    initialChanges = parseWithSchema(
+      changesSchema,
+      await builderAgent(brief, plan, repoSummary, undefined, { runDir: state.runDir, repoPath, mode }),
+      "Changeset"
+    );
+  }
+  await saveStateFile(state.runDir, "changes.json", initialChanges);
+  let previousOperations = initialChanges.operations.map((op) => ({ type: op.type, path: op.path, reason: op.reason }));
 
   if (initialChanges.operations.length > 0) {
-    const approved = await requestApplyApproval(initialChanges);
+    const approved = await requestApplyApproval(initialChanges, input.autoApprove);
     if (!approved) {
       console.log("Changes rejected. Stopping safely.");
       const summary: RunSummary = {
@@ -271,26 +452,35 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     totalAppliedChanges = initialChanges.operations.filter((op) => op.type !== "delete").length;
     appliedPaths.push(...initialChanges.operations.filter((op) => op.type !== "delete").map((op) => op.path));
   } else {
-    notes.push("No file operations were generated; feature implementation was not applied.");
+    if (mode !== "bugfix" || !review || review.verdict !== "pass") {
+      notes.push("No file operations were generated; feature implementation was not applied.");
+    }
   }
 
-  let commandResults = await runAllowedCommands(plan.proposedCommands, repoPath);
+  if (!commandResults || initialChanges.operations.length > 0) {
+    commandResults = await runAllowedCommands(plan.proposedCommands, repoPath);
+  }
   await saveStateFile(state.runDir, "command-results.json", commandResults);
 
   let diffSummary = await getDiffSummary(repoPath);
-  let review: ReviewResult = parseWithSchema(
-    reviewSchema,
-    await reviewerAgent(brief, plan, commandResults, diffSummary),
-    "ReviewResult"
-  );
+  review = parseWithSchema(reviewSchema, await reviewerAgent(brief, plan, commandResults, diffSummary), "ReviewResult");
   await saveStateFile(state.runDir, "review.json", review);
 
-  let selfHealingAttempt = 0;
-  let dependencyInstallCount = 0;
-  const installedDependencies = new Set<string>();
   while (review.verdict === "fail" && selfHealingAttempt < 2) {
     const runtimeErrorForRetry = extractRuntimeError(commandResults);
-    const missingModule = extractMissingModuleName(runtimeErrorForRetry);
+    const failure = classifyCommandFailure(commandResults);
+    const failureArtifactName = `failure-classification-attempt-${selfHealingAttempt + dependencyInstallCount + 1}.json`;
+    console.log(
+      `Failure classified: ${failure.type} -> ${failure.strategy} (${failure.confidence} confidence)`
+    );
+    await saveStateFile(state.runDir, failureArtifactName, failure);
+    await rememberFailure(
+      state.runDir,
+      failureMemory,
+      buildFailureMemoryEntry(attempts, failure, totalAppliedChanges > 0, "Validation failed before repair strategy")
+    );
+
+    const missingModule = failure.strategy === "install-dependency" ? failure.details.moduleName : null;
     if (
       missingModule &&
       isInstallableMissingModule(missingModule) &&
@@ -301,6 +491,16 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       if (!hasPackageJson) {
         console.log(`Dependency install skipped: package.json not found for missing dependency ${missingModule}.`);
         notes.push(`Skipped installing ${missingModule} because package.json was not found.`);
+        await rememberFailure(
+          state.runDir,
+          failureMemory,
+          buildFailureMemoryEntry(
+            attempts,
+            failure,
+            false,
+            "Dependency install skipped because package.json was not found"
+          )
+        );
       } else {
         dependencyInstallCount += 1;
         installedDependencies.add(missingModule);
@@ -321,10 +521,43 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         );
         await saveStateFile(state.runDir, `review-after-install-${dependencyInstallCount}.json`, review);
         attempts += 1;
+        if (review.verdict === "fail") {
+          const postInstallFailure = classifyCommandFailure(commandResults);
+          await saveStateFile(state.runDir, `failure-classification-attempt-${attempts}.json`, postInstallFailure);
+          await rememberFailure(
+            state.runDir,
+            failureMemory,
+            buildFailureMemoryEntry(attempts, postInstallFailure, true, "Validation still failed after dependency install")
+          );
+          const decision = shouldContinueRetry({
+            failureMemory,
+            currentFailure: postInstallFailure,
+            attempt: attempts,
+            maxAttempts: maxRetryAttempts,
+            changeApplied: true
+          });
+          if (!decision.shouldContinue) {
+            retryStopReason = decision.reason;
+            console.log(`Retry stopped: ${retryStopReason}`);
+            await saveRetryStop(
+              state.runDir,
+              attempts,
+              retryStopReason ?? "Retry stopped",
+              postInstallFailure,
+              failureMemory
+            );
+            break;
+          }
+        }
         continue;
       }
     } else if (missingModule && !isInstallableMissingModule(missingModule)) {
       notes.push(`Did not install missing module ${missingModule}; it is not an allowed external npm package.`);
+      await rememberFailure(
+        state.runDir,
+        failureMemory,
+        buildFailureMemoryEntry(attempts, failure, false, "Dependency install skipped by safety guard")
+      );
     }
 
     selfHealingAttempt += 1;
@@ -335,7 +568,10 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     }
 
     let candidateChanges: { operations: ChangeOperation[] } | null = null;
-    const deterministicOps = await buildDeterministicDuplicateDeclarationFix(repoPath, runtimeErrorForRetry);
+    const deterministicOps =
+      failure.strategy === "deterministic-patch"
+        ? await buildDeterministicDuplicateDeclarationFix(repoPath, runtimeErrorForRetry)
+        : null;
     if (deterministicOps && deterministicOps.length > 0) {
       console.log("Deterministic duplicate-declaration fixer generated patch operations.");
       candidateChanges = { operations: deterministicOps };
@@ -346,7 +582,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         mode,
         recentCommandResults: commandResults,
         previousOperations,
-        selfHealingAttempt
+        selfHealingAttempt,
+        failureClassification: failure,
+        failureMemory
       });
     }
 
@@ -355,10 +593,27 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
 
     if (fixChanges.operations.length === 0) {
       notes.push(`Self-healing attempt ${selfHealingAttempt} generated no file operations.`);
+      await rememberFailure(
+        state.runDir,
+        failureMemory,
+        buildFailureMemoryEntry(attempts, failure, false, "Repair strategy generated no file operations")
+      );
+      const decision = shouldContinueRetry({
+        failureMemory,
+        currentFailure: failure,
+        attempt: attempts,
+        maxAttempts: maxRetryAttempts,
+        changeApplied: false
+      });
+      if (!decision.shouldContinue) {
+        retryStopReason = decision.reason;
+        console.log(`Retry stopped: ${retryStopReason}`);
+        await saveRetryStop(state.runDir, attempts, retryStopReason ?? "Retry stopped", failure, failureMemory);
+      }
       break;
     }
 
-    const fixApproved = await requestApplyApproval(fixChanges);
+    const fixApproved = await requestApplyApproval(fixChanges, input.autoApprove);
     if (!fixApproved) {
       console.log("Changes rejected. Stopping safely.");
       review = {
@@ -366,6 +621,13 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         status: "fail",
         notes: [...review.notes, "User declined self-healing changes."]
       };
+      await rememberFailure(
+        state.runDir,
+        failureMemory,
+        buildFailureMemoryEntry(attempts, failure, false, "User declined repair changes")
+      );
+      retryStopReason = "User declined repair changes";
+      await saveRetryStop(state.runDir, attempts, retryStopReason, failure, failureMemory);
       break;
     }
 
@@ -388,6 +650,28 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     );
     await saveStateFile(state.runDir, `review-self-heal-${selfHealingAttempt}.json`, review);
     attempts += 1;
+    if (review.verdict === "fail") {
+      const postRepairFailure = classifyCommandFailure(commandResults);
+      await saveStateFile(state.runDir, `failure-classification-attempt-${attempts}.json`, postRepairFailure);
+      await rememberFailure(
+        state.runDir,
+        failureMemory,
+        buildFailureMemoryEntry(attempts, postRepairFailure, true, "Validation still failed after repair strategy")
+      );
+      const decision = shouldContinueRetry({
+        failureMemory,
+        currentFailure: postRepairFailure,
+        attempt: attempts,
+        maxAttempts: maxRetryAttempts,
+        changeApplied: true
+      });
+      if (!decision.shouldContinue) {
+        retryStopReason = decision.reason;
+        console.log(`Retry stopped: ${retryStopReason}`);
+        await saveRetryStop(state.runDir, attempts, retryStopReason ?? "Retry stopped", postRepairFailure, failureMemory);
+        break;
+      }
+    }
   }
 
   const skippedCommands = commandResults.filter((r) => r.status === "skipped").map((r) => r.command);
@@ -404,7 +688,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     skippedCommands,
     failedCommands,
     reviewStatus: review.verdict,
-    notes: [...review.notes, ...notes]
+    notes: retryStopReason ? [...review.notes, ...notes, `Retry stopped: ${retryStopReason}`] : [...review.notes, ...notes]
   };
 
   await saveStateFile(state.runDir, "summary.json", summary);
@@ -486,6 +770,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Mode: ${mode}`,
     `- Attempts: ${attempts}`,
     `- Final status: ${review.verdict}`,
+    `- Retry stop reason: ${retryStopReason ?? "None"}`,
     `- Applied changes count: ${totalAppliedChanges}`,
     `- Git repo: ${gitRepo ? "yes" : "no"}`,
     `- Existing uncommitted changes: ${hadUncommittedChanges ? "yes" : "no"}`,

@@ -1,0 +1,8 @@
+{
+  "name": "retry-stop",
+  "task": "Fix app",
+  "expect": {
+    "finalStatus": "fail",
+    "retryStopReason": "Same failure repeated twice"
+  }
+}

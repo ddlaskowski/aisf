@@ -1,0 +1,9 @@
+{
+  "name": "duplicate-declaration",
+  "task": "Fix duplicate logger declaration",
+  "expect": {
+    "finalStatus": "pass",
+    "classificationType": "duplicate-declaration",
+    "strategy": "deterministic-patch"
+  }
+}

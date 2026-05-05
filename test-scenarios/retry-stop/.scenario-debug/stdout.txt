@@ -1,0 +1,130 @@
+Running software-factory pipeline...
+Mode detected: bugfix
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\.factory\runs\2026-05-05T19-03-52-755Z
+Repository has existing uncommitted changes.
+M ../../package.json
+ M ../../src/agents/builder.ts
+ M ../../src/ai/generateCode.ts
+ M ../../src/cli.ts
+ M ../../src/orchestrator/approvals.ts
+ M ../../src/orchestrator/runTask.ts
+ M ../../src/types/index.ts
+?? ../../scripts/
+?? ../../src/failure/
+?? ../
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Running bugfix pre-validation...
+Running validation: node index.js
+Pre-validation failure classified: unknown -> ai-fix (low confidence)
+AI generating multi-file operations...
+{
+  "id": "resp_00cbdd045d1a1c030069fa3f1996d481969df93aa1f686dfb6",
+  "object": "response",
+  "created_at": 1778007833,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1778007838,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4o-mini-2024-07-18",
+  "moderation": null,
+  "output": [
+    {
+      "id": "msg_00cbdd045d1a1c030069fa3f1bb9b08196b0f38a277e9ad1ec",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"index.js\",\n      \"patch\": {\n        \"replace\": {\n          \"target\": \"throw new Error(\\\"Custom failure\\\");\",\n          \"with\": \"// throw new Error(\\\"Custom failure\\\");\"\n        }\n      },\n      \"reason\": \"Commented out the error throwing line to prevent the application from crashing.\"\n    }\n  ]\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "in_memory",
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 0,
+  "text": {
+    "format": {
+      "type": "json_object"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 1825,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 90,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 1915
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"index.js\",\n      \"patch\": {\n        \"replace\": {\n          \"target\": \"throw new Error(\\\"Custom failure\\\");\",\n          \"with\": \"// throw new Error(\\\"Custom failure\\\");\"\n        }\n      },\n      \"reason\": \"Commented out the error throwing line to prevent the application from crashing.\"\n    }\n  ]\n}"
+}
+RAW AI TEXT LENGTH: 362
+Extracted AI text: {
+  "operations": [
+    {
+      "type": "modify",
+      "path": "index.js",
+      "patch": {
+        "replace": {
+          "target": "throw new Error(\"Custom failure\");",
+          "with": "// thro
+AI response received
+Parsing AI response...
+Filtered 0 operations (policy enforcement)
+
+Proposed file operations:
+- PATCH index.js (Commented out the error throwing line to prevent the application from crashing.)
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Changes approved. Applying file operations...
+Applying changes and running post-approval steps...
+Running validation: node index.js
+Applied operation path: index.js
+Commit candidate path: index.js
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\.factory\runs\2026-05-05T19-03-52-755Z\final-report.md
+Suggested commit message: fix: fix app
+Run completed.
+
+Final Summary
+Run ID: 2026-05-05T19-03-52-755Z
+Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop
+Task: Fix app
+Attempts: 1
+Applied changes: 1
+Final status: pass
+Review status: pass
+Successful commands: node index.js
+Skipped commands: None
+Failed commands: None
+Notes: No command failures detected in mock review.

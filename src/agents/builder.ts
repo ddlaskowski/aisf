@@ -1,4 +1,5 @@
 import type { Brief, Changeset, CommandResult, Plan, RepoSummary, ReviewResult } from "../types/index.js";
+import type { FailureClassification, FailureMemoryEntry } from "../failure/failureClassifier.js";
 import { generateCode } from "../ai/generateCode.js";
 
 interface BuilderContext {
@@ -8,6 +9,8 @@ interface BuilderContext {
   recentCommandResults?: CommandResult[];
   previousOperations?: Array<{ type: string; path: string; reason?: string }>;
   selfHealingAttempt?: number;
+  failureClassification?: FailureClassification;
+  failureMemory?: FailureMemoryEntry[];
 }
 
 export async function builderAgent(

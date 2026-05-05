@@ -3,6 +3,7 @@ import fs from "fs-extra";
 import OpenAI from "openai";
 import { z } from "zod";
 import type { Brief, ChangeOperation, CommandResult, Plan, RepoSummary, ReviewResult } from "../types/index.js";
+import type { FailureClassification, FailureMemoryEntry } from "../failure/failureClassifier.js";
 
 interface GenerateCodeContext {
   runDir?: string;
@@ -11,6 +12,8 @@ interface GenerateCodeContext {
   recentCommandResults?: CommandResult[];
   previousOperations?: Array<{ type: string; path: string; reason?: string }>;
   selfHealingAttempt?: number;
+  failureClassification?: FailureClassification;
+  failureMemory?: FailureMemoryEntry[];
 }
 
 class AiApiError extends Error {}
@@ -84,6 +87,19 @@ function buildExistingFilesSummary(sampleFiles: string[]): string {
   return `Sample existing files (${head.length}): ${head.join(", ")}`;
 }
 
+function compactMessage(message: string, maxLength = 220): string {
+  const normalized = message.replace(/\s+/g, " ").trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized;
+}
+
+function formatFailureMemory(memory: FailureMemoryEntry[]): string[] {
+  return memory.map((entry) => {
+    const subject = entry.symbol ? ` for symbol ${entry.symbol}` : entry.moduleName ? ` for module ${entry.moduleName}` : "";
+    const outcome = entry.note ? `: ${entry.note}` : "";
+    return `Attempt ${entry.attempt}: ${entry.type} using ${entry.strategy}${subject}${outcome}`;
+  });
+}
+
 function extractMentionedFiles(task: string): string[] {
   const matches = task.match(/[A-Za-z0-9_\-./]+\.[A-Za-z0-9]+/g) ?? [];
   return Array.from(new Set(matches));
@@ -133,6 +149,8 @@ async function buildPromptPayload(
   const failedErrorOutput = failedCommands
     .map((r) => `Command: ${r.command}\nError: ${(r.stderr && r.stderr.trim()) ? r.stderr : r.stdout}`)
     .join("\n\n");
+  const failureMemory = context.failureMemory ?? [];
+  const failureMemorySummary = formatFailureMemory(failureMemory);
 
   return {
     mode,
@@ -150,6 +168,13 @@ async function buildPromptPayload(
     existingFilesSummary,
     targetFileContexts,
     recentCommandResults: context.recentCommandResults ?? [],
+    failureClassification: context.failureClassification ?? null,
+    failureMemory: failureMemory.map((entry) => ({
+      ...entry,
+      message: compactMessage(entry.message)
+    })),
+    failureMemorySummary,
+    previousFailedAttempts: failureMemory.length > 0 ? ["Previous failed attempts:", ...failureMemorySummary] : [],
     previousOperations: context.previousOperations ?? [],
     selfHealingAttempt: context.selfHealingAttempt ?? 0,
     generationGuidance: [
@@ -167,7 +192,11 @@ async function buildPromptPayload(
       "- If editing index.js, prefer: insertAfter: \"console.log(\" or insertAfter: \"logger.info(\".",
       "- If unsure, append with insertAfter using a stable short anchor.",
       "If a file exists, prefer modify. If it does not exist, create it.",
-      "Typical feature work may include utility file, index/module wiring, and optional tests."
+      "Typical feature work may include utility file, index/module wiring, and optional tests.",
+      "If previous failed attempts are provided, do NOT repeat previous failed fixes.",
+      "Try a different strategy than the previous failed attempt.",
+      "Do NOT introduce duplicate declarations.",
+      "Do NOT insert code before variable initialization."
     ],
     bugfixGuidance:
       mode === "bugfix"

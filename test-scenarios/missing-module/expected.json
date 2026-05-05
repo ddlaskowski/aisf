@@ -1,0 +1,11 @@
+{
+  "name": "missing-module",
+  "task": "Fix app",
+  "expect": {
+    "finalStatus": "pass",
+    "classificationType": "missing-module",
+    "strategy": "install-dependency",
+    "shouldInstallDependency": "express",
+    "shouldNotUseAiRepair": true
+  }
+}

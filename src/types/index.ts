@@ -3,6 +3,7 @@ export interface FactoryRunInput {
   task: string;
   createBranch?: boolean;
   autoCommit?: boolean;
+  autoApprove?: boolean;
 }
 
 export interface Brief {

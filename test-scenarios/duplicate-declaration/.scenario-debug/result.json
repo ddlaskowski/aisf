@@ -1,0 +1,16 @@
+{
+  "status": 0,
+  "signal": null,
+  "cliPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\dist\\cli.js",
+  "scenarioRepoPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\duplicate-declaration",
+  "runsDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\duplicate-declaration\\.factory\\runs",
+  "runsDirExists": true,
+  "latestRunDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\duplicate-declaration\\.factory\\runs\\2026-05-05T19-03-51-875Z",
+  "finalReportExists": true,
+  "classificationFilesFound": [
+    "failure-classification-prevalidation.json"
+  ],
+  "prevalidationClassificationExists": true,
+  "selectedClassificationFile": "failure-classification-prevalidation.json",
+  "retryStopExists": false
+}
