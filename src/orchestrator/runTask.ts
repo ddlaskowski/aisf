@@ -8,7 +8,7 @@ import { plannerAgent } from "../agents/planner.js";
 import { builderAgent } from "../agents/builder.js";
 import { reviewerAgent } from "../agents/reviewer.js";
 import { readRepoSummary } from "../tools/repoReader.js";
-import { applyOperation } from "../tools/fileEditor.js";
+import { applyOperation, type FileOperationResult } from "../tools/fileEditor.js";
 import { runAllowedCommands } from "../tools/commandRunner.js";
 import { getChangedFiles, getDiffSummary, getGitDiffStat } from "../tools/diffTool.js";
 import {
@@ -208,6 +208,11 @@ function uniqueSorted(items: string[]): string[] {
   return Array.from(new Set(items)).sort((a, b) => a.localeCompare(b));
 }
 
+function countOccurrences(source: string, target: string): number {
+  if (!target) return 0;
+  return source.split(target).length - 1;
+}
+
 function buildFailureMemoryEntry(
   attempt: number,
   failure: ReturnType<typeof classifyFailure>,
@@ -323,6 +328,24 @@ async function buildDeterministicDuplicateDeclarationFix(
   for (let i = 1; i < matchedIndexes.length; i += 1) {
     const idx = matchedIndexes[i];
     const line = lines[idx];
+    const safeTarget = idx > 0 ? `\n${line}` : "";
+    if (safeTarget && countOccurrences(content, safeTarget) === 1) {
+      ops.push({
+        type: "modify",
+        path: relNormalized,
+        patch: {
+          type: "replace",
+          target: {
+            type: "exact",
+            match: safeTarget
+          },
+          replacement: ""
+        },
+        reason: "Deterministic fix for duplicate declaration"
+      });
+      continue;
+    }
+
     ops.push({
       type: "modify",
       path: relNormalized,
@@ -340,13 +363,28 @@ async function buildDeterministicDuplicateDeclarationFix(
   return ops.length > 0 ? ops : null;
 }
 
-async function applyNonDeleteOperations(repoPath: string, operations: ChangeOperation[]) {
+interface AppliedOperationResult extends FileOperationResult {
+  path: string;
+}
+
+function countEffectiveChanges(results: AppliedOperationResult[]): number {
+  return results.filter((result) => result.changed).length;
+}
+
+function hasEffectiveChange(results: AppliedOperationResult[]): boolean {
+  return results.some((result) => result.changed);
+}
+
+async function applyNonDeleteOperations(repoPath: string, operations: ChangeOperation[]): Promise<AppliedOperationResult[]> {
+  const results: AppliedOperationResult[] = [];
   for (const op of operations) {
     if (op.type === "delete") {
       continue;
     }
-    await applyOperation(repoPath, op, false);
+    const result = await applyOperation(repoPath, op, false);
+    results.push({ path: op.path, ...result });
   }
+  return results;
 }
 
 export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
@@ -654,9 +692,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
 
     console.log("Changes approved. Applying file operations...");
     console.log("Applying changes and running post-approval steps...");
-    await applyNonDeleteOperations(repoPath, initialChanges.operations);
-    totalAppliedChanges = initialChanges.operations.filter((op) => op.type !== "delete").length;
-    appliedPaths.push(...initialChanges.operations.filter((op) => op.type !== "delete").map((op) => op.path));
+    const initialApplyResults = await applyNonDeleteOperations(repoPath, initialChanges.operations);
+    totalAppliedChanges = countEffectiveChanges(initialApplyResults);
+    appliedPaths.push(...initialApplyResults.filter((result) => result.changed).map((result) => result.path));
   } else {
     if (mode !== "bugfix" || !review || review.verdict !== "pass") {
       notes.push("No file operations were generated; feature implementation was not applied.");
@@ -863,9 +901,10 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
 
     console.log("Changes approved. Applying file operations...");
     console.log("Applying fix changes...");
-    await applyNonDeleteOperations(repoPath, fixChanges.operations);
-    totalAppliedChanges += fixChanges.operations.filter((op) => op.type !== "delete").length;
-    appliedPaths.push(...fixChanges.operations.filter((op) => op.type !== "delete").map((op) => op.path));
+    const fixApplyResults = await applyNonDeleteOperations(repoPath, fixChanges.operations);
+    const fixChanged = hasEffectiveChange(fixApplyResults);
+    totalAppliedChanges += countEffectiveChanges(fixApplyResults);
+    appliedPaths.push(...fixApplyResults.filter((result) => result.changed).map((result) => result.path));
     previousOperations = fixChanges.operations.map((op) => ({ type: op.type, path: op.path, reason: op.reason }));
 
     console.log("Re-running commands...");
@@ -886,14 +925,21 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       await rememberFailure(
         state.runDir,
         failureMemory,
-        buildFailureMemoryEntry(attempts, postRepairFailure, true, "Validation still failed after repair strategy")
+        buildFailureMemoryEntry(
+          attempts,
+          postRepairFailure,
+          fixChanged,
+          fixChanged
+            ? "Validation still failed after repair strategy"
+            : "Validation still failed after repair strategy; no effective change was applied"
+        )
       );
       const decision = shouldContinueRetry({
         failureMemory,
         currentFailure: postRepairFailure,
         attempt: attempts,
         maxAttempts: maxRetryAttempts,
-        changeApplied: true
+        changeApplied: fixChanged
       });
       if (!decision.shouldContinue) {
         retryStopReason = decision.reason;

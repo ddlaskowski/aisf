@@ -1,3 +1,5 @@
+import type { PatchOperation as SafePatchOperation } from "../patchEngine/patchTypes.js";
+
 export interface FactoryRunInput {
   repoPath: string;
   task: string;
@@ -34,7 +36,7 @@ export interface ChangeOperation {
   type: ChangeOperationType;
   path: string;
   content?: string;
-  patch?: ChangePatch;
+  patch?: ChangePatch | SafePatchOperation;
   reason?: string;
 }
 

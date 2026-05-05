@@ -1,6 +1,38 @@
 import path from "node:path";
 import fs from "fs-extra";
 import type { ChangeOperation, ChangePatch } from "../types/index.js";
+import { applySafePatch, type PatchOperation } from "../patchEngine/index.js";
+
+export interface FileOperationResult {
+  changed: boolean;
+  patchEngineUsed: boolean;
+  patchSkipped: boolean;
+  patchSkipReason?: string;
+  patchChanged: boolean;
+  patchConfidence?: "high" | "medium" | "low";
+}
+
+interface PatchContentResult extends FileOperationResult {
+  updated: string;
+}
+
+function fileResult(input: {
+  changed: boolean;
+  patchEngineUsed?: boolean;
+  patchSkipped?: boolean;
+  patchSkipReason?: string;
+  patchChanged?: boolean;
+  patchConfidence?: "high" | "medium" | "low";
+}): FileOperationResult {
+  return {
+    changed: input.changed,
+    patchEngineUsed: input.patchEngineUsed ?? false,
+    patchSkipped: input.patchSkipped ?? false,
+    patchSkipReason: input.patchSkipReason,
+    patchChanged: input.patchChanged ?? false,
+    patchConfidence: input.patchConfidence
+  };
+}
 
 function normalizeInsideRepo(repoRoot: string, targetPath: string): string {
   const normalized = targetPath.replace(/\\/g, "/");
@@ -19,13 +51,107 @@ function normalizeInsideRepo(repoRoot: string, targetPath: string): string {
   return fullPath;
 }
 
-function applyPatchToContent(original: string, patch: ChangePatch, targetPath: string): string {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isSafePatchOperation(patch: unknown): patch is PatchOperation {
+  if (!isRecord(patch) || typeof patch.type !== "string") {
+    return false;
+  }
+
+  if (patch.type === "replace") {
+    return (
+      (typeof patch.target === "string" && typeof patch.content === "string") ||
+      (isRecord(patch.target) &&
+        patch.target.type === "exact" &&
+        typeof patch.target.match === "string" &&
+        typeof patch.replacement === "string")
+    );
+  }
+
+  if (patch.type === "insertAfter") {
+    return (
+      isRecord(patch.anchor) &&
+      typeof patch.anchor.text === "string" &&
+      typeof patch.content === "string"
+    );
+  }
+
+  if (patch.type === "appendSafe") {
+    return typeof patch.content === "string";
+  }
+
+  return false;
+}
+
+function guardedLegacyAppend(original: string, content: string): PatchContentResult {
+  const result = applySafePatch(original, {
+    type: "appendSafe",
+    content
+  });
+
+  if (result.skipped) {
+    console.log(`SafePatchEngine: guarded legacy append skipped: ${result.reason ?? "unknown reason"}`);
+    return {
+      updated: original,
+      ...fileResult({
+        changed: false,
+        patchEngineUsed: true,
+        patchSkipped: true,
+        patchSkipReason: result.reason ?? "unknown reason",
+        patchChanged: false,
+        patchConfidence: result.confidence
+      })
+    };
+  }
+
+  if (result.changed) {
+    console.log("SafePatchEngine: guarded legacy append applied");
+    return {
+      updated: result.fileAfter,
+      ...fileResult({
+        changed: true,
+        patchEngineUsed: true,
+        patchSkipped: false,
+        patchChanged: true,
+        patchConfidence: result.confidence
+      })
+    };
+  }
+
+  console.log("SafePatchEngine: guarded legacy append no changes");
+  return {
+    updated: original,
+    ...fileResult({
+      changed: false,
+      patchEngineUsed: true,
+      patchSkipped: false,
+      patchChanged: false,
+      patchConfidence: result.confidence
+    })
+  };
+}
+
+function legacyPatchResult(original: string, updated: string): PatchContentResult {
+  const changed = updated !== original;
+  return {
+    updated,
+    ...fileResult({
+      changed,
+      patchEngineUsed: false,
+      patchSkipped: false,
+      patchChanged: changed
+    })
+  };
+}
+
+function applyPatchToContent(original: string, patch: ChangePatch, targetPath: string): PatchContentResult {
   let updated = original;
   const patchContent = patch.content ?? patch.replace?.with ?? "";
-  const fallbackAppend = (content: string): string => {
-    const suffix = updated.endsWith("\n") ? "" : "\n";
+  const fallbackAppend = (content: string): PatchContentResult => {
     console.log("Patch target not found. Appending patch content as fallback.");
-    return `${updated}${suffix}// Added by software-factory patch fallback\n${content}`;
+    return guardedLegacyAppend(updated, `// Added by software-factory patch fallback\n${content}`);
   };
 
   if (patch.replace) {
@@ -36,24 +162,20 @@ function applyPatchToContent(original: string, patch: ChangePatch, targetPath: s
       if (idx >= 0) {
         const pos = idx + patch.insertAfter.length;
         updated = `${updated.slice(0, pos)}${patchContent}${updated.slice(pos)}`;
-        return updated;
+        return legacyPatchResult(original, updated);
       }
-      updated = fallbackAppend(patchContent);
-      return updated;
+      return fallbackAppend(patchContent);
     } else if (patch.insertBefore) {
       const idx = updated.indexOf(patch.insertBefore);
       if (idx >= 0) {
         updated = `${updated.slice(0, idx)}${patchContent}${updated.slice(idx)}`;
-        return updated;
+        return legacyPatchResult(original, updated);
       }
-      updated = fallbackAppend(patchContent);
-      return updated;
+      return fallbackAppend(patchContent);
     } else if (patchContent) {
-      updated = fallbackAppend(patchContent);
-      return updated;
+      return fallbackAppend(patchContent);
     } else if (patch.replace.with) {
-      updated = fallbackAppend(patch.replace.with);
-      return updated;
+      return fallbackAppend(patch.replace.with);
     } else {
       throw new Error(`Patch replace target not found in ${targetPath} and no fallback content available`);
     }
@@ -63,31 +185,29 @@ function applyPatchToContent(original: string, patch: ChangePatch, targetPath: s
     const idx = updated.indexOf(patch.insertBefore);
     if (idx >= 0) {
       updated = `${updated.slice(0, idx)}${patchContent}${updated.slice(idx)}`;
-      return updated;
+      return legacyPatchResult(original, updated);
     }
-    updated = fallbackAppend(patchContent);
-    return updated;
+    return fallbackAppend(patchContent);
   } else if (patch.insertAfter) {
     const idx = updated.indexOf(patch.insertAfter);
     if (idx >= 0) {
       const pos = idx + patch.insertAfter.length;
       updated = `${updated.slice(0, pos)}${patchContent}${updated.slice(pos)}`;
-      return updated;
+      return legacyPatchResult(original, updated);
     }
-    updated = fallbackAppend(patchContent);
-    return updated;
+    return fallbackAppend(patchContent);
   } else if (!patch.replace) {
-    updated = fallbackAppend(patchContent);
+    return fallbackAppend(patchContent);
   }
 
-  return updated;
+  return legacyPatchResult(original, updated);
 }
 
 export async function applyOperation(
   repoRoot: string,
   operation: ChangeOperation,
   allowDelete: boolean = false
-): Promise<void> {
+): Promise<FileOperationResult> {
   const fullPath = normalizeInsideRepo(repoRoot, operation.path);
 
   if (operation.type === "delete") {
@@ -95,7 +215,7 @@ export async function applyOperation(
       throw new Error("Delete operations are blocked in v0.1.");
     }
     await fs.remove(fullPath);
-    return;
+    return fileResult({ changed: true });
   }
 
   if (operation.type === "create" || operation.type === "replace") {
@@ -104,7 +224,7 @@ export async function applyOperation(
     }
     await fs.ensureDir(path.dirname(fullPath));
     await fs.writeFile(fullPath, operation.content, "utf8");
-    return;
+    return fileResult({ changed: true });
   }
 
   if (operation.type === "modify") {
@@ -116,14 +236,50 @@ export async function applyOperation(
         throw new Error(`Cannot patch non-existent file: ${operation.path}`);
       }
       const original = await fs.readFile(fullPath, "utf8");
-      const updated = applyPatchToContent(original, operation.patch, operation.path);
-      await fs.writeFile(fullPath, updated, "utf8");
-      return;
+      if (isSafePatchOperation(operation.patch)) {
+        const result = applySafePatch(original, operation.patch);
+        if (result.skipped) {
+          console.log(`SafePatchEngine: skipped patch: ${result.reason ?? "unknown reason"}`);
+          return fileResult({
+            changed: false,
+            patchEngineUsed: true,
+            patchSkipped: true,
+            patchSkipReason: result.reason ?? "unknown reason",
+            patchChanged: false,
+            patchConfidence: result.confidence
+          });
+        }
+        if (result.changed) {
+          await fs.writeFile(fullPath, result.fileAfter, "utf8");
+          console.log("SafePatchEngine: applied patch");
+          return fileResult({
+            changed: true,
+            patchEngineUsed: true,
+            patchSkipped: false,
+            patchChanged: true,
+            patchConfidence: result.confidence
+          });
+        }
+        console.log("SafePatchEngine: no changes applied");
+        return fileResult({
+          changed: false,
+          patchEngineUsed: true,
+          patchSkipped: false,
+          patchChanged: false,
+          patchConfidence: result.confidence
+        });
+      }
+
+      const patchResult = applyPatchToContent(original, operation.patch, operation.path);
+      if (patchResult.changed) {
+        await fs.writeFile(fullPath, patchResult.updated, "utf8");
+      }
+      return patchResult;
     }
 
     if (typeof operation.content === "string") {
       await fs.writeFile(fullPath, operation.content, "utf8");
-      return;
+      return fileResult({ changed: true });
     }
 
     throw new Error(`Modify operation requires patch or content: ${operation.path}`);

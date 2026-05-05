@@ -248,6 +248,7 @@ function buildDebugInfo(scenarioRepoPath, runResult) {
   const runsDir = path.join(scenarioRepoPath, ".factory", "runs");
   const runDir = latestRunDir(scenarioRepoPath);
   const selectedClassification = latestClassification(runDir);
+  const patch = runResult.patch ?? runResult.patchMetadata ?? null;
   return {
     status: runResult.status,
     signal: runResult.signal,
@@ -263,7 +264,8 @@ function buildDebugInfo(scenarioRepoPath, runResult) {
       ? fs.existsSync(path.join(runDir, "failure-classification-prevalidation.json"))
       : false,
     selectedClassificationFile: selectedClassification.file,
-    retryStopExists: runDir ? fs.existsSync(path.join(runDir, "retry-stop.json")) : false
+    retryStopExists: runDir ? fs.existsSync(path.join(runDir, "retry-stop.json")) : false,
+    patch
   };
 }
 
@@ -273,6 +275,37 @@ function writeScenarioDebug(scenarioRepoPath, runResult) {
   fs.writeFileSync(path.join(debugDir, "stdout.txt"), runResult.stdout, "utf8");
   fs.writeFileSync(path.join(debugDir, "stderr.txt"), runResult.stderr, "utf8");
   writeJson(path.join(debugDir, "result.json"), buildDebugInfo(scenarioRepoPath, runResult));
+}
+
+function validatePatchExpectation(failures, expectedPatch, actualPatch) {
+  if (!expectedPatch) {
+    return;
+  }
+
+  if (!actualPatch) {
+    failures.push("Expected patch metadata but none was found");
+    return;
+  }
+
+  const checks = [
+    ["engineUsed", "patchEngineUsed"],
+    ["skipped", "patchSkipped"],
+    ["changed", "patchChanged"],
+    ["confidence", "patchConfidence"]
+  ];
+
+  for (const [expectedKey, actualKey] of checks) {
+    if (Object.prototype.hasOwnProperty.call(expectedPatch, expectedKey) && actualPatch[actualKey] !== expectedPatch[expectedKey]) {
+      failures.push(`Expected patch.${expectedKey}=${expectedPatch[expectedKey]} but got ${actualPatch[actualKey]}`);
+    }
+  }
+
+  if (expectedPatch.skipReasonIncludes) {
+    const actualReason = actualPatch.patchSkipReason ?? "";
+    if (!actualReason.includes(expectedPatch.skipReasonIncludes)) {
+      failures.push(`Expected patch.skipReasonIncludes=${JSON.stringify(expectedPatch.skipReasonIncludes)} but got ${JSON.stringify(actualReason)}`);
+    }
+  }
 }
 
 function validateScenario(scenarioRepoPath, expected, runResult) {
@@ -285,6 +318,7 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
   const selectedClassification = latestClassification(runDir);
   const classification = selectedClassification.data;
   const expect = expected.expect ?? {};
+  const debugInfo = buildDebugInfo(scenarioRepoPath, runResult);
 
   if (runResult.exitCode !== 0) {
     failures.push(`Expected CLI exit code 0, got ${runResult.exitCode}`);
@@ -356,6 +390,8 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
     }
   }
 
+  validatePatchExpectation(failures, expect.patch ?? expected.patch, debugInfo.patch);
+
   return {
     failures,
     artifacts: {
@@ -366,7 +402,8 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
       failureMemory,
       retryStop,
       classification,
-      selectedClassificationFile: selectedClassification.file
+      selectedClassificationFile: selectedClassification.file,
+      patch: debugInfo.patch
     }
   };
 }
@@ -461,7 +498,253 @@ function runRetryControlUnit() {
   return false;
 }
 
-function main() {
+function assertSafePatch(label, actual, expected) {
+  for (const [key, value] of Object.entries(expected)) {
+    if (actual[key] !== value) {
+      throw new Error(`${label}: expected ${key}=${JSON.stringify(value)}, got ${JSON.stringify(actual[key])}`);
+    }
+  }
+}
+
+function runSafePatchEngineUnit() {
+  const { applySafePatch } = require(path.join(projectRoot, "dist", "patchEngine", "index.js"));
+
+  try {
+    const safeReplace = applySafePatch("const logger = console.log;\nconst logger = console.log;\n", {
+      type: "replace",
+      target: { type: "exact", match: "\nconst logger = console.log;" },
+      replacement: ""
+    });
+    assertSafePatch("safe replace", safeReplace, { success: true, changed: true, skipped: false, confidence: "high" });
+    if (safeReplace.fileAfter !== "const logger = console.log;\n") {
+      throw new Error(`safe replace: duplicate line was not removed, got ${JSON.stringify(safeReplace.fileAfter)}`);
+    }
+
+    const duplicateDeclaration = applySafePatch("const logger = console.log;\n", {
+      type: "insertAfter",
+      anchor: { text: "const logger = console.log;" },
+      content: "\nconst logger = console.log;"
+    });
+    assertSafePatch("unsafe duplicate declaration", duplicateDeclaration, {
+      success: false,
+      changed: false,
+      skipped: true,
+      confidence: "low"
+    });
+    if (!duplicateDeclaration.reason?.includes("duplicate declaration")) {
+      throw new Error(`unsafe duplicate declaration: expected duplicate declaration reason, got ${duplicateDeclaration.reason}`);
+    }
+
+    const importPlacement = applySafePatch("console.log('ready');\n", {
+      type: "appendSafe",
+      content: 'const fs = require("fs");'
+    });
+    assertSafePatch("unsafe import/require placement", importPlacement, {
+      success: false,
+      changed: false,
+      skipped: true,
+      confidence: "low"
+    });
+    if (!importPlacement.reason) {
+      throw new Error("unsafe import/require placement: expected skip reason");
+    }
+
+    const ambiguousAnchor = applySafePatch("console.log('a');\nconsole.log('a');\n", {
+      type: "insertAfter",
+      anchor: { text: "console.log('a');" },
+      content: "\nconsole.log('b');"
+    });
+    assertSafePatch("ambiguous anchor", ambiguousAnchor, {
+      success: false,
+      changed: false,
+      skipped: true,
+      confidence: "low",
+      reason: "Insert anchor is not unique"
+    });
+
+    const safeAppend = applySafePatch("console.log('a');\n", {
+      type: "appendSafe",
+      content: "console.log('b');"
+    });
+    assertSafePatch("safe append", safeAppend, { success: true, changed: true, skipped: false, confidence: "medium" });
+    if (!safeAppend.fileAfter.includes("console.log('b');")) {
+      throw new Error("safe append: appended content missing");
+    }
+
+    const safePatchDuplicateBlocked = applySafePatch('const logger = console.log;\nconsole.log("start");\n', {
+      type: "insertAfter",
+      anchor: { text: 'console.log("start");' },
+      content: '\nconst logger = require("./logger");'
+    });
+    assertSafePatch("safe-patch-duplicate-blocked", safePatchDuplicateBlocked, {
+      success: false,
+      changed: false,
+      skipped: true,
+      confidence: "low"
+    });
+    if (!safePatchDuplicateBlocked.reason?.includes("duplicate")) {
+      throw new Error(`safe-patch-duplicate-blocked: expected duplicate reason, got ${safePatchDuplicateBlocked.reason}`);
+    }
+
+    const safePatchAmbiguousAnchorBlocked = applySafePatch('console.log("ready");\nconsole.log("ready");\n', {
+      type: "insertAfter",
+      anchor: { text: 'console.log("ready");' },
+      content: '\nconsole.log("done");'
+    });
+    assertSafePatch("safe-patch-ambiguous-anchor-blocked", safePatchAmbiguousAnchorBlocked, {
+      success: false,
+      changed: false,
+      skipped: true,
+      confidence: "low"
+    });
+    if (!/(unique|ambiguous)/i.test(safePatchAmbiguousAnchorBlocked.reason ?? "")) {
+      throw new Error(
+        `safe-patch-ambiguous-anchor-blocked: expected unique/ambiguous reason, got ${safePatchAmbiguousAnchorBlocked.reason}`
+      );
+    }
+
+    const safePatchExactReplaceApplied = applySafePatch("console.log(testVar);\n", {
+      type: "replace",
+      target: { type: "exact", match: "console.log(testVar);" },
+      replacement: 'console.log(typeof testVar !== "undefined" ? testVar : undefined);'
+    });
+    assertSafePatch("safe-patch-exact-replace-applied", safePatchExactReplaceApplied, {
+      success: true,
+      changed: true,
+      skipped: false,
+      confidence: "high"
+    });
+    if (!safePatchExactReplaceApplied.fileAfter.includes('console.log(typeof testVar !== "undefined" ? testVar : undefined);')) {
+      throw new Error("safe-patch-exact-replace-applied: replacement content missing");
+    }
+
+    const safePatchAppendNormalCode = applySafePatch('console.log("start");\n', {
+      type: "appendSafe",
+      content: 'console.log("done");'
+    });
+    assertSafePatch("safe-patch-append-normal-code", safePatchAppendNormalCode, {
+      success: true,
+      changed: true,
+      skipped: false,
+      confidence: "medium"
+    });
+    if (!safePatchAppendNormalCode.fileAfter.includes('console.log("done");')) {
+      throw new Error("safe-patch-append-normal-code: appended content missing");
+    }
+
+    console.log("PASS safe-patch-engine-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL safe-patch-engine-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runSafeReplacementUnit() {
+  const { generateSafeReplacementPatch } = require(path.join(projectRoot, "dist", "fixers", "safeReplacement.js"));
+
+  const result = generateSafeReplacementPatch({
+    fileContent: "console.log(testVar);\n",
+    symbol: "testVar"
+  });
+  const patch = result.operations?.[0]?.patch;
+
+  if (
+    result.applied === true &&
+    patch?.type === "replace" &&
+    patch.target?.type === "exact" &&
+    patch.target.match === "console.log(testVar);" &&
+    patch.replacement === 'console.log(typeof testVar !== "undefined" ? testVar : undefined);'
+  ) {
+    console.log("PASS safe-replacement-unit");
+    return true;
+  }
+
+  console.log("FAIL safe-replacement-unit");
+  console.log(`  Expected SafePatchEngine exact replace patch, got ${JSON.stringify(result)}`);
+  return false;
+}
+
+function runPatchExpectationUnit() {
+  const failures = [];
+  validatePatchExpectation(
+    failures,
+    {
+      engineUsed: true,
+      skipped: true,
+      changed: false,
+      confidence: "low",
+      skipReasonIncludes: "require"
+    },
+    {
+      patchEngineUsed: true,
+      patchSkipped: true,
+      patchChanged: false,
+      patchConfidence: "low",
+      patchSkipReason: "Cannot append import/require content safely"
+    }
+  );
+
+  if (failures.length === 0) {
+    console.log("PASS patch-expectation-unit");
+    return true;
+  }
+
+  console.log("FAIL patch-expectation-unit");
+  for (const failure of failures) {
+    console.log(`  ${failure}`);
+  }
+  return false;
+}
+
+async function runGuardedLegacyAppendUnit() {
+  const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
+  const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
+  const targetFile = path.join(tmpDir, "index.js");
+
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    ensureDir(tmpDir);
+    fs.writeFileSync(targetFile, "console.log('ready');\n", "utf8");
+
+    const result = await applyOperation(tmpDir, {
+      type: "modify",
+      path: "index.js",
+      patch: {
+        insertAfter: "missing anchor",
+        content: 'const fs = require("fs");'
+      },
+      reason: "unit test unsafe legacy append"
+    });
+
+    const after = fs.readFileSync(targetFile, "utf8");
+    if (
+      after === "console.log('ready');\n" &&
+      result.patchEngineUsed === true &&
+      result.patchSkipped === true &&
+      result.patchChanged === false &&
+      result.patchConfidence === "low" &&
+      result.changed === false &&
+      result.patchSkipReason?.includes("require")
+    ) {
+      console.log("PASS guarded-legacy-append-unit");
+      return true;
+    }
+
+    console.log("FAIL guarded-legacy-append-unit");
+    console.log(
+      `  Expected file unchanged and SafePatchEngine skip metadata, got after=${JSON.stringify(after)} result=${JSON.stringify(result)}`
+    );
+    return false;
+  } catch (error) {
+    console.log("FAIL guarded-legacy-append-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+async function main() {
   if (!fs.existsSync(cliPath)) {
     console.error("dist/cli.js not found. Run npm run build first.");
     process.exitCode = 1;
@@ -472,6 +755,18 @@ function main() {
 
   let failed = 0;
   if (!runRetryControlUnit()) {
+    failed += 1;
+  }
+  if (!runSafePatchEngineUnit()) {
+    failed += 1;
+  }
+  if (!runSafeReplacementUnit()) {
+    failed += 1;
+  }
+  if (!runPatchExpectationUnit()) {
+    failed += 1;
+  }
+  if (!(await runGuardedLegacyAppendUnit())) {
     failed += 1;
   }
 
@@ -514,4 +809,7 @@ function main() {
   process.exitCode = failed === 0 ? 0 : 1;
 }
 
-main();
+main().catch((error) => {
+  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  process.exitCode = 1;
+});

@@ -1,13 +1,19 @@
 import type { ChangePatch } from "../types/index.js";
+import type { PatchOperation as SafePatchOperation } from "../patchEngine/index.js";
 
 export interface PatchOperation {
   type: "modify";
-  patch: ChangePatch;
+  patch: ChangePatch | SafePatchOperation;
   reason: string;
 }
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function countOccurrences(source: string, target: string): number {
+  if (!target) return 0;
+  return source.split(target).length - 1;
 }
 
 export function generateSafeReplacementPatch(input: {
@@ -24,6 +30,31 @@ export function generateSafeReplacementPatch(input: {
   }
 
   const escaped = escapeRegExp(symbol);
+
+  const consoleLogLinePattern = new RegExp(`^[ \\t]*console\\.log\\(\\s*${escaped}\\s*\\);?[ \\t]*$`, "m");
+  const consoleLogLineMatch = fileContent.match(consoleLogLinePattern);
+  if (consoleLogLineMatch && countOccurrences(fileContent, consoleLogLineMatch[0]) === 1) {
+    const target = consoleLogLineMatch[0];
+    const indent = target.match(/^[ \t]*/)?.[0] ?? "";
+    const replacement = `${indent}console.log(typeof ${symbol} !== "undefined" ? ${symbol} : undefined);`;
+    return {
+      applied: true,
+      operations: [
+        {
+          type: "modify",
+          patch: {
+            type: "replace",
+            target: {
+              type: "exact",
+              match: target
+            },
+            replacement
+          },
+          reason: `Safe replacement for undefined variable ${symbol} in console.log`
+        }
+      ]
+    };
+  }
 
   const consoleLogPattern = new RegExp(`console\\.log\\(\\s*${escaped}\\s*\\)`);
   const consoleLogMatch = fileContent.match(consoleLogPattern);

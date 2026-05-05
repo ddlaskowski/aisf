@@ -15,7 +15,9 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v1.3 — Self-Healing + Auto-Commit + Dependency Installer**
+**v1.5 — Safe Patch Engine**
+
+See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
 ---
 
@@ -52,6 +54,9 @@ AI → propose changes → approval → apply → run code → detect errors
 * insertBefore
 * replace
 * fallback-safe patching
+* Safe Patch Engine validation for supported patch operations
+* patch metadata for retry control
+* deterministic confidence scoring
 
 ---
 
@@ -271,7 +276,9 @@ Pipeline:
 
 ### v1.5
 
-* Test generation & execution
+* Safe Patch Engine
+* Patch metadata and confidence scoring
+* Hardened patch regression checks
 
 ### v2.0
 
