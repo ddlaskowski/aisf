@@ -1,0 +1,16 @@
+{
+  "name": "runtime-error-in-imported-file",
+  "task": "Fix runtime error in imported helper file",
+  "expect": {
+    "finalStatus": "pass",
+    "classificationType": "undefined-variable",
+    "strategy": "safe-replacement",
+    "contextAwareTargetFile": "helper.js",
+    "contextAwareTargetExists": true,
+    "onlyOnePatchedFile": true,
+    "changedFilesIncludeOnly": [
+      "helper.js"
+    ],
+    "finalHelperContains": "typeof missingValue"
+  }
+}

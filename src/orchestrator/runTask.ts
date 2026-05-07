@@ -32,6 +32,10 @@ import { shouldContinueRetry } from "../failure/retryControl.js";
 import { generateSafeReplacementPatch } from "../fixers/safeReplacement.js";
 import { generateGuardCallPatch } from "../fixers/guardCall.js";
 import { generateReorderInitPatch } from "../fixers/reorderInit.js";
+import {
+  selectContextAwareRepairTarget,
+  type ContextAwareRepairTarget
+} from "../repair/contextAwareRepairTarget.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -70,10 +74,13 @@ function findErrorFileFromStack(runtimeError: string): string | null {
 
 async function readFailureTargetFile(
   repoPath: string,
-  runtimeError: string
+  runtimeError: string,
+  contextAwareTarget?: ContextAwareRepairTarget | null
 ): Promise<{ relPath: string; content: string } | null> {
   const fileFromStack = findErrorFileFromStack(runtimeError);
-  const targetPath = fileFromStack
+  const targetPath = contextAwareTarget?.filePath
+    ? path.resolve(contextAwareTarget.filePath)
+    : fileFromStack
     ? path.isAbsolute(fileFromStack)
       ? fileFromStack
       : path.resolve(repoPath, fileFromStack)
@@ -103,13 +110,14 @@ async function readFailureTargetFile(
 async function buildSafeReplacementFix(
   repoPath: string,
   runtimeError: string,
-  symbol?: string
+  symbol?: string,
+  contextAwareTarget?: ContextAwareRepairTarget | null
 ): Promise<ChangeOperation[] | null> {
   if (!symbol) {
     return null;
   }
 
-  const targetFile = await readFailureTargetFile(repoPath, runtimeError);
+  const targetFile = await readFailureTargetFile(repoPath, runtimeError, contextAwareTarget);
   if (!targetFile) {
     return null;
   }
@@ -135,13 +143,14 @@ async function buildSafeReplacementFix(
 async function buildGuardCallFix(
   repoPath: string,
   runtimeError: string,
-  symbol?: string
+  symbol?: string,
+  contextAwareTarget?: ContextAwareRepairTarget | null
 ): Promise<ChangeOperation[] | null> {
   if (!symbol) {
     return null;
   }
 
-  const targetFile = await readFailureTargetFile(repoPath, runtimeError);
+  const targetFile = await readFailureTargetFile(repoPath, runtimeError, contextAwareTarget);
   if (!targetFile) {
     return null;
   }
@@ -167,13 +176,14 @@ async function buildGuardCallFix(
 async function buildReorderInitFix(
   repoPath: string,
   runtimeError: string,
-  symbol?: string
+  symbol?: string,
+  contextAwareTarget?: ContextAwareRepairTarget | null
 ): Promise<ChangeOperation[] | null> {
   if (!symbol) {
     return null;
   }
 
-  const targetFile = await readFailureTargetFile(repoPath, runtimeError);
+  const targetFile = await readFailureTargetFile(repoPath, runtimeError, contextAwareTarget);
   if (!targetFile) {
     return null;
   }
@@ -260,6 +270,33 @@ async function saveRetryStop(
   });
 }
 
+async function selectAndSaveContextAwareRepairTarget(
+  runDir: string,
+  repoPath: string,
+  rawOutput: string,
+  label: string
+): Promise<ContextAwareRepairTarget | null> {
+  if (!rawOutput.trim()) {
+    return null;
+  }
+
+  const target = selectContextAwareRepairTarget({
+    rawOutput,
+    projectRoot: repoPath,
+    fallbackFilePath: path.join(repoPath, "index.js")
+  });
+
+  if (!target) {
+    return null;
+  }
+
+  console.log(
+    `Context-aware repair target: ${target.filePath} (${target.confidence}) - ${target.reason}`
+  );
+  await saveStateFile(runDir, `context-aware-repair-target-${label}.json`, target);
+  return target;
+}
+
 async function confirmContinueWithDirtyRepo(statusBefore: string, autoApprove = false): Promise<boolean> {
   console.log("Repository has existing uncommitted changes.");
   console.log(statusBefore || "(no status output)");
@@ -279,7 +316,8 @@ async function confirmContinueWithDirtyRepo(statusBefore: string, autoApprove = 
 
 async function buildDeterministicDuplicateDeclarationFix(
   repoPath: string,
-  runtimeError: string
+  runtimeError: string,
+  contextAwareTarget?: ContextAwareRepairTarget | null
 ): Promise<ChangeOperation[] | null> {
   const dupMatch = runtimeError.match(/SyntaxError:\s*Identifier\s+'([^']+)'\s+has already been declared/i);
   if (!dupMatch) {
@@ -287,7 +325,7 @@ async function buildDeterministicDuplicateDeclarationFix(
   }
 
   const identifier = dupMatch[1];
-  const fileFromStack = findErrorFileFromStack(runtimeError);
+  const fileFromStack = contextAwareTarget?.filePath ?? findErrorFileFromStack(runtimeError);
   const defaultRel = "index.js";
   const targetPath = fileFromStack
     ? path.isAbsolute(fileFromStack)
@@ -387,6 +425,35 @@ async function applyNonDeleteOperations(repoPath: string, operations: ChangeOper
   return results;
 }
 
+function operationTargetsExactlyOneFile(operations: ChangeOperation[]): boolean {
+  const paths = new Set(operations.filter((op) => op.type !== "delete").map((op) => op.path));
+  return paths.size <= 1;
+}
+
+function restrictOperationsToContextAwareTarget(
+  repoPath: string,
+  operations: ChangeOperation[],
+  target: ContextAwareRepairTarget | null
+): ChangeOperation[] {
+  if (!target) {
+    return operations;
+  }
+
+  const targetRel = path.relative(repoPath, target.filePath).split(path.sep).join("/");
+  const kept = operations.filter((op) => op.type === "delete" || op.path.replace(/\\/g, "/") === targetRel);
+  const skipped = operations.length - kept.length;
+  if (skipped > 0) {
+    console.log(`Context-aware repair target selected one file; skipped ${skipped} operation(s) for other files.`);
+  }
+
+  if (!operationTargetsExactlyOneFile(kept)) {
+    console.log("Context-aware repair target guard blocked multi-file patch operations.");
+    return [];
+  }
+
+  return kept;
+}
+
 export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   const input: FactoryRunInput = {
     repoPath: inputData.repoPath,
@@ -475,6 +542,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let commandResults: CommandResult[] | undefined;
   let review: ReviewResult | undefined;
   let initialChanges: Changeset = { operations: [] };
+  let contextAwareRepairTarget: ContextAwareRepairTarget | null = null;
 
   if (mode === "bugfix") {
     console.log("Running bugfix pre-validation...");
@@ -497,6 +565,14 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         `Pre-validation failure classified: ${prevalidationFailure.type} -> ${prevalidationFailure.strategy} (${prevalidationFailure.confidence} confidence)`
       );
       await saveStateFile(state.runDir, "failure-classification-prevalidation.json", prevalidationFailure);
+      const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
+      contextAwareRepairTarget =
+        (await selectAndSaveContextAwareRepairTarget(
+          state.runDir,
+          repoPath,
+          runtimeErrorForPrevalidation,
+          "prevalidation"
+        )) ?? contextAwareRepairTarget;
       await rememberFailure(
         state.runDir,
         failureMemory,
@@ -555,8 +631,11 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           }
         }
       } else if (prevalidationFailure.strategy === "deterministic-patch") {
-        const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
-        const deterministicOps = await buildDeterministicDuplicateDeclarationFix(repoPath, runtimeErrorForPrevalidation);
+        const deterministicOps = await buildDeterministicDuplicateDeclarationFix(
+          repoPath,
+          runtimeErrorForPrevalidation,
+          contextAwareRepairTarget
+        );
         if (deterministicOps && deterministicOps.length > 0) {
           console.log("Deterministic duplicate-declaration fixer generated patch operations.");
           initialChanges = { operations: deterministicOps };
@@ -569,11 +648,11 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           );
         }
       } else if (prevalidationFailure.strategy === "safe-replacement") {
-        const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
         const safeReplacementOps = await buildSafeReplacementFix(
           repoPath,
           runtimeErrorForPrevalidation,
-          prevalidationFailure.details.symbol
+          prevalidationFailure.details.symbol,
+          contextAwareRepairTarget
         );
         if (safeReplacementOps && safeReplacementOps.length > 0) {
           initialChanges = { operations: safeReplacementOps };
@@ -594,11 +673,11 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           );
         }
       } else if (prevalidationFailure.strategy === "guard-call") {
-        const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
         const guardCallOps = await buildGuardCallFix(
           repoPath,
           runtimeErrorForPrevalidation,
-          prevalidationFailure.details.symbol
+          prevalidationFailure.details.symbol,
+          contextAwareRepairTarget
         );
         if (guardCallOps && guardCallOps.length > 0) {
           initialChanges = { operations: guardCallOps };
@@ -619,11 +698,11 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           );
         }
       } else if (prevalidationFailure.strategy === "reorder-init") {
-        const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
         const reorderInitOps = await buildReorderInitFix(
           repoPath,
           runtimeErrorForPrevalidation,
-          prevalidationFailure.details.symbol
+          prevalidationFailure.details.symbol,
+          contextAwareRepairTarget
         );
         if (reorderInitOps && reorderInitOps.length > 0) {
           initialChanges = { operations: reorderInitOps };
@@ -667,6 +746,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       "Changeset"
     );
   }
+  initialChanges = {
+    operations: restrictOperationsToContextAwareTarget(repoPath, initialChanges.operations, contextAwareRepairTarget)
+  };
   await saveStateFile(state.runDir, "changes.json", initialChanges);
   let previousOperations = initialChanges.operations.map((op) => ({ type: op.type, path: op.path, reason: op.reason }));
 
@@ -723,6 +805,14 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       failureMemory,
       buildFailureMemoryEntry(attempts, failure, totalAppliedChanges > 0, "Validation failed before repair strategy")
     );
+    const retryContextAwareRepairTarget =
+      (await selectAndSaveContextAwareRepairTarget(
+        state.runDir,
+        repoPath,
+        runtimeErrorForRetry,
+        `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`
+      )) ?? contextAwareRepairTarget;
+    contextAwareRepairTarget = retryContextAwareRepairTarget;
 
     const missingModule = failure.strategy === "install-dependency" ? failure.details.moduleName : null;
     if (
@@ -814,29 +904,34 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     let candidateChanges: { operations: ChangeOperation[] } | null = null;
     const deterministicOps =
       failure.strategy === "deterministic-patch"
-        ? await buildDeterministicDuplicateDeclarationFix(repoPath, runtimeErrorForRetry)
+        ? await buildDeterministicDuplicateDeclarationFix(repoPath, runtimeErrorForRetry, retryContextAwareRepairTarget)
         : null;
     if (deterministicOps && deterministicOps.length > 0) {
       console.log("Deterministic duplicate-declaration fixer generated patch operations.");
       candidateChanges = { operations: deterministicOps };
     } else {
-      const safeReplacementOps =
-        failure.strategy === "safe-replacement"
-          ? await buildSafeReplacementFix(repoPath, runtimeErrorForRetry, failure.details.symbol)
+        const safeReplacementOps =
+          failure.strategy === "safe-replacement"
+          ? await buildSafeReplacementFix(
+              repoPath,
+              runtimeErrorForRetry,
+              failure.details.symbol,
+              retryContextAwareRepairTarget
+            )
           : null;
       if (safeReplacementOps && safeReplacementOps.length > 0) {
         candidateChanges = { operations: safeReplacementOps };
       } else {
-        const guardCallOps =
-          failure.strategy === "guard-call"
-            ? await buildGuardCallFix(repoPath, runtimeErrorForRetry, failure.details.symbol)
+          const guardCallOps =
+            failure.strategy === "guard-call"
+            ? await buildGuardCallFix(repoPath, runtimeErrorForRetry, failure.details.symbol, retryContextAwareRepairTarget)
             : null;
         if (guardCallOps && guardCallOps.length > 0) {
           candidateChanges = { operations: guardCallOps };
         } else {
-          const reorderInitOps =
-            failure.strategy === "reorder-init"
-              ? await buildReorderInitFix(repoPath, runtimeErrorForRetry, failure.details.symbol)
+            const reorderInitOps =
+              failure.strategy === "reorder-init"
+              ? await buildReorderInitFix(repoPath, runtimeErrorForRetry, failure.details.symbol, retryContextAwareRepairTarget)
               : null;
           if (reorderInitOps && reorderInitOps.length > 0) {
             candidateChanges = { operations: reorderInitOps };
@@ -856,7 +951,14 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       }
     }
 
-    const fixChanges = parseWithSchema(changesSchema, candidateChanges, `SelfHealingChangeset${selfHealingAttempt}`);
+    const parsedFixChanges = parseWithSchema(changesSchema, candidateChanges, `SelfHealingChangeset${selfHealingAttempt}`);
+    const fixChanges = {
+      operations: restrictOperationsToContextAwareTarget(
+        repoPath,
+        parsedFixChanges.operations,
+        retryContextAwareRepairTarget
+      )
+    };
     await saveStateFile(state.runDir, `self-heal-${selfHealingAttempt}-changes.json`, fixChanges);
 
     if (fixChanges.operations.length === 0) {
@@ -1052,6 +1154,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Existing uncommitted changes: ${hadUncommittedChanges ? "yes" : "no"}`,
     `- Branch created: ${branchCreated ? "yes" : "no"}`,
     `- Branch name: ${branchCreated ? branchName : "n/a"}`,
+    `- Context-aware repair target: ${contextAwareRepairTarget?.filePath ?? "None"}`,
+    `- Context-aware repair confidence: ${contextAwareRepairTarget?.confidence ?? "n/a"}`,
+    `- Context-aware repair reason: ${contextAwareRepairTarget?.reason ?? "n/a"}`,
     `- Auto-commit: ${commitResult.committed ? "yes" : commitResult.attempted ? "skipped" : "no"}`,
     `- Commit message: ${commitResult.commitMessage ?? commitMessage}`,
     `- Committed files: ${commitResult.committedFiles.length ? commitResult.committedFiles.join(", ") : "None"}`,

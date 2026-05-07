@@ -1,0 +1,14 @@
+{
+  "name": "helper-function-not-exported",
+  "task": "Fix helper function export",
+  "expect": {
+    "finalStatus": "pass",
+    "contextAwareTargetFile": "helper.js",
+    "contextAwareTargetExists": true,
+    "onlyOnePatchedFile": true,
+    "changedFilesIncludeOnly": [
+      "helper.js"
+    ],
+    "finalHelperContains": "export"
+  }
+}

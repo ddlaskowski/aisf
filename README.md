@@ -15,9 +15,11 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v1.5 — Safe Patch Engine**
+**v1.6 — Context-Aware Repair Engine**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
+
+v1.6 adds context-aware repair target selection: stack trace parsing, error context collection, lightweight dependency scanning, repair target decision, and multi-file read / single-file patch routing. The Safe Patch Engine remains the only mutation layer.
 
 ---
 
@@ -279,6 +281,14 @@ Pipeline:
 * Safe Patch Engine
 * Patch metadata and confidence scoring
 * Hardened patch regression checks
+
+### v1.6
+
+* Context-Aware Repair Engine
+* Stack trace parsing and error context collection
+* Lightweight dependency scanning
+* Multi-file read / single-file patch target selection
+* Safe Patch Engine remains the only mutation layer
 
 ### v2.0
 

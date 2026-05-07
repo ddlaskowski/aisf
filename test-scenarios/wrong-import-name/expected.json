@@ -1,0 +1,9 @@
+{
+  "name": "wrong-import-name",
+  "task": "Fix wrong import name",
+  "expect": {
+    "finalStatus": "pass",
+    "contextAwareTargetExists": true,
+    "onlyOnePatchedFile": true
+  }
+}

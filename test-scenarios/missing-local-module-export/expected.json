@@ -1,0 +1,14 @@
+{
+  "name": "missing-local-module-export",
+  "task": "Fix missing local module export",
+  "expect": {
+    "finalStatus": "pass",
+    "contextAwareTargetFile": "helper.js",
+    "contextAwareTargetExists": true,
+    "onlyOnePatchedFile": true,
+    "changedFilesIncludeOnly": [
+      "helper.js"
+    ],
+    "finalHelperContains": "export"
+  }
+}
