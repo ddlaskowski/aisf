@@ -1,1 +1,1 @@
-console.log(testVar);
+console.log(typeof testVar !== "undefined" ? testVar : undefined);

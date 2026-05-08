@@ -1,2 +1,2 @@
 const handler = null;
-handler();
+typeof handler === "function" && handler();

@@ -39,6 +39,11 @@ import {
 import { buildRepairIntent } from "../repair/repairIntentBuilder.js";
 import { createUnknownRepairIntent, type RepairIntent } from "../repair/repairIntent.js";
 import { validatePatchIntent, type PatchIntentValidationResult } from "../repair/patchIntentGuard.js";
+import {
+  shouldSkipMutationForEvidenceValidation,
+  validateRepairEvidence,
+  type RepairEvidenceValidation
+} from "../repair/repairEvidenceValidator.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -334,6 +339,49 @@ async function buildAndSaveRepairIntent(input: {
     await saveStateFile(input.runDir, `repair-intent-${input.label}.json`, fallback);
     return fallback;
   }
+}
+
+async function buildAndSaveRepairEvidenceValidation(input: {
+  runDir: string;
+  label: string;
+  rawOutput: string;
+  target: ContextAwareRepairTarget;
+  repairIntent: RepairIntent;
+  symbolName?: string;
+}): Promise<RepairEvidenceValidation> {
+  const sourceFileFromStack = findErrorFileFromStack(input.rawOutput);
+  const sourceFile = sourceFileFromStack
+    ? path.isAbsolute(sourceFileFromStack)
+      ? sourceFileFromStack
+      : path.resolve(path.dirname(input.target.filePath), sourceFileFromStack)
+    : input.repairIntent.sourceFile;
+  const repairTargetDecision = {
+    targetFile: input.target.filePath,
+    reason: input.target.reason,
+    confidence: input.target.confidence,
+    sourceFile,
+    symbolName: input.symbolName ?? input.repairIntent.symbolName
+  };
+  const validation = validateRepairEvidence({
+    parsedStackTrace: {
+      message: input.rawOutput,
+      filePath: sourceFile ?? input.target.filePath
+    },
+    errorContext: {
+      filePath: sourceFile ?? input.target.filePath,
+      message: input.rawOutput
+    },
+    dependencyMap: {
+      targetFile: input.target.filePath,
+      sourceFile,
+      reason: input.target.reason,
+      symbolName: input.symbolName ?? input.repairIntent.symbolName
+    },
+    repairTargetDecision,
+    repairIntent: input.repairIntent
+  });
+  await saveStateFile(input.runDir, `repair-evidence-validation-${input.label}.json`, validation);
+  return validation;
 }
 
 async function confirmContinueWithDirtyRepo(statusBefore: string, autoApprove = false): Promise<boolean> {
@@ -644,7 +692,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let initialChanges: Changeset = { operations: [] };
   let contextAwareRepairTarget: ContextAwareRepairTarget | null = null;
   let repairIntent: RepairIntent | null = null;
+  let repairEvidenceValidation: RepairEvidenceValidation | null = null;
   let patchIntentValidation: PatchIntentValidationResult | null = null;
+  let mutationSkippedForEvidence = false;
 
   if (mode === "bugfix") {
     console.log("Running bugfix pre-validation...");
@@ -683,6 +733,25 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           target: contextAwareRepairTarget,
           symbolName: prevalidationFailure.details.symbol
         });
+        repairEvidenceValidation = await buildAndSaveRepairEvidenceValidation({
+          runDir: state.runDir,
+          label: "prevalidation",
+          rawOutput: runtimeErrorForPrevalidation,
+          target: contextAwareRepairTarget,
+          repairIntent,
+          symbolName: prevalidationFailure.details.symbol
+        });
+        if (repairEvidenceValidation.allowedRepairMode === "conservative") {
+          notes.push("Evidence validation allowed conservative repair mode.");
+        }
+        if (
+          prevalidationFailure.strategy !== "install-dependency" &&
+          shouldSkipMutationForEvidenceValidation(repairEvidenceValidation)
+        ) {
+          mutationSkippedForEvidence = true;
+          retryStopReason = "Repair evidence validation requires manual review";
+          notes.push("Mutation skipped before patch intent validation because repair evidence requires manual review.");
+        }
       }
       await rememberFailure(
         state.runDir,
@@ -690,6 +759,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         buildFailureMemoryEntry(attempts, prevalidationFailure, false, "Bugfix pre-validation failed before repair strategy")
       );
 
+      if (!mutationSkippedForEvidence) {
       const missingModule =
         prevalidationFailure.strategy === "install-dependency" ? prevalidationFailure.details.moduleName : null;
       if (
@@ -849,6 +919,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           "PreValidationRepairChangeset"
         );
       }
+      }
     }
   } else {
     initialChanges = parseWithSchema(
@@ -860,14 +931,16 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   initialChanges = {
     operations: restrictOperationsToContextAwareTarget(repoPath, initialChanges.operations, contextAwareRepairTarget)
   };
-  patchIntentValidation =
-    (await validateAndSavePatchIntent({
-      runDir: state.runDir,
-      label: "initial",
-      repoPath,
-      repairIntent,
-      operations: initialChanges.operations
-    })) ?? patchIntentValidation;
+  if (!mutationSkippedForEvidence) {
+    patchIntentValidation =
+      (await validateAndSavePatchIntent({
+        runDir: state.runDir,
+        label: "initial",
+        repoPath,
+        repairIntent,
+        operations: initialChanges.operations
+      })) ?? patchIntentValidation;
+  }
   await saveStateFile(state.runDir, "changes.json", initialChanges);
   let previousOperations = initialChanges.operations.map((op) => ({ type: op.type, path: op.path, reason: op.reason }));
 
@@ -911,7 +984,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   review = parseWithSchema(reviewSchema, await reviewerAgent(brief, plan, commandResults, diffSummary), "ReviewResult");
   await saveStateFile(state.runDir, "review.json", review);
 
-  while (review.verdict === "fail" && selfHealingAttempt < 2) {
+  while (review.verdict === "fail" && selfHealingAttempt < 2 && !mutationSkippedForEvidence) {
     const runtimeErrorForRetry = extractRuntimeError(commandResults);
     const failure = classifyCommandFailure(commandResults);
     const failureArtifactName = `failure-classification-attempt-${selfHealingAttempt + dependencyInstallCount + 1}.json`;
@@ -940,6 +1013,23 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         target: retryContextAwareRepairTarget,
         symbolName: failure.details.symbol
       });
+      repairEvidenceValidation = await buildAndSaveRepairEvidenceValidation({
+        runDir: state.runDir,
+        label: `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`,
+        rawOutput: runtimeErrorForRetry,
+        target: retryContextAwareRepairTarget,
+        repairIntent,
+        symbolName: failure.details.symbol
+      });
+      if (repairEvidenceValidation.allowedRepairMode === "conservative") {
+        notes.push("Evidence validation allowed conservative repair mode.");
+      }
+      if (failure.strategy !== "install-dependency" && shouldSkipMutationForEvidenceValidation(repairEvidenceValidation)) {
+        mutationSkippedForEvidence = true;
+        retryStopReason = "Repair evidence validation requires manual review";
+        notes.push("Mutation skipped before patch intent validation because repair evidence requires manual review.");
+        break;
+      }
     }
 
     const missingModule = failure.strategy === "install-dependency" ? failure.details.moduleName : null;
@@ -1277,7 +1367,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   await saveStateFile(state.runDir, "commit-result.json", commitResult);
   await saveStateFile(state.runDir, "repair-observability.json", {
     repairIntent,
-    patchIntentValidation
+    repairEvidenceValidation,
+    patchIntentValidation,
+    mutationSkippedForEvidence
   });
 
   const finalReport = [
@@ -1302,6 +1394,20 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Repair intent confidence: ${repairIntent?.confidence ?? "n/a"}`,
     `- Repair intent scope: ${repairIntent?.allowedMutationScope ?? "n/a"}`,
     `- Repair intent reason: ${repairIntent?.reason ?? "n/a"}`,
+    `- Repair evidence validation: ${
+      repairEvidenceValidation ? (repairEvidenceValidation.ok ? "ok" : "failed") : "n/a"
+    }`,
+    `- Repair evidence confidence: ${repairEvidenceValidation?.confidence ?? "n/a"}`,
+    `- Repair evidence mode: ${repairEvidenceValidation?.allowedRepairMode ?? "n/a"}`,
+    `- Repair evidence allowedRepairMode: ${repairEvidenceValidation?.allowedRepairMode ?? "n/a"}`,
+    `- Repair evidence reason: ${repairEvidenceValidation?.reason ?? "n/a"}`,
+    `- Repair evidence warnings: ${
+      repairEvidenceValidation?.warnings.length ? repairEvidenceValidation.warnings.join(" | ") : "None"
+    }`,
+    `- Mutation skipped before patch intent validation: ${mutationSkippedForEvidence ? "yes" : "no"}`,
+    mutationSkippedForEvidence
+      ? "- Evidence validation outcome: mutation was skipped before patch intent validation"
+      : "- Evidence validation outcome: mutation was allowed to continue",
     `- Patch intent validation: ${
       patchIntentValidation ? (patchIntentValidation.ok ? "ok" : "failed") : "n/a"
     }`,

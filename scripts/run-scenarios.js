@@ -19,6 +19,10 @@ const scenarioNames = [
   "wrong-import-name-with-intent",
   "same-file-reference-error-with-intent",
   "low-confidence-fallback-intent",
+  "missing-export-evidence-validated",
+  "wrong-import-evidence-validated",
+  "weak-evidence-rejected",
+  "confidence-downgrade-on-ambiguous-context",
   "retry-stop"
 ];
 const optionalScenarioNames = new Set([
@@ -30,7 +34,8 @@ const optionalScenarioNames = new Set([
   "missing-export-with-intent",
   "wrong-import-name-with-intent",
   "same-file-reference-error-with-intent",
-  "low-confidence-fallback-intent"
+  "low-confidence-fallback-intent",
+  "confidence-downgrade-on-ambiguous-context"
 ]);
 
 function readJson(filePath) {
@@ -353,6 +358,109 @@ function scaffoldScenarioFixtures() {
           onlyOnePatchedFile: true
         }
       }
+    },
+    "missing-export-evidence-validated": {
+      files: {
+        "index.js": 'const { greet } = require("./helper.js");\ngreet("Factory");\n',
+        "helper.js": 'function greet(name) {\n  return `Hello, ${name}`;\n}\nmodule.exports = {};\n'
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "missing-export-evidence-validated",
+        task: "Fix missing export evidence",
+        expect: {
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          evidenceValidationAssertions: true,
+          evidenceOk: true,
+          evidenceConfidenceOneOf: ["high", "medium"],
+          evidenceAllowedModes: ["normal", "conservative"],
+          evidenceIncludesAny: ["Dependency/import/export", "Import evidence", "greet"],
+          finalReportEvidenceDetails: true,
+          onlyOnePatchedFile: true
+        }
+      }
+    },
+    "wrong-import-evidence-validated": {
+      files: {
+        "index.js": 'const { greet } = require("./helper.js");\ngreet("Factory");\n',
+        "helper.js": 'function sayHello(name) {\n  return `Hello, ${name}`;\n}\nmodule.exports = { sayHello };\n'
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "wrong-import-evidence-validated",
+        task: "Fix wrong import evidence",
+        expect: {
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          evidenceValidationAssertions: true,
+          evidenceOk: true,
+          evidenceConfidenceOneOf: ["high", "medium"],
+          evidenceAllowedModes: ["normal", "conservative"],
+          evidenceIncludesAny: ["Import evidence", "greet"],
+          finalReportEvidenceDetails: true,
+          onlyOnePatchedFile: true
+        }
+      }
+    },
+    "weak-evidence-rejected": {
+      files: {
+        "index.js": 'throw new Error("Ambiguous failure with no actionable symbol");\n'
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "weak-evidence-rejected",
+        task: "Fix weak evidence",
+        expect: {
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          evidenceValidationAssertions: true,
+          evidenceOkOrLowConfidence: true,
+          evidenceAllowedMode: "manual-review",
+          mutationSkippedForEvidence: true,
+          finalReportEvidenceDetails: true,
+          finalReportIncludes: ["mutation was skipped before patch intent validation"],
+          changedFilesIncludeOnly: [],
+          finalIndexEqualsOriginal: true
+        }
+      }
+    },
+    "confidence-downgrade-on-ambiguous-context": {
+      files: {
+        "index.js": 'const { missingThing } = require("./helper.js");\nmissingThing();\n',
+        "helper.js": 'module.exports = {};\n'
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "confidence-downgrade-on-ambiguous-context",
+        task: "Fix ambiguous evidence confidence",
+        expect: {
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          evidenceValidationAssertions: true,
+          evidenceDowngradedWhenPresent: true,
+          evidenceWarnings: true,
+          evidenceAllowedModes: ["conservative", "manual-review", "normal"],
+          finalReportEvidenceDetails: true,
+          onlyOnePatchedFile: true
+        }
+      }
     }
   };
 
@@ -491,6 +599,17 @@ function listPatchIntentValidationFiles(runDir) {
     .sort();
 }
 
+function listRepairEvidenceValidationFiles(runDir) {
+  if (!runDir || !fs.existsSync(runDir)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(runDir)
+    .filter((file) => /^repair-evidence-validation-.*\.json$/.test(file))
+    .sort();
+}
+
 function latestContextAwareTarget(runDir) {
   const files = listContextAwareTargetFiles(runDir);
   if (!runDir || files.length === 0) {
@@ -513,6 +632,16 @@ function latestRepairIntent(runDir) {
 
 function latestPatchIntentValidation(runDir) {
   const files = listPatchIntentValidationFiles(runDir);
+  if (!runDir || files.length === 0) {
+    return { data: null, file: null };
+  }
+
+  const selected = files[files.length - 1];
+  return { data: readJson(path.join(runDir, selected)), file: selected };
+}
+
+function latestRepairEvidenceValidation(runDir) {
+  const files = listRepairEvidenceValidationFiles(runDir);
   if (!runDir || files.length === 0) {
     return { data: null, file: null };
   }
@@ -557,6 +686,7 @@ function buildDebugInfo(scenarioRepoPath, runResult) {
   const selectedClassification = latestClassification(runDir);
   const selectedContextAwareTarget = latestContextAwareTarget(runDir);
   const selectedRepairIntent = latestRepairIntent(runDir);
+  const selectedRepairEvidenceValidation = latestRepairEvidenceValidation(runDir);
   const selectedPatchIntentValidation = latestPatchIntentValidation(runDir);
   const changes = readRunChanges(runDir);
   const patch = runResult.patch ?? runResult.patchMetadata ?? null;
@@ -581,6 +711,9 @@ function buildDebugInfo(scenarioRepoPath, runResult) {
     repairIntentFilesFound: listRepairIntentFiles(runDir),
     selectedRepairIntentFile: selectedRepairIntent.file,
     repairIntent: selectedRepairIntent.data,
+    repairEvidenceValidationFilesFound: listRepairEvidenceValidationFiles(runDir),
+    selectedRepairEvidenceValidationFile: selectedRepairEvidenceValidation.file,
+    repairEvidenceValidation: selectedRepairEvidenceValidation.data,
     patchIntentValidationFilesFound: listPatchIntentValidationFiles(runDir),
     selectedPatchIntentValidationFile: selectedPatchIntentValidation.file,
     patchIntentValidation: selectedPatchIntentValidation.data,
@@ -636,13 +769,16 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
   const finalReport = runDir ? readOptionalText(path.join(runDir, "final-report.md")) : "";
   const failureMemory = runDir ? readOptionalJson(path.join(runDir, "failure-memory.json")) : null;
   const retryStop = runDir ? readOptionalJson(path.join(runDir, "retry-stop.json")) : null;
+  const repairObservability = runDir ? readOptionalJson(path.join(runDir, "repair-observability.json")) : null;
   const selectedClassification = latestClassification(runDir);
   const selectedContextAwareTarget = latestContextAwareTarget(runDir);
   const selectedRepairIntent = latestRepairIntent(runDir);
+  const selectedRepairEvidenceValidation = latestRepairEvidenceValidation(runDir);
   const selectedPatchIntentValidation = latestPatchIntentValidation(runDir);
   const classification = selectedClassification.data;
   const contextAwareTarget = selectedContextAwareTarget.data;
   const repairIntent = selectedRepairIntent.data;
+  const repairEvidenceValidation = selectedRepairEvidenceValidation.data;
   const patchIntentValidation = selectedPatchIntentValidation.data;
   const changes = readRunChanges(runDir);
   const expect = expected.expect ?? {};
@@ -724,6 +860,16 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
     const helperContent = fs.existsSync(helperPath) ? fs.readFileSync(helperPath, "utf8") : "";
     if (!helperContent.includes(expect.finalHelperContains)) {
       failures.push(`Expected helper.js to contain ${JSON.stringify(expect.finalHelperContains)}`);
+    }
+  }
+
+  if (expect.finalIndexEqualsOriginal) {
+    const indexPath = path.join(scenarioRepoPath, "index.js");
+    const originalPath = path.join(scenarioRepoPath, "index.original.js");
+    const indexContent = fs.existsSync(indexPath) ? fs.readFileSync(indexPath, "utf8") : "";
+    const originalContent = fs.existsSync(originalPath) ? fs.readFileSync(originalPath, "utf8") : "";
+    if (indexContent !== originalContent) {
+      failures.push("Expected index.js to remain unchanged from index.original.js");
     }
   }
 
@@ -811,6 +957,85 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
     }
   }
 
+  if (expect.evidenceValidationAssertions) {
+    if (!repairEvidenceValidation) {
+      failures.push("Expected repairEvidenceValidation artifact to exist");
+    }
+    if (!repairObservability?.repairEvidenceValidation) {
+      failures.push("Expected repair-observability.json to include repairEvidenceValidation");
+    }
+    if (!finalReport.includes("Repair evidence validation")) {
+      failures.push('Expected final-report.md to include "Repair evidence validation"');
+    }
+    if (expect.finalReportEvidenceDetails && !finalReport.includes("Repair evidence allowedRepairMode")) {
+      failures.push('Expected final-report.md to include "Repair evidence allowedRepairMode"');
+    }
+
+    if (repairEvidenceValidation) {
+      if (Object.prototype.hasOwnProperty.call(expect, "evidenceOk") && repairEvidenceValidation.ok !== expect.evidenceOk) {
+        failures.push(`Expected repairEvidenceValidation.ok ${expect.evidenceOk}, got ${repairEvidenceValidation.ok}`);
+      }
+      if (
+        expect.evidenceOkOrLowConfidence &&
+        repairEvidenceValidation.ok !== false &&
+        repairEvidenceValidation.confidence !== "low"
+      ) {
+        failures.push(
+          `Expected repairEvidenceValidation ok=false or confidence=low, got ok=${repairEvidenceValidation.ok} confidence=${repairEvidenceValidation.confidence}`
+        );
+      }
+      if (expect.evidenceConfidenceOneOf && !expect.evidenceConfidenceOneOf.includes(repairEvidenceValidation.confidence)) {
+        failures.push(
+          `Expected repairEvidenceValidation.confidence in ${JSON.stringify(expect.evidenceConfidenceOneOf)}, got ${repairEvidenceValidation.confidence}`
+        );
+      }
+      if (expect.evidenceAllowedMode && repairEvidenceValidation.allowedRepairMode !== expect.evidenceAllowedMode) {
+        failures.push(
+          `Expected repairEvidenceValidation.allowedRepairMode ${expect.evidenceAllowedMode}, got ${repairEvidenceValidation.allowedRepairMode}`
+        );
+      }
+      if (expect.evidenceAllowedModes && !expect.evidenceAllowedModes.includes(repairEvidenceValidation.allowedRepairMode)) {
+        failures.push(
+          `Expected repairEvidenceValidation.allowedRepairMode in ${JSON.stringify(expect.evidenceAllowedModes)}, got ${repairEvidenceValidation.allowedRepairMode}`
+        );
+      }
+      if (expect.evidenceWarnings && (!Array.isArray(repairEvidenceValidation.warnings) || repairEvidenceValidation.warnings.length === 0)) {
+        failures.push("Expected repairEvidenceValidation.warnings to be non-empty");
+      }
+      if (expect.evidenceDowngradedWhenPresent && repairEvidenceValidation.downgradedFrom) {
+        const rank = { low: 1, medium: 2, high: 3 };
+        if (rank[repairEvidenceValidation.confidence] >= rank[repairEvidenceValidation.downgradedFrom]) {
+          failures.push(
+            `Expected downgraded confidence below ${repairEvidenceValidation.downgradedFrom}, got ${repairEvidenceValidation.confidence}`
+          );
+        }
+      }
+      if (expect.evidenceIncludesAny) {
+        const evidenceText = [
+          ...(repairEvidenceValidation.evidence ?? []),
+          ...(repairEvidenceValidation.warnings ?? []),
+          repairEvidenceValidation.reason ?? ""
+        ].join("\n");
+        const matched = expect.evidenceIncludesAny.some((needle) => evidenceText.includes(needle));
+        if (!matched) {
+          failures.push(`Expected evidence/warnings to include one of ${JSON.stringify(expect.evidenceIncludesAny)}`);
+        }
+      }
+    }
+
+    if (expect.mutationSkippedForEvidence && repairObservability?.mutationSkippedForEvidence !== true) {
+      failures.push("Expected repair-observability.json mutationSkippedForEvidence=true");
+    }
+  }
+
+  if (expect.finalReportIncludes) {
+    for (const needle of expect.finalReportIncludes) {
+      if (!finalReport.includes(needle)) {
+        failures.push(`Expected final-report.md to include ${JSON.stringify(needle)}`);
+      }
+    }
+  }
+
   validatePatchExpectation(failures, expect.patch ?? expected.patch, debugInfo.patch);
 
   return {
@@ -820,6 +1045,7 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
       runsDir: expectedRunsDir,
       runsDirExists: fs.existsSync(expectedRunsDir),
       finalReport,
+      repairObservability,
       failureMemory,
       retryStop,
       classification,
@@ -828,6 +1054,8 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
       selectedContextAwareTargetFile: selectedContextAwareTarget.file,
       repairIntent,
       selectedRepairIntentFile: selectedRepairIntent.file,
+      repairEvidenceValidation,
+      selectedRepairEvidenceValidationFile: selectedRepairEvidenceValidation.file,
       patchIntentValidation,
       selectedPatchIntentValidationFile: selectedPatchIntentValidation.file,
       changes,
@@ -883,6 +1111,26 @@ function runScenario(name) {
 
 function isEnvironmentEpermFailure(runResult) {
   return [runResult.error, runResult.stdout, runResult.stderr].some((value) => typeof value === "string" && value.includes("EPERM"));
+}
+
+function runArtifactsContainEperm(runDir) {
+  if (!runDir || !fs.existsSync(runDir)) {
+    return false;
+  }
+
+  const entries = fs.readdirSync(runDir, { withFileTypes: true });
+  return entries.some((entry) => {
+    if (!entry.isFile()) {
+      return false;
+    }
+
+    const filePath = path.join(runDir, entry.name);
+    try {
+      return fs.readFileSync(filePath, "utf8").includes("EPERM");
+    } catch {
+      return false;
+    }
+  });
 }
 
 function runRetryControlUnit() {
@@ -2114,6 +2362,438 @@ function runRepairIntentInvariantUnit() {
   return true;
 }
 
+function runRepairEvidenceValidatorUnit() {
+  const { validateRepairEvidence } = require(path.join(projectRoot, "dist", "repair", "repairEvidenceValidator.js"));
+
+  try {
+    const missingExport = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "The requested module './helper.js' does not provide an export named 'greet'"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        sourceSnippet: 'import { greet } from "./helper.js";'
+      },
+      dependencyMap: {
+        imports: [{ from: "src/index.js", to: "src/helper.js", symbols: ["greet"] }],
+        exports: [{ file: "src/helper.js", symbols: [] }]
+      },
+      repairTargetDecision: {
+        targetFile: "src/helper.js",
+        reason: "index.js imports greet from helper.js; helper.js is missing export greet"
+      },
+      repairIntent: {
+        repairType: "missing-export",
+        confidence: "high",
+        symbolName: "greet",
+        targetFile: "src/helper.js",
+        sourceFile: "src/index.js",
+        reason: "Add missing export greet to helper.js"
+      }
+    });
+    if (
+      !missingExport.ok ||
+      missingExport.confidence === "low" ||
+      missingExport.evidence.length === 0 ||
+      !["normal", "conservative"].includes(missingExport.allowedRepairMode)
+    ) {
+      throw new Error(`missing export evidence: expected ok with useful evidence, got ${JSON.stringify(missingExport)}`);
+    }
+
+    const importMismatch = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "Named export 'greet' not found"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        sourceSnippet: 'import { greet } from "./helper.js";'
+      },
+      dependencyMap: {
+        imports: [{ from: "src/index.js", to: "src/helper.js", symbols: ["greet"] }]
+      },
+      repairTargetDecision: {
+        targetFile: "src/index.js",
+        reason: "Wrong import name caused an import mismatch"
+      },
+      repairIntent: {
+        repairType: "import-mismatch",
+        confidence: "medium",
+        symbolName: "greet",
+        targetFile: "src/index.js",
+        sourceFile: "src/index.js",
+        reason: "Fix import mismatch for greet"
+      }
+    });
+    if (
+      !importMismatch.ok ||
+      !["high", "medium"].includes(importMismatch.confidence) ||
+      !["normal", "conservative"].includes(importMismatch.allowedRepairMode)
+    ) {
+      throw new Error(`import mismatch evidence: expected ok with medium/high confidence, got ${JSON.stringify(importMismatch)}`);
+    }
+
+    const runtimeLocal = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "ReferenceError: missingValue is not defined"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        errorLine: "console.log(missingValue);"
+      },
+      dependencyMap: {},
+      repairTargetDecision: {
+        targetFile: "src/index.js",
+        reason: "ReferenceError is local to index.js"
+      },
+      repairIntent: {
+        repairType: "runtime-local-error",
+        confidence: "high",
+        symbolName: "missingValue",
+        targetFile: "src/index.js",
+        sourceFile: "src/index.js",
+        reason: "Fix local runtime ReferenceError"
+      }
+    });
+    if (!runtimeLocal.ok || runtimeLocal.confidence !== "high" || runtimeLocal.allowedRepairMode !== "normal") {
+      throw new Error(`runtime local evidence: expected high normal, got ${JSON.stringify(runtimeLocal)}`);
+    }
+
+    const syntaxError = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "SyntaxError: Unexpected token"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        errorLine: "const value = ;"
+      },
+      dependencyMap: {},
+      repairTargetDecision: {
+        targetFile: "src/index.js",
+        reason: "Syntax error is local to index.js"
+      },
+      repairIntent: {
+        repairType: "syntax-error",
+        confidence: "high",
+        targetFile: "src/index.js",
+        sourceFile: "src/index.js",
+        reason: "Repair syntax error"
+      }
+    });
+    if (!syntaxError.ok || syntaxError.confidence !== "high" || syntaxError.allowedRepairMode !== "normal") {
+      throw new Error(`syntax error evidence: expected high normal, got ${JSON.stringify(syntaxError)}`);
+    }
+
+    const weakEvidence = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "Something failed"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        errorLine: "console.log('unknown');"
+      },
+      dependencyMap: {},
+      repairTargetDecision: {
+        targetFile: "src/helper.js",
+        reason: "Weak guess"
+      },
+      repairIntent: {
+        repairType: "unknown",
+        confidence: "high",
+        targetFile: "src/helper.js",
+        sourceFile: "src/index.js",
+        reason: "Weak guess"
+      }
+    });
+    if (
+      (weakEvidence.ok && weakEvidence.confidence !== "low") ||
+      weakEvidence.allowedRepairMode !== "manual-review" ||
+      weakEvidence.warnings.length === 0
+    ) {
+      throw new Error(`weak evidence: expected manual review with warnings, got ${JSON.stringify(weakEvidence)}`);
+    }
+
+    console.log("PASS repair-evidence-validator-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-evidence-validator-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairEvidenceConfidenceUnit() {
+  const { validateRepairEvidence } = require(path.join(projectRoot, "dist", "repair", "repairEvidenceValidator.js"));
+
+  try {
+    const downgraded = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "Something failed"
+      },
+      errorContext: {
+        filePath: "src/index.js"
+      },
+      dependencyMap: {},
+      repairTargetDecision: {
+        targetFile: "src/helper.js",
+        reason: "Ambiguous target"
+      },
+      repairIntent: {
+        repairType: "unknown",
+        confidence: "high",
+        targetFile: "src/helper.js",
+        reason: "Ambiguous target"
+      }
+    });
+    if (
+      !["medium", "low"].includes(downgraded.confidence) ||
+      downgraded.downgradedFrom !== "high" ||
+      downgraded.warnings.length === 0
+    ) {
+      throw new Error(`high ambiguous evidence: expected downgrade from high with warnings, got ${JSON.stringify(downgraded)}`);
+    }
+
+    const mediumAcceptable = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "Named export 'greet' not found"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        sourceSnippet: 'import { greet } from "./helper.js";'
+      },
+      dependencyMap: {
+        imports: [{ from: "src/index.js", to: "src/helper.js", symbols: ["greet"] }]
+      },
+      repairTargetDecision: {
+        targetFile: "src/index.js",
+        reason: "Import mismatch for greet"
+      },
+      repairIntent: {
+        repairType: "import-mismatch",
+        confidence: "medium",
+        symbolName: "greet",
+        targetFile: "src/index.js",
+        sourceFile: "src/index.js",
+        reason: "Fix import mismatch"
+      }
+    });
+    if (!mediumAcceptable.ok || mediumAcceptable.confidence !== "medium" || mediumAcceptable.allowedRepairMode !== "conservative") {
+      throw new Error(`medium acceptable evidence: expected conservative medium, got ${JSON.stringify(mediumAcceptable)}`);
+    }
+
+    const lowConfidence = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "ReferenceError: value is not defined"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        errorLine: "console.log(value);"
+      },
+      dependencyMap: {},
+      repairTargetDecision: {
+        targetFile: "src/index.js",
+        reason: "Local runtime error"
+      },
+      repairIntent: {
+        repairType: "runtime-local-error",
+        confidence: "low",
+        symbolName: "value",
+        targetFile: "src/index.js",
+        sourceFile: "src/index.js",
+        reason: "Low confidence local repair"
+      }
+    });
+    if (lowConfidence.allowedRepairMode !== "manual-review") {
+      throw new Error(`low confidence evidence: expected manual review, got ${JSON.stringify(lowConfidence)}`);
+    }
+
+    console.log("PASS repair-evidence-confidence-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-evidence-confidence-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairEvidenceReportUnit() {
+  const { validateRepairEvidence } = require(path.join(projectRoot, "dist", "repair", "repairEvidenceValidator.js"));
+
+  const repairEvidenceValidation = validateRepairEvidence({
+    parsedStackTrace: {
+      filePath: "src/index.js",
+      message: "ReferenceError: value is not defined"
+    },
+    errorContext: {
+      filePath: "src/index.js",
+      errorLine: "console.log(value);"
+    },
+    dependencyMap: {},
+    repairTargetDecision: {
+      targetFile: "src/index.js",
+      reason: "ReferenceError is local to index.js"
+    },
+    repairIntent: {
+      repairType: "runtime-local-error",
+      confidence: "high",
+      symbolName: "value",
+      targetFile: "src/index.js",
+      sourceFile: "src/index.js",
+      reason: "Fix local runtime ReferenceError"
+    }
+  });
+  const reportShape = {
+    repairEvidenceValidation
+  };
+  const parsed = JSON.parse(JSON.stringify(reportShape));
+
+  if (!parsed.repairEvidenceValidation) {
+    console.log("FAIL repair-evidence-report-unit");
+    console.log("  Expected repairEvidenceValidation to exist");
+    return false;
+  }
+
+  const actual = parsed.repairEvidenceValidation;
+  if (
+    typeof actual.ok !== "boolean" ||
+    typeof actual.confidence !== "string" ||
+    !Array.isArray(actual.evidence) ||
+    !Array.isArray(actual.warnings) ||
+    typeof actual.reason !== "string" ||
+    typeof actual.allowedRepairMode !== "string"
+  ) {
+    console.log("FAIL repair-evidence-report-unit");
+    console.log(`  Invalid repairEvidenceValidation report shape: ${JSON.stringify(actual)}`);
+    return false;
+  }
+
+  console.log("PASS repair-evidence-report-unit");
+  return true;
+}
+
+function runRepairEvidenceGateUnit() {
+  const {
+    shouldSkipMutationForEvidenceValidation,
+    validateRepairEvidence
+  } = require(path.join(projectRoot, "dist", "repair", "repairEvidenceValidator.js"));
+
+  try {
+    const manualReview = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "Something failed"
+      },
+      errorContext: {
+        filePath: "src/index.js"
+      },
+      dependencyMap: {},
+      repairTargetDecision: {
+        targetFile: "src/helper.js",
+        reason: "Weak guess"
+      },
+      repairIntent: {
+        repairType: "unknown",
+        confidence: "high",
+        targetFile: "src/helper.js",
+        reason: "Weak guess"
+      }
+    });
+    const manualReport = {
+      repairEvidenceValidation: manualReview,
+      patchIntentValidationReached: false,
+      safePatchReached: false,
+      mutationSkippedBeforePatchIntentValidation: shouldSkipMutationForEvidenceValidation(manualReview)
+    };
+    if (
+      !manualReport.mutationSkippedBeforePatchIntentValidation ||
+      manualReport.patchIntentValidationReached ||
+      manualReport.safePatchReached ||
+      manualReport.repairEvidenceValidation.allowedRepairMode !== "manual-review"
+    ) {
+      throw new Error(`manual-review gate: expected mutation path blocked, got ${JSON.stringify(manualReport)}`);
+    }
+
+    const conservative = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "Named export 'greet' not found"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        sourceSnippet: 'import { greet } from "./helper.js";'
+      },
+      dependencyMap: {
+        imports: [{ from: "src/index.js", to: "src/helper.js", symbols: ["greet"] }]
+      },
+      repairTargetDecision: {
+        targetFile: "src/index.js",
+        reason: "Import mismatch for greet"
+      },
+      repairIntent: {
+        repairType: "import-mismatch",
+        confidence: "medium",
+        symbolName: "greet",
+        targetFile: "src/index.js",
+        sourceFile: "src/index.js",
+        reason: "Fix import mismatch"
+      }
+    });
+    const conservativeReport = {
+      repairEvidenceValidation: conservative,
+      canContinue: !shouldSkipMutationForEvidenceValidation(conservative),
+      warning: conservative.allowedRepairMode === "conservative" ? "Evidence validation allowed conservative repair mode." : ""
+    };
+    if (
+      conservative.allowedRepairMode !== "conservative" ||
+      !conservativeReport.canContinue ||
+      !conservativeReport.warning
+    ) {
+      throw new Error(`conservative gate: expected non-blocking conservative warning, got ${JSON.stringify(conservativeReport)}`);
+    }
+
+    const normal = validateRepairEvidence({
+      parsedStackTrace: {
+        filePath: "src/index.js",
+        message: "ReferenceError: value is not defined"
+      },
+      errorContext: {
+        filePath: "src/index.js",
+        errorLine: "console.log(value);"
+      },
+      dependencyMap: {},
+      repairTargetDecision: {
+        targetFile: "src/index.js",
+        reason: "ReferenceError is local to index.js"
+      },
+      repairIntent: {
+        repairType: "runtime-local-error",
+        confidence: "high",
+        symbolName: "value",
+        targetFile: "src/index.js",
+        sourceFile: "src/index.js",
+        reason: "Fix local runtime ReferenceError"
+      }
+    });
+    if (normal.allowedRepairMode !== "normal" || shouldSkipMutationForEvidenceValidation(normal)) {
+      throw new Error(`normal gate: expected non-blocking normal mode, got ${JSON.stringify(normal)}`);
+    }
+
+    console.log("PASS repair-evidence-gate-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-evidence-gate-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -2212,6 +2892,18 @@ async function main() {
   if (!runRepairIntentInvariantUnit()) {
     failed += 1;
   }
+  if (!runRepairEvidenceValidatorUnit()) {
+    failed += 1;
+  }
+  if (!runRepairEvidenceConfidenceUnit()) {
+    failed += 1;
+  }
+  if (!runRepairEvidenceReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairEvidenceGateUnit()) {
+    failed += 1;
+  }
   if (!(await runGuardedLegacyAppendUnit())) {
     failed += 1;
   }
@@ -2230,7 +2922,7 @@ async function main() {
       continue;
     }
 
-    if (isEnvironmentEpermFailure(result.runResult)) {
+    if (isEnvironmentEpermFailure(result.runResult) || runArtifactsContainEperm(result.artifacts.runDir)) {
       console.log(`SKIP ${name}`);
       console.log("  Environment EPERM prevented deterministic end-to-end validation.");
       console.log("  Scenario debug artifacts were still written.");

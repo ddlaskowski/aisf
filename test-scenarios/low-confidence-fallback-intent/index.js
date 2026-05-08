@@ -1,1 +1,1 @@
-// Commented out the error for debugging purposes
+throw new Error("Odd local failure");

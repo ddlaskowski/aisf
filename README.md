@@ -15,13 +15,15 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v1.7 — Repair Intent Layer**
+**v1.8 — Evidence Validation Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
 v1.6 added context-aware repair target selection: stack trace parsing, error context collection, lightweight dependency scanning, repair target decision, and multi-file read / single-file patch routing.
 
 v1.7 adds a Repair Intent Layer between target selection and patching. It introduces semantic repair planning before patching, a `RepairIntent` model, a deterministic intent builder, patch intent validation, and report/debug observability. The single-file mutation invariant remains in place, and the Safe Patch Engine remains the only mutation layer.
+
+v1.8 validates whether a repair intent is sufficiently supported by available evidence before mutation. v1.7 can describe what it wants to repair; v1.8 checks whether that intent is backed by stack trace, context, dependency, symbol, and repair type evidence.
 
 ---
 
@@ -233,6 +235,95 @@ v1.7 scenario fixtures:
 
 ---
 
+## 🧾 Evidence Validation Layer (v1.8)
+
+v1.8 adds a deterministic evidence gate between repair intent and patch intent validation.
+
+Before v1.8:
+
+```
+error
+→ stack trace
+→ context collection
+→ dependency map
+→ repair target decision
+→ repair intent
+→ patch intent validation
+→ safe patch
+```
+
+After v1.8:
+
+```
+error
+→ stack trace
+→ context collection
+→ dependency map
+→ repair target decision
+→ repair intent
+→ evidence validation
+→ patch intent validation
+→ safe patch
+```
+
+Core output type:
+
+```ts
+type RepairEvidenceValidation = {
+  ok: boolean;
+  confidence: "high" | "medium" | "low";
+  evidence: string[];
+  warnings: string[];
+  reason: string;
+  downgradedFrom?: "high" | "medium";
+  allowedRepairMode: "normal" | "conservative" | "manual-review";
+};
+```
+
+Allowed repair modes:
+
+* `normal`: Evidence is strong enough to continue normally.
+* `conservative`: Evidence is acceptable, but warnings are recorded. Patch flow may continue unchanged for now.
+* `manual-review`: Evidence is weak or validation failed. Mutation is skipped before patch intent validation and before Safe Patch Engine patching.
+
+Safety invariant:
+
+If evidence validation returns `manual-review` or `ok: false`, source file mutation is skipped. Patch intent validation is not reached, Safe Patch Engine file patching is not reached, and final/debug reports explain why mutation was skipped.
+
+Reporting:
+
+* `repair-evidence-validation-*.json` is written per run when validation occurs.
+* `repairEvidenceValidation` is included in `repair-observability.json`.
+* `final-report.md` includes evidence status, confidence, mode, reason, and warnings.
+* `mutationSkippedForEvidence` is recorded when evidence blocks mutation.
+
+v1.8 deterministic checks:
+
+* repair-evidence-validator-unit
+* repair-evidence-confidence-unit
+* repair-evidence-report-unit
+* repair-evidence-gate-unit
+
+v1.8 scenario checks:
+
+* missing-export-evidence-validated
+* wrong-import-evidence-validated
+* weak-evidence-rejected
+* confidence-downgrade-on-ambiguous-context
+
+Validation:
+
+```bash
+npm.cmd run build
+node scripts\run-scenarios.js
+```
+
+Expected: build passes, the scenario runner exits `0`, and all v1.8 unit and scenario checks pass.
+
+v1.8 makes the system safer by requiring evidence before mutation while preserving deterministic behavior, the single-file mutation invariant, and the Safe Patch Engine as the only mutation layer.
+
+---
+
 ## 🚀 Usage
 
 ### Basic
@@ -344,6 +435,14 @@ Pipeline:
 * Patch intent guard
 * Repair intent observability in run reports and debug artifacts
 * Single-file mutation invariant preserved
+
+### v1.8
+
+* Evidence Validation Layer
+* Stack/context/dependency/symbol evidence checks before mutation
+* `normal`, `conservative`, and `manual-review` repair modes
+* Manual-review mode skips mutation before patch intent validation
+* Evidence validation artifacts and final report observability
 
 ### v2.0
 

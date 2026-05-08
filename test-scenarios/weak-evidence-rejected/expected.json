@@ -1,0 +1,18 @@
+{
+  "name": "weak-evidence-rejected",
+  "task": "Fix weak evidence",
+  "expect": {
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "evidenceValidationAssertions": true,
+    "evidenceOkOrLowConfidence": true,
+    "evidenceAllowedMode": "manual-review",
+    "mutationSkippedForEvidence": true,
+    "finalReportEvidenceDetails": true,
+    "finalReportIncludes": [
+      "mutation was skipped before patch intent validation"
+    ],
+    "changedFilesIncludeOnly": [],
+    "finalIndexEqualsOriginal": true
+  }
+}

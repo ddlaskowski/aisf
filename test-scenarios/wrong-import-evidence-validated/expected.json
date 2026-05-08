@@ -1,0 +1,24 @@
+{
+  "name": "wrong-import-evidence-validated",
+  "task": "Fix wrong import evidence",
+  "expect": {
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "evidenceValidationAssertions": true,
+    "evidenceOk": true,
+    "evidenceConfidenceOneOf": [
+      "high",
+      "medium"
+    ],
+    "evidenceAllowedModes": [
+      "normal",
+      "conservative"
+    ],
+    "evidenceIncludesAny": [
+      "Import evidence",
+      "greet"
+    ],
+    "finalReportEvidenceDetails": true,
+    "onlyOnePatchedFile": true
+  }
+}

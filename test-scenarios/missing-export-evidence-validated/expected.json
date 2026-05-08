@@ -1,0 +1,25 @@
+{
+  "name": "missing-export-evidence-validated",
+  "task": "Fix missing export evidence",
+  "expect": {
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "evidenceValidationAssertions": true,
+    "evidenceOk": true,
+    "evidenceConfidenceOneOf": [
+      "high",
+      "medium"
+    ],
+    "evidenceAllowedModes": [
+      "normal",
+      "conservative"
+    ],
+    "evidenceIncludesAny": [
+      "Dependency/import/export",
+      "Import evidence",
+      "greet"
+    ],
+    "finalReportEvidenceDetails": true,
+    "onlyOnePatchedFile": true
+  }
+}

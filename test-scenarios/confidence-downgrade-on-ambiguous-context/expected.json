@@ -1,0 +1,18 @@
+{
+  "name": "confidence-downgrade-on-ambiguous-context",
+  "task": "Fix ambiguous evidence confidence",
+  "expect": {
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "evidenceValidationAssertions": true,
+    "evidenceDowngradedWhenPresent": true,
+    "evidenceWarnings": true,
+    "evidenceAllowedModes": [
+      "conservative",
+      "manual-review",
+      "normal"
+    ],
+    "finalReportEvidenceDetails": true,
+    "onlyOnePatchedFile": true
+  }
+}
