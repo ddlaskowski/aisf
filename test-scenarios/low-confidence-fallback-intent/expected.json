@@ -1,0 +1,12 @@
+{
+  "name": "low-confidence-fallback-intent",
+  "task": "Fix low confidence fallback intent",
+  "expect": {
+    "contextAwareTargetFile": "index.js",
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "repairIntentType": "unknown",
+    "repairIntentConfidence": "low",
+    "onlyOnePatchedFile": true
+  }
+}

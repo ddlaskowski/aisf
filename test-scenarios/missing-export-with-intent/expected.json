@@ -1,0 +1,11 @@
+{
+  "name": "missing-export-with-intent",
+  "task": "Fix missing export with repair intent",
+  "expect": {
+    "contextAwareTargetFile": "helper.js",
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "repairIntentType": "missing-export",
+    "onlyOnePatchedFile": true
+  }
+}

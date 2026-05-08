@@ -1,0 +1,13 @@
+{
+  "name": "same-file-reference-error-with-intent",
+  "task": "Fix same-file reference error with repair intent",
+  "expect": {
+    "contextAwareTargetFile": "index.js",
+    "contextAwareTargetExists": true,
+    "classificationType": "undefined-variable",
+    "strategy": "safe-replacement",
+    "repairIntentAssertions": true,
+    "repairIntentType": "runtime-local-error",
+    "onlyOnePatchedFile": true
+  }
+}

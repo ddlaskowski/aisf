@@ -15,6 +15,10 @@ const scenarioNames = [
   "wrong-import-name",
   "helper-function-not-exported",
   "runtime-error-in-imported-file",
+  "missing-export-with-intent",
+  "wrong-import-name-with-intent",
+  "same-file-reference-error-with-intent",
+  "low-confidence-fallback-intent",
   "retry-stop"
 ];
 const optionalScenarioNames = new Set([
@@ -22,7 +26,11 @@ const optionalScenarioNames = new Set([
   "missing-local-module-export",
   "wrong-import-name",
   "helper-function-not-exported",
-  "runtime-error-in-imported-file"
+  "runtime-error-in-imported-file",
+  "missing-export-with-intent",
+  "wrong-import-name-with-intent",
+  "same-file-reference-error-with-intent",
+  "low-confidence-fallback-intent"
 ]);
 
 function readJson(filePath) {
@@ -256,6 +264,95 @@ function scaffoldScenarioFixtures() {
           finalHelperContains: "typeof missingValue"
         }
       }
+    },
+    "missing-export-with-intent": {
+      files: {
+        "index.js": 'import { greet } from "./helper.js";\nconsole.log(greet("Factory"));\n',
+        "helper.js": 'function greet(name) {\n  return `Hello, ${name}`;\n}\n'
+      },
+      packageJson: {
+        type: "module",
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "missing-export-with-intent",
+        task: "Fix missing export with repair intent",
+        expect: {
+          contextAwareTargetFile: "helper.js",
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          repairIntentType: "missing-export",
+          onlyOnePatchedFile: true
+        }
+      }
+    },
+    "wrong-import-name-with-intent": {
+      files: {
+        "index.js": 'import { greet } from "./helper.js";\nconsole.log(greet("Factory"));\n',
+        "helper.js": 'export function sayHello(name) {\n  return `Hello, ${name}`;\n}\n'
+      },
+      packageJson: {
+        type: "module",
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "wrong-import-name-with-intent",
+        task: "Fix wrong import name with repair intent",
+        expect: {
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          onlyOnePatchedFile: true
+        }
+      }
+    },
+    "same-file-reference-error-with-intent": {
+      files: {
+        "index.js": 'console.log(localMissingValue);\n'
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "same-file-reference-error-with-intent",
+        task: "Fix same-file reference error with repair intent",
+        expect: {
+          contextAwareTargetFile: "index.js",
+          contextAwareTargetExists: true,
+          classificationType: "undefined-variable",
+          strategy: "safe-replacement",
+          repairIntentAssertions: true,
+          repairIntentType: "runtime-local-error",
+          onlyOnePatchedFile: true
+        }
+      }
+    },
+    "low-confidence-fallback-intent": {
+      files: {
+        "index.js": 'throw new Error("Odd local failure");\n'
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "low-confidence-fallback-intent",
+        task: "Fix low confidence fallback intent",
+        expect: {
+          contextAwareTargetFile: "index.js",
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          repairIntentType: "unknown",
+          repairIntentConfidence: "low",
+          onlyOnePatchedFile: true
+        }
+      }
     }
   };
 
@@ -372,6 +469,28 @@ function listContextAwareTargetFiles(runDir) {
     .sort();
 }
 
+function listRepairIntentFiles(runDir) {
+  if (!runDir || !fs.existsSync(runDir)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(runDir)
+    .filter((file) => /^repair-intent-.*\.json$/.test(file))
+    .sort();
+}
+
+function listPatchIntentValidationFiles(runDir) {
+  if (!runDir || !fs.existsSync(runDir)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(runDir)
+    .filter((file) => /^patch-intent-validation-.*\.json$/.test(file))
+    .sort();
+}
+
 function latestContextAwareTarget(runDir) {
   const files = listContextAwareTargetFiles(runDir);
   if (!runDir || files.length === 0) {
@@ -380,6 +499,42 @@ function latestContextAwareTarget(runDir) {
 
   const selected = files[files.length - 1];
   return { data: readJson(path.join(runDir, selected)), file: selected };
+}
+
+function latestRepairIntent(runDir) {
+  const files = listRepairIntentFiles(runDir);
+  if (!runDir || files.length === 0) {
+    return { data: null, file: null };
+  }
+
+  const selected = files[files.length - 1];
+  return { data: readJson(path.join(runDir, selected)), file: selected };
+}
+
+function latestPatchIntentValidation(runDir) {
+  const files = listPatchIntentValidationFiles(runDir);
+  if (!runDir || files.length === 0) {
+    return { data: null, file: null };
+  }
+
+  const selected = files[files.length - 1];
+  return { data: readJson(path.join(runDir, selected)), file: selected };
+}
+
+function readRunChanges(runDir) {
+  if (!runDir) {
+    return null;
+  }
+
+  const selfHealFiles = fs.existsSync(runDir)
+    ? fs
+        .readdirSync(runDir)
+        .filter((file) => /^self-heal-\d+-changes\.json$/.test(file))
+        .sort()
+    : [];
+  const selected = selfHealFiles[selfHealFiles.length - 1] ?? "changes.json";
+  const filePath = path.join(runDir, selected);
+  return fs.existsSync(filePath) ? readJson(filePath) : null;
 }
 
 function changedFilesFromFinalReport(finalReport) {
@@ -401,6 +556,9 @@ function buildDebugInfo(scenarioRepoPath, runResult) {
   const runDir = latestRunDir(scenarioRepoPath);
   const selectedClassification = latestClassification(runDir);
   const selectedContextAwareTarget = latestContextAwareTarget(runDir);
+  const selectedRepairIntent = latestRepairIntent(runDir);
+  const selectedPatchIntentValidation = latestPatchIntentValidation(runDir);
+  const changes = readRunChanges(runDir);
   const patch = runResult.patch ?? runResult.patchMetadata ?? null;
   return {
     status: runResult.status,
@@ -420,6 +578,13 @@ function buildDebugInfo(scenarioRepoPath, runResult) {
     contextAwareTargetFilesFound: listContextAwareTargetFiles(runDir),
     selectedContextAwareTargetFile: selectedContextAwareTarget.file,
     contextAwareRepairTarget: selectedContextAwareTarget.data,
+    repairIntentFilesFound: listRepairIntentFiles(runDir),
+    selectedRepairIntentFile: selectedRepairIntent.file,
+    repairIntent: selectedRepairIntent.data,
+    patchIntentValidationFilesFound: listPatchIntentValidationFiles(runDir),
+    selectedPatchIntentValidationFile: selectedPatchIntentValidation.file,
+    patchIntentValidation: selectedPatchIntentValidation.data,
+    changes,
     retryStopExists: runDir ? fs.existsSync(path.join(runDir, "retry-stop.json")) : false,
     patch
   };
@@ -473,8 +638,13 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
   const retryStop = runDir ? readOptionalJson(path.join(runDir, "retry-stop.json")) : null;
   const selectedClassification = latestClassification(runDir);
   const selectedContextAwareTarget = latestContextAwareTarget(runDir);
+  const selectedRepairIntent = latestRepairIntent(runDir);
+  const selectedPatchIntentValidation = latestPatchIntentValidation(runDir);
   const classification = selectedClassification.data;
   const contextAwareTarget = selectedContextAwareTarget.data;
+  const repairIntent = selectedRepairIntent.data;
+  const patchIntentValidation = selectedPatchIntentValidation.data;
+  const changes = readRunChanges(runDir);
   const expect = expected.expect ?? {};
   const debugInfo = buildDebugInfo(scenarioRepoPath, runResult);
   const changedFiles = changedFilesFromFinalReport(finalReport);
@@ -581,6 +751,66 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
     }
   }
 
+  if (expect.repairIntentAssertions) {
+    if (!contextAwareTarget) {
+      failures.push("Expected repair target artifact for repair intent assertions");
+    }
+
+    if (!repairIntent) {
+      failures.push("Expected repairIntent artifact to exist");
+    }
+
+    if (contextAwareTarget && repairIntent) {
+      const expectedTarget = path.normalize(contextAwareTarget.filePath);
+      const actualTarget = path.normalize(repairIntent.targetFile ?? "");
+      if (actualTarget !== expectedTarget) {
+        failures.push(`Expected repairIntent.targetFile ${expectedTarget}, got ${actualTarget || "missing"}`);
+      }
+    }
+
+    if (repairIntent) {
+      if (expect.repairIntentType && repairIntent.repairType !== expect.repairIntentType) {
+        failures.push(`Expected repairIntent.repairType ${expect.repairIntentType}, got ${repairIntent.repairType ?? "missing"}`);
+      }
+      if (expect.repairIntentConfidence && repairIntent.confidence !== expect.repairIntentConfidence) {
+        failures.push(`Expected repairIntent.confidence ${expect.repairIntentConfidence}, got ${repairIntent.confidence ?? "missing"}`);
+      }
+      if (repairIntent.allowedMutationScope !== "single-file") {
+        failures.push(`Expected repairIntent.allowedMutationScope single-file, got ${repairIntent.allowedMutationScope ?? "missing"}`);
+      }
+      if (!Array.isArray(repairIntent.safetyNotes) || repairIntent.safetyNotes.length === 0) {
+        failures.push("Expected repairIntent.safetyNotes to be a non-empty array");
+      }
+    }
+
+    if (changedFiles.length > 1) {
+      failures.push(`Expected at most one mutated file for repair intent scenario, got ${changedFiles.join(", ")}`);
+    }
+
+    const hasPatchProposal = Array.isArray(changes?.operations) && changes.operations.length > 0;
+    if (hasPatchProposal && !patchIntentValidation) {
+      failures.push("Expected patchIntentValidation artifact when patch proposal data exists");
+    }
+
+    if (patchIntentValidation) {
+      if (typeof patchIntentValidation.ok !== "boolean") {
+        failures.push("Expected patchIntentValidation.ok to be boolean");
+      }
+      if (typeof patchIntentValidation.reason !== "string" || patchIntentValidation.reason.length === 0) {
+        failures.push("Expected patchIntentValidation.reason to be non-empty string");
+      }
+      if (!Array.isArray(patchIntentValidation.safetyNotes)) {
+        failures.push("Expected patchIntentValidation.safetyNotes to be an array");
+      }
+      if (patchIntentValidation.ok && contextAwareTarget && repairIntent) {
+        const sameTarget = path.normalize(repairIntent.targetFile) === path.normalize(contextAwareTarget.filePath);
+        if (!sameTarget) {
+          failures.push("patchIntentValidation.ok was true even though repair intent target did not match repair target");
+        }
+      }
+    }
+  }
+
   validatePatchExpectation(failures, expect.patch ?? expected.patch, debugInfo.patch);
 
   return {
@@ -596,6 +826,11 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
       selectedClassificationFile: selectedClassification.file,
       contextAwareTarget,
       selectedContextAwareTargetFile: selectedContextAwareTarget.file,
+      repairIntent,
+      selectedRepairIntentFile: selectedRepairIntent.file,
+      patchIntentValidation,
+      selectedPatchIntentValidationFile: selectedPatchIntentValidation.file,
+      changes,
       changedFiles,
       patch: debugInfo.patch
     }
@@ -644,6 +879,10 @@ function runScenario(name) {
     runResult,
     ...validation
   };
+}
+
+function isEnvironmentEpermFailure(runResult) {
+  return [runResult.error, runResult.stdout, runResult.stderr].some((value) => typeof value === "string" && value.includes("EPERM"));
 }
 
 function runRetryControlUnit() {
@@ -1530,6 +1769,351 @@ function runContextAwareTargetIntegrationUnit() {
   }
 }
 
+function runRepairIntentModelUnit() {
+  const { createUnknownRepairIntent } = require(path.join(projectRoot, "dist", "repair", "repairIntent.js"));
+  const targetFile = path.join(projectRoot, "example.js");
+  const intent = createUnknownRepairIntent({ targetFile });
+
+  if (
+    intent.repairType === "unknown" &&
+    intent.confidence === "low" &&
+    intent.allowedMutationScope === "single-file" &&
+    intent.targetFile === targetFile &&
+    Array.isArray(intent.safetyNotes) &&
+    intent.safetyNotes.length > 0
+  ) {
+    console.log("PASS repair-intent-model-unit");
+    return true;
+  }
+
+  console.log("FAIL repair-intent-model-unit");
+  console.log(`  Expected conservative unknown repair intent, got ${JSON.stringify(intent)}`);
+  return false;
+}
+
+function runRepairIntentBuilderUnit() {
+  const { buildRepairIntent } = require(path.join(projectRoot, "dist", "repair", "repairIntentBuilder.js"));
+  const targetFile = path.join(projectRoot, "target.js");
+  const sourceFile = path.join(projectRoot, "source.js");
+
+  const cases = [
+    {
+      label: "SyntaxError",
+      input: {
+        parsedStackTrace: { errorType: "SyntaxError", message: "Unexpected token", filePath: targetFile },
+        errorContext: { filePath: targetFile },
+        repairTargetDecision: { targetFile, confidence: "high" }
+      },
+      expected: { repairType: "syntax-error", confidence: "high" }
+    },
+    {
+      label: "ReferenceError same file",
+      input: {
+        parsedStackTrace: { errorType: "ReferenceError", message: "missingThing is not defined", filePath: targetFile },
+        errorContext: { filePath: targetFile },
+        repairTargetDecision: { targetFile, sourceFile: targetFile, confidence: "high" }
+      },
+      expected: { repairType: "runtime-local-error", confidence: "medium" }
+    },
+    {
+      label: "missing export reason",
+      input: {
+        parsedStackTrace: {
+          errorType: "SyntaxError",
+          message: "The requested module './helper.js' does not provide an export named 'greet'",
+          filePath: sourceFile
+        },
+        errorContext: { filePath: sourceFile },
+        repairTargetDecision: {
+          targetFile,
+          sourceFile,
+          symbolName: "greet",
+          confidence: "high",
+          reason: "Missing export greet should be added to helper.js"
+        }
+      },
+      expected: { repairType: "missing-export", confidence: "high", symbolName: "greet" }
+    },
+    {
+      label: "wrong import reason",
+      input: {
+        parsedStackTrace: { errorType: "SyntaxError", message: "Named import not found", filePath: sourceFile },
+        errorContext: { filePath: sourceFile },
+        repairTargetDecision: {
+          targetFile: sourceFile,
+          sourceFile,
+          symbolName: "greet",
+          reason: "Wrong import name caused an import mismatch"
+        }
+      },
+      expected: { repairType: "import-mismatch", confidence: "medium", symbolName: "greet" }
+    },
+    {
+      label: "TypeError not a function",
+      input: {
+        parsedStackTrace: { errorType: "TypeError", message: "greet is not a function", filePath: sourceFile },
+        errorContext: { filePath: sourceFile },
+        repairTargetDecision: { targetFile: sourceFile, sourceFile, symbolName: "greet" }
+      },
+      expected: { repairType: "import-mismatch", confidence: "medium", symbolName: "greet" }
+    },
+    {
+      label: "unknown",
+      input: {
+        parsedStackTrace: { errorType: "Error", message: "Something unusual happened", filePath: targetFile },
+        errorContext: { filePath: targetFile },
+        repairTargetDecision: { targetFile }
+      },
+      expected: { repairType: "unknown", confidence: "low" }
+    }
+  ];
+
+  for (const testCase of cases) {
+    const actual = buildRepairIntent(testCase.input);
+    for (const [key, value] of Object.entries(testCase.expected)) {
+      if (actual[key] !== value) {
+        console.log("FAIL repair-intent-builder-unit");
+        console.log(
+          `  ${testCase.label}: expected ${key}=${JSON.stringify(value)}, got ${JSON.stringify(actual[key])}`
+        );
+        return false;
+      }
+    }
+    if (
+      typeof actual.targetFile !== "string" ||
+      actual.targetFile.length === 0 ||
+      typeof actual.reason !== "string" ||
+      actual.reason.length === 0 ||
+      actual.allowedMutationScope !== "single-file" ||
+      !Array.isArray(actual.safetyNotes) ||
+      actual.safetyNotes.length === 0
+    ) {
+      console.log("FAIL repair-intent-builder-unit");
+      console.log(
+        `  ${testCase.label}: expected targetFile, reason, single-file scope, and safety notes, got ${JSON.stringify(actual)}`
+      );
+      return false;
+    }
+  }
+
+  console.log("PASS repair-intent-builder-unit");
+  return true;
+}
+
+function runPatchIntentGuardUnit() {
+  const { validatePatchIntent } = require(path.join(projectRoot, "dist", "repair", "patchIntentGuard.js"));
+  const targetFile = path.join(projectRoot, "target.js");
+  const otherFile = path.join(projectRoot, "other.js");
+  const baseIntent = {
+    repairType: "runtime-local-error",
+    targetFile,
+    reason: "Local runtime issue",
+    confidence: "medium",
+    allowedMutationScope: "single-file",
+    safetyNotes: ["Patch must remain constrained to the selected target file."]
+  };
+
+  const success = validatePatchIntent(baseIntent, {
+    targetFile,
+    patchContent: "console.log('fixed');",
+    patchFiles: [targetFile]
+  });
+  if (
+    !success.ok ||
+    typeof success.reason !== "string" ||
+    success.reason.length === 0 ||
+    !success.safetyNotes.includes("Single-file mutation invariant preserved.")
+  ) {
+    console.log("FAIL patch-intent-guard-unit");
+    console.log(`  accepts matching target: expected success with reason and invariant note, got ${JSON.stringify(success)}`);
+    return false;
+  }
+
+  const cases = [
+    {
+      label: "missing repair intent target",
+      intent: { ...baseIntent, targetFile: "" },
+      patch: { targetFile },
+      reasonIncludes: "Missing repair intent target file"
+    },
+    {
+      label: "missing proposed patch target",
+      intent: baseIntent,
+      patch: { targetFile: "" },
+      reasonIncludes: "Missing proposed patch target file"
+    },
+    {
+      label: "multi-file patch",
+      intent: baseIntent,
+      patch: { targetFile, patchFiles: [targetFile, otherFile] },
+      reasonIncludes: "Multi-file patch rejected"
+    },
+    {
+      label: "mismatched target file",
+      intent: baseIntent,
+      patch: { targetFile: otherFile },
+      reasonIncludes: "Mismatch between repair intent target"
+    },
+    {
+      label: "patchFiles outside target",
+      intent: baseIntent,
+      patch: { targetFile, patchFiles: [otherFile] },
+      reasonIncludes: "patchFiles include files outside proposed target"
+    },
+    {
+      label: "broad import rewrite",
+      intent: baseIntent,
+      patch: {
+        targetFile,
+        patchContent: 'import a from "./a.js";\nimport b from "./b.js";'
+      },
+      reasonIncludes: "Broad import rewrite"
+    }
+  ];
+
+  for (const testCase of cases) {
+    const actual = validatePatchIntent(testCase.intent, testCase.patch);
+    if (
+      actual.ok ||
+      typeof actual.reason !== "string" ||
+      actual.reason.length === 0 ||
+      !actual.reason.includes(testCase.reasonIncludes)
+    ) {
+      console.log("FAIL patch-intent-guard-unit");
+      console.log(`  ${testCase.label}: expected failure including ${JSON.stringify(testCase.reasonIncludes)}, got ${JSON.stringify(actual)}`);
+      return false;
+    }
+  }
+
+  const importMismatchIntent = {
+    ...baseIntent,
+    repairType: "import-mismatch"
+  };
+  const importPatch = validatePatchIntent(importMismatchIntent, {
+    targetFile,
+    patchContent: 'import { greet } from "./helper.js";\nimport { sayHello } from "./helper.js";',
+    patchFiles: [targetFile]
+  });
+  if (!importPatch.ok || typeof importPatch.reason !== "string" || importPatch.reason.length === 0) {
+    console.log("FAIL patch-intent-guard-unit");
+    console.log(`  import-mismatch import patch: expected success with meaningful reason, got ${JSON.stringify(importPatch)}`);
+    return false;
+  }
+
+  console.log("PASS patch-intent-guard-unit");
+  return true;
+}
+
+function runRepairIntentReportUnit() {
+  const { createUnknownRepairIntent } = require(path.join(projectRoot, "dist", "repair", "repairIntent.js"));
+  const { validatePatchIntent } = require(path.join(projectRoot, "dist", "repair", "patchIntentGuard.js"));
+  const targetFile = path.join(projectRoot, "target.js");
+  const repairIntent = createUnknownRepairIntent({
+    targetFile,
+    reason: "Unit-test report enrichment."
+  });
+  const patchIntentValidation = validatePatchIntent(repairIntent, {
+    targetFile,
+    patchContent: "console.log('report');",
+    patchFiles: [targetFile]
+  });
+  const reportShape = {
+    repairIntent,
+    patchIntentValidation
+  };
+  const serialized = JSON.stringify(reportShape);
+  const parsed = JSON.parse(serialized);
+
+  if (!parsed.repairIntent) {
+    console.log("FAIL repair-intent-report-unit");
+    console.log("  Expected repairIntent to exist");
+    return false;
+  }
+
+  if (
+    typeof parsed.repairIntent.repairType !== "string" ||
+    typeof parsed.repairIntent.targetFile !== "string" ||
+    typeof parsed.repairIntent.reason !== "string" ||
+    typeof parsed.repairIntent.confidence !== "string" ||
+    parsed.repairIntent.allowedMutationScope !== "single-file" ||
+    !Array.isArray(parsed.repairIntent.safetyNotes)
+  ) {
+    console.log("FAIL repair-intent-report-unit");
+    console.log(`  Invalid repairIntent report shape: ${JSON.stringify(parsed.repairIntent)}`);
+    return false;
+  }
+
+  if (
+    parsed.patchIntentValidation &&
+    (typeof parsed.patchIntentValidation.ok !== "boolean" ||
+      typeof parsed.patchIntentValidation.reason !== "string" ||
+      !Array.isArray(parsed.patchIntentValidation.safetyNotes))
+  ) {
+    console.log("FAIL repair-intent-report-unit");
+    console.log(
+      `  Invalid patchIntentValidation report shape: ${JSON.stringify(parsed.patchIntentValidation)}`
+    );
+    return false;
+  }
+
+  console.log("PASS repair-intent-report-unit");
+  return true;
+}
+
+function runRepairIntentInvariantUnit() {
+  const { createUnknownRepairIntent } = require(path.join(projectRoot, "dist", "repair", "repairIntent.js"));
+  const { validatePatchIntent } = require(path.join(projectRoot, "dist", "repair", "patchIntentGuard.js"));
+  const targetFile = path.join(projectRoot, "target.js");
+  const otherFile = path.join(projectRoot, "other.js");
+  const intent = createUnknownRepairIntent({ targetFile });
+
+  const matchingPatch = {
+    targetFile,
+    patchContent: "console.log('fixed');",
+    patchFiles: [targetFile]
+  };
+  const matching = validatePatchIntent(intent, matchingPatch);
+  if (!matching.ok) {
+    console.log("FAIL repair-intent-invariant-unit");
+    console.log(`  Expected matching target validation to pass, got ${JSON.stringify(matching)}`);
+    return false;
+  }
+
+  const mismatched = validatePatchIntent(intent, {
+    ...matchingPatch,
+    targetFile: otherFile,
+    patchFiles: [otherFile]
+  });
+  if (mismatched.ok) {
+    console.log("FAIL repair-intent-invariant-unit");
+    console.log(`  Expected mismatched target validation to fail, got ${JSON.stringify(mismatched)}`);
+    return false;
+  }
+
+  const multiFile = validatePatchIntent(intent, {
+    targetFile,
+    patchContent: "console.log('fixed');",
+    patchFiles: [targetFile, otherFile]
+  });
+  if (multiFile.ok) {
+    console.log("FAIL repair-intent-invariant-unit");
+    console.log(`  Expected multi-file validation to fail, got ${JSON.stringify(multiFile)}`);
+    return false;
+  }
+
+  const uniquePatchFiles = new Set(matchingPatch.patchFiles.map((file) => path.normalize(file).toLowerCase()));
+  if (uniquePatchFiles.size !== 1 || intent.allowedMutationScope !== "single-file") {
+    console.log("FAIL repair-intent-invariant-unit");
+    console.log(
+      `  Expected one unique patch file and single-file scope, got files=${JSON.stringify(Array.from(uniquePatchFiles))} intent=${JSON.stringify(intent)}`
+    );
+    return false;
+  }
+
+  console.log("PASS repair-intent-invariant-unit");
+  return true;
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -1613,6 +2197,21 @@ async function main() {
   if (!runContextAwareTargetIntegrationUnit()) {
     failed += 1;
   }
+  if (!runRepairIntentModelUnit()) {
+    failed += 1;
+  }
+  if (!runRepairIntentBuilderUnit()) {
+    failed += 1;
+  }
+  if (!runPatchIntentGuardUnit()) {
+    failed += 1;
+  }
+  if (!runRepairIntentReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairIntentInvariantUnit()) {
+    failed += 1;
+  }
   if (!(await runGuardedLegacyAppendUnit())) {
     failed += 1;
   }
@@ -1627,6 +2226,13 @@ async function main() {
     if (result.runResult.error) {
       console.log(`SKIP ${name}`);
       console.log(`  Spawn failed before CLI execution: ${result.runResult.error.split(/\r?\n/).slice(0, 2).join(" | ")}`);
+      console.log("  Scenario debug artifacts were still written.");
+      continue;
+    }
+
+    if (isEnvironmentEpermFailure(result.runResult)) {
+      console.log(`SKIP ${name}`);
+      console.log("  Environment EPERM prevented deterministic end-to-end validation.");
       console.log("  Scenario debug artifacts were still written.");
       continue;
     }

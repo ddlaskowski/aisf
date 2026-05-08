@@ -15,11 +15,13 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v1.6 — Context-Aware Repair Engine**
+**v1.7 — Repair Intent Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
-v1.6 adds context-aware repair target selection: stack trace parsing, error context collection, lightweight dependency scanning, repair target decision, and multi-file read / single-file patch routing. The Safe Patch Engine remains the only mutation layer.
+v1.6 added context-aware repair target selection: stack trace parsing, error context collection, lightweight dependency scanning, repair target decision, and multi-file read / single-file patch routing.
+
+v1.7 adds a Repair Intent Layer between target selection and patching. It introduces semantic repair planning before patching, a `RepairIntent` model, a deterministic intent builder, patch intent validation, and report/debug observability. The single-file mutation invariant remains in place, and the Safe Patch Engine remains the only mutation layer.
 
 ---
 
@@ -186,6 +188,51 @@ Features:
 
 ---
 
+## 🧭 Repair Intent Layer (v1.7)
+
+The v1.7 pipeline makes repair decisions easier to inspect before any patch reaches the Safe Patch Engine.
+
+Previous:
+
+```
+error
+→ stack trace
+→ context collection
+→ dependency map
+→ repair target decision
+→ safe patch
+```
+
+v1.7:
+
+```
+error
+→ stack trace
+→ context collection
+→ dependency map
+→ repair target decision
+→ repair intent
+→ patch intent validation
+→ safe patch
+```
+
+v1.7 deterministic checks:
+
+* repair-intent-model-unit
+* repair-intent-builder-unit
+* patch-intent-guard-unit
+* repair-intent-report-unit
+* repair-intent-invariant-unit
+
+v1.7 scenario fixtures:
+
+* missing-export-with-intent
+* wrong-import-name-with-intent
+* same-file-reference-error-with-intent
+* low-confidence-fallback-intent
+
+---
+
 ## 🚀 Usage
 
 ### Basic
@@ -289,6 +336,14 @@ Pipeline:
 * Lightweight dependency scanning
 * Multi-file read / single-file patch target selection
 * Safe Patch Engine remains the only mutation layer
+
+### v1.7
+
+* Repair Intent Layer
+* Deterministic repair intent builder
+* Patch intent guard
+* Repair intent observability in run reports and debug artifacts
+* Single-file mutation invariant preserved
 
 ### v2.0
 

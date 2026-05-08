@@ -36,6 +36,9 @@ import {
   selectContextAwareRepairTarget,
   type ContextAwareRepairTarget
 } from "../repair/contextAwareRepairTarget.js";
+import { buildRepairIntent } from "../repair/repairIntentBuilder.js";
+import { createUnknownRepairIntent, type RepairIntent } from "../repair/repairIntent.js";
+import { validatePatchIntent, type PatchIntentValidationResult } from "../repair/patchIntentGuard.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -297,6 +300,42 @@ async function selectAndSaveContextAwareRepairTarget(
   return target;
 }
 
+async function buildAndSaveRepairIntent(input: {
+  runDir: string;
+  label: string;
+  rawOutput: string;
+  target: ContextAwareRepairTarget;
+  symbolName?: string;
+}): Promise<RepairIntent> {
+  try {
+    const repairIntent = buildRepairIntent({
+      parsedStackTrace: {
+        message: input.rawOutput,
+        filePath: input.target.filePath
+      },
+      errorContext: {
+        filePath: input.target.filePath
+      },
+      repairTargetDecision: {
+        targetFile: input.target.filePath,
+        reason: input.target.reason,
+        confidence: input.target.confidence,
+        sourceFile: input.target.filePath,
+        symbolName: input.symbolName
+      }
+    });
+    await saveStateFile(input.runDir, `repair-intent-${input.label}.json`, repairIntent);
+    return repairIntent;
+  } catch (error) {
+    const fallback = createUnknownRepairIntent({
+      targetFile: input.target.filePath,
+      reason: error instanceof Error ? error.message : undefined
+    });
+    await saveStateFile(input.runDir, `repair-intent-${input.label}.json`, fallback);
+    return fallback;
+  }
+}
+
 async function confirmContinueWithDirtyRepo(statusBefore: string, autoApprove = false): Promise<boolean> {
   console.log("Repository has existing uncommitted changes.");
   console.log(statusBefore || "(no status output)");
@@ -454,6 +493,67 @@ function restrictOperationsToContextAwareTarget(
   return kept;
 }
 
+function operationPatchContent(operation: ChangeOperation): string | undefined {
+  if (typeof operation.content === "string") {
+    return operation.content;
+  }
+
+  if (operation.patch) {
+    return JSON.stringify(operation.patch);
+  }
+
+  return operation.reason;
+}
+
+function buildProposedPatchIntent(
+  repoPath: string,
+  operations: ChangeOperation[]
+): { targetFile: string; patchContent?: string; patchFiles: string[] } | null {
+  const patchableOperations = operations.filter((op) => op.type !== "delete" && op.path);
+  if (patchableOperations.length === 0) {
+    return null;
+  }
+
+  const patchFiles = patchableOperations.map((op) => path.resolve(repoPath, op.path));
+  const firstOperation = patchableOperations[0];
+  return {
+    targetFile: path.resolve(repoPath, firstOperation.path),
+    patchContent: patchableOperations.map(operationPatchContent).filter(Boolean).join("\n"),
+    patchFiles
+  };
+}
+
+async function validateAndSavePatchIntent(input: {
+  runDir: string;
+  label: string;
+  repoPath: string;
+  repairIntent: RepairIntent | null;
+  operations: ChangeOperation[];
+}): Promise<PatchIntentValidationResult | null> {
+  if (!input.repairIntent) {
+    return null;
+  }
+
+  const proposedPatch = buildProposedPatchIntent(input.repoPath, input.operations);
+  if (!proposedPatch) {
+    return null;
+  }
+
+  try {
+    const validation = validatePatchIntent(input.repairIntent, proposedPatch);
+    await saveStateFile(input.runDir, `patch-intent-validation-${input.label}.json`, validation);
+    return validation;
+  } catch (error) {
+    const validation: PatchIntentValidationResult = {
+      ok: false,
+      reason: error instanceof Error ? error.message : "Patch intent validation failed unexpectedly.",
+      safetyNotes: ["Patch intent validation is observational and did not block the run."]
+    };
+    await saveStateFile(input.runDir, `patch-intent-validation-${input.label}.json`, validation);
+    return validation;
+  }
+}
+
 export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   const input: FactoryRunInput = {
     repoPath: inputData.repoPath,
@@ -543,6 +643,8 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let review: ReviewResult | undefined;
   let initialChanges: Changeset = { operations: [] };
   let contextAwareRepairTarget: ContextAwareRepairTarget | null = null;
+  let repairIntent: RepairIntent | null = null;
+  let patchIntentValidation: PatchIntentValidationResult | null = null;
 
   if (mode === "bugfix") {
     console.log("Running bugfix pre-validation...");
@@ -573,6 +675,15 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           runtimeErrorForPrevalidation,
           "prevalidation"
         )) ?? contextAwareRepairTarget;
+      if (contextAwareRepairTarget) {
+        repairIntent = await buildAndSaveRepairIntent({
+          runDir: state.runDir,
+          label: "prevalidation",
+          rawOutput: runtimeErrorForPrevalidation,
+          target: contextAwareRepairTarget,
+          symbolName: prevalidationFailure.details.symbol
+        });
+      }
       await rememberFailure(
         state.runDir,
         failureMemory,
@@ -749,6 +860,14 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   initialChanges = {
     operations: restrictOperationsToContextAwareTarget(repoPath, initialChanges.operations, contextAwareRepairTarget)
   };
+  patchIntentValidation =
+    (await validateAndSavePatchIntent({
+      runDir: state.runDir,
+      label: "initial",
+      repoPath,
+      repairIntent,
+      operations: initialChanges.operations
+    })) ?? patchIntentValidation;
   await saveStateFile(state.runDir, "changes.json", initialChanges);
   let previousOperations = initialChanges.operations.map((op) => ({ type: op.type, path: op.path, reason: op.reason }));
 
@@ -813,6 +932,15 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`
       )) ?? contextAwareRepairTarget;
     contextAwareRepairTarget = retryContextAwareRepairTarget;
+    if (retryContextAwareRepairTarget) {
+      repairIntent = await buildAndSaveRepairIntent({
+        runDir: state.runDir,
+        label: `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`,
+        rawOutput: runtimeErrorForRetry,
+        target: retryContextAwareRepairTarget,
+        symbolName: failure.details.symbol
+      });
+    }
 
     const missingModule = failure.strategy === "install-dependency" ? failure.details.moduleName : null;
     if (
@@ -959,6 +1087,14 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         retryContextAwareRepairTarget
       )
     };
+    patchIntentValidation =
+      (await validateAndSavePatchIntent({
+        runDir: state.runDir,
+        label: `self-heal-${selfHealingAttempt}`,
+        repoPath,
+        repairIntent,
+        operations: fixChanges.operations
+      })) ?? patchIntentValidation;
     await saveStateFile(state.runDir, `self-heal-${selfHealingAttempt}-changes.json`, fixChanges);
 
     if (fixChanges.operations.length === 0) {
@@ -1139,6 +1275,10 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   }
 
   await saveStateFile(state.runDir, "commit-result.json", commitResult);
+  await saveStateFile(state.runDir, "repair-observability.json", {
+    repairIntent,
+    patchIntentValidation
+  });
 
   const finalReport = [
     `# Final Report`,
@@ -1157,6 +1297,15 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Context-aware repair target: ${contextAwareRepairTarget?.filePath ?? "None"}`,
     `- Context-aware repair confidence: ${contextAwareRepairTarget?.confidence ?? "n/a"}`,
     `- Context-aware repair reason: ${contextAwareRepairTarget?.reason ?? "n/a"}`,
+    `- Repair intent: ${repairIntent?.repairType ?? "None"}`,
+    `- Repair intent target: ${repairIntent?.targetFile ?? "n/a"}`,
+    `- Repair intent confidence: ${repairIntent?.confidence ?? "n/a"}`,
+    `- Repair intent scope: ${repairIntent?.allowedMutationScope ?? "n/a"}`,
+    `- Repair intent reason: ${repairIntent?.reason ?? "n/a"}`,
+    `- Patch intent validation: ${
+      patchIntentValidation ? (patchIntentValidation.ok ? "ok" : "failed") : "n/a"
+    }`,
+    `- Patch intent validation reason: ${patchIntentValidation?.reason ?? "n/a"}`,
     `- Auto-commit: ${commitResult.committed ? "yes" : commitResult.attempted ? "skipped" : "no"}`,
     `- Commit message: ${commitResult.commitMessage ?? commitMessage}`,
     `- Committed files: ${commitResult.committedFiles.length ? commitResult.committedFiles.join(", ") : "None"}`,

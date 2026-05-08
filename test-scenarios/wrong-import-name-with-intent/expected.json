@@ -1,0 +1,9 @@
+{
+  "name": "wrong-import-name-with-intent",
+  "task": "Fix wrong import name with repair intent",
+  "expect": {
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "onlyOnePatchedFile": true
+  }
+}
