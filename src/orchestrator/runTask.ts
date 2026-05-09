@@ -68,9 +68,14 @@ import {
 import { auditRepairDecision, type RepairDecisionAudit } from "../repair/repairDecisionAudit.js";
 import {
   buildRepairAnalyticsHint,
+  getRepairStrategyAnalytics,
   updateRepairAnalytics,
   type RepairAnalyticsHint
 } from "../repair/repairAnalytics.js";
+import {
+  assessRepairRegressionRisk,
+  type RepairRegressionRisk
+} from "../repair/repairRegressionGuard.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -809,6 +814,90 @@ async function decideAndSaveRepairPatchPolicy(input: {
   return decision;
 }
 
+function applyRegressionGuardToEvidence(
+  validation: RepairEvidenceValidation | null,
+  regressionRisk: RepairRegressionRisk | null
+): RepairEvidenceValidation | null {
+  if (!validation || !regressionRisk) {
+    return validation;
+  }
+
+  const warnings = [
+    ...validation.warnings,
+    ...regressionRisk.warnings.map((warning) => `Regression guard: ${warning}`)
+  ];
+
+  if (regressionRisk.blocked || regressionRisk.recommendedAction === "block") {
+    return {
+      ...validation,
+      ok: false,
+      confidence: "low",
+      warnings,
+      reason: `${validation.reason} Regression guard blocked mutation.`,
+      allowedRepairMode: "manual-review"
+    };
+  }
+
+  if (regressionRisk.recommendedAction === "manual-review") {
+    return {
+      ...validation,
+      confidence: "low",
+      warnings,
+      reason: `${validation.reason} Regression guard requires manual review.`,
+      allowedRepairMode: "manual-review"
+    };
+  }
+
+  if (
+    regressionRisk.recommendedAction === "downgrade-to-conservative" &&
+    validation.allowedRepairMode === "normal"
+  ) {
+    return {
+      ...validation,
+      confidence: validation.confidence === "high" ? "medium" : validation.confidence,
+      warnings,
+      reason: `${validation.reason} Regression guard downgraded repair to conservative mode.`,
+      allowedRepairMode: "conservative"
+    };
+  }
+
+  return {
+    ...validation,
+    warnings
+  };
+}
+
+async function assessAndSaveRepairRegressionRisk(input: {
+  runDir: string;
+  label: string;
+  repoPath: string;
+  repairStrategy: RepairStrategyDecision | null;
+  failureSignature: string | null;
+  historicalFailureMemory: FailureMemoryStore;
+}): Promise<RepairRegressionRisk | null> {
+  if (!input.repairStrategy) {
+    return null;
+  }
+
+  const analytics = await getRepairStrategyAnalytics({
+    projectRoot: input.repoPath,
+    strategy: input.repairStrategy.strategy
+  });
+  const memoryMatches = input.historicalFailureMemory.records.filter(
+    (record) =>
+      (!input.failureSignature || record.errorSignature === input.failureSignature) &&
+      record.strategy === input.repairStrategy?.strategy
+  );
+  const risk = assessRepairRegressionRisk({
+    failureSignature: input.failureSignature ?? undefined,
+    strategy: input.repairStrategy.strategy,
+    analytics,
+    memoryMatches
+  });
+  await saveStateFile(input.runDir, `repair-regression-risk-${input.label}.json`, risk);
+  return risk;
+}
+
 function buildProposedPatchIntent(
   repoPath: string,
   operations: ChangeOperation[]
@@ -956,6 +1045,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let repairEvidenceValidation: RepairEvidenceValidation | null = null;
   let repairPatchPolicy: RepairPatchPolicyDecision | null = null;
   let patchIntentValidation: PatchIntentValidationResult | null = null;
+  let repairRegressionRisk: RepairRegressionRisk | null = null;
   let errorSignature: string | null = null;
   let initialFailureSignature: string | null = null;
   let failureMemoryHint: FailureMemoryHint | null = null;
@@ -1053,6 +1143,16 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           repairIntent,
           symbolName: prevalidationFailure.details.symbol
         });
+        repairRegressionRisk = await assessAndSaveRepairRegressionRisk({
+          runDir: state.runDir,
+          label: "prevalidation",
+          repoPath,
+          repairStrategy,
+          failureSignature: errorSignature,
+          historicalFailureMemory
+        });
+        repairEvidenceValidation = applyRegressionGuardToEvidence(repairEvidenceValidation, repairRegressionRisk) ?? repairEvidenceValidation;
+        await saveStateFile(state.runDir, "repair-evidence-validation-prevalidation-guarded.json", repairEvidenceValidation);
         repairPatchPolicy =
           (await decideAndSaveRepairPatchPolicy({
             runDir: state.runDir,
@@ -1259,6 +1359,18 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     operations: restrictOperationsToContextAwareTarget(repoPath, initialChanges.operations, contextAwareRepairTarget)
   };
   if (!mutationSkippedForEvidence) {
+    if (repairEvidenceValidation && !repairRegressionRisk) {
+      repairRegressionRisk = await assessAndSaveRepairRegressionRisk({
+        runDir: state.runDir,
+        label: "initial",
+        repoPath,
+        repairStrategy,
+        failureSignature: errorSignature,
+        historicalFailureMemory
+      });
+      repairEvidenceValidation = applyRegressionGuardToEvidence(repairEvidenceValidation, repairRegressionRisk) ?? repairEvidenceValidation;
+      await saveStateFile(state.runDir, "repair-evidence-validation-initial-guarded.json", repairEvidenceValidation);
+    }
     repairPatchPolicy =
       (await decideAndSaveRepairPatchPolicy({
         runDir: state.runDir,
@@ -1436,6 +1548,20 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         repairIntent,
         symbolName: failure.details.symbol
       });
+      repairRegressionRisk = await assessAndSaveRepairRegressionRisk({
+        runDir: state.runDir,
+        label: `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`,
+        repoPath,
+        repairStrategy,
+        failureSignature: errorSignature,
+        historicalFailureMemory
+      });
+      repairEvidenceValidation = applyRegressionGuardToEvidence(repairEvidenceValidation, repairRegressionRisk) ?? repairEvidenceValidation;
+      await saveStateFile(
+        state.runDir,
+        `repair-evidence-validation-attempt-${selfHealingAttempt + dependencyInstallCount + 1}-guarded.json`,
+        repairEvidenceValidation
+      );
       repairPatchPolicy =
         (await decideAndSaveRepairPatchPolicy({
           runDir: state.runDir,
@@ -1994,6 +2120,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     repairOutcome,
     repairDecisionAudit,
     repairAnalytics,
+    repairRegressionRisk,
     failureMemory: failureMemoryHint
       ? {
           ...failureMemoryHint,
@@ -2054,6 +2181,13 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       failureMemoryHint ? (failureMemoryHint.recommendManualReview ? "manual-review" : "continue-with-gates") : "not available"
     }`,
     `- Failure memory warnings: ${failureMemoryHint ? formatList(failureMemoryHint.warnings) : "not available"}`,
+    "",
+    "## Regression Risk",
+    `- Risk level: ${repairRegressionRisk?.riskLevel ?? "not available"}`,
+    `- Blocked: ${repairRegressionRisk ? (repairRegressionRisk.blocked ? "yes" : "no") : "not available"}`,
+    `- Recommended action: ${repairRegressionRisk?.recommendedAction ?? "not available"}`,
+    `- Risk reasons: ${repairRegressionRisk ? formatList(repairRegressionRisk.riskReasons) : "not available"}`,
+    `- Warnings: ${repairRegressionRisk ? formatList(repairRegressionRisk.warnings) : "not available"}`,
     "",
     "## Repair outcome",
     `- Outcome: ${repairOutcome?.outcome ?? "not available"}`,

@@ -31,6 +31,8 @@ v2.0 adds deterministic repair strategy orchestration before target selection an
 
 v2.1 adds deterministic repository-local failure memory. It records stable failure signatures, historical strategy outcomes, and advisory retry hints without approving patches or bypassing any existing safety gate.
 
+v2.4 adds a deterministic Repair Regression Guard Layer. It asks whether a repair path appears historically risky and can only warn, downgrade to conservative mode, require manual review, or block before patch policy and Safe Patch Engine are reached.
+
 ---
 
 ## 🧠 What It Does
@@ -502,6 +504,65 @@ v2.1 deterministic checks:
 * failure-memory-manual-review
 * retry-blocked-by-history
 * retry-prefers-successful-history
+
+---
+
+## 🧯 Repair Regression Guard Layer (v2.4)
+
+v2.4 adds a deterministic safety guard between evidence validation and patch policy. The guard uses historical analytics and matching failure memory to answer: “Does this repair path historically appear risky?”
+
+Pipeline position:
+
+```
+failure intelligence
+→ failure signature
+→ failure memory lookup
+→ repair analytics lookup
+→ repair strategy decision
+→ repair target decision
+→ repair intent
+→ evidence validation
+→ repair regression guard
+→ patch policy
+→ patch intent validation
+→ safe patch
+```
+
+What the guard can do:
+
+* emit warnings
+* downgrade normal repair to conservative policy mode
+* require manual review
+* block mutation through the existing policy/reporting path
+
+What the guard cannot do:
+
+* approve mutation
+* make patching more aggressive
+* bypass evidence validation
+* bypass patch policy
+* bypass patch intent validation
+* bypass Safe Patch Engine
+* introduce multi-file mutation
+
+Patch policy remains final authority. The regression guard can only make the policy input stricter; it cannot turn `manual-review` into `normal`, cannot turn `conservative` into `normal`, and cannot override a policy denial.
+
+v2.4 deterministic checks:
+
+* repair-regression-guard-unit
+* repair-regression-risk-unit
+* repair-regression-report-unit
+* repair-regression-policy-integration-unit
+* repair-regression-history-pattern-unit
+
+Scenario-style deterministic checks:
+
+* regression-high-risk-strategy
+* regression-policy-denied-history
+* regression-manual-review-escalation
+* regression-conservative-downgrade
+* regression-warning-only
+* regression-block-repeated-failure
 
 ---
 

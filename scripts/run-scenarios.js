@@ -4994,6 +4994,227 @@ function runRepairAnalyticsAdvisoryOnlyUnit() {
   }
 }
 
+function runRepairRegressionGuardUnit() {
+  const { assessRepairRegressionRisk } = require(path.join(projectRoot, "dist", "repair", "repairRegressionGuard.js"));
+
+  try {
+    const low = assessRepairRegressionRisk({
+      strategy: "safe",
+      analytics: { strategy: "safe", worsenedRate: 0, worsenedCount: 0, policyDeniedCount: 0, manualReviewCount: 0, effectivenessScore: 3 }
+    });
+    if (low.riskLevel !== "low" || low.recommendedAction !== "proceed" || low.blocked) {
+      throw new Error(`expected low proceed risk, got ${JSON.stringify(low)}`);
+    }
+
+    const high = assessRepairRegressionRisk({
+      strategy: "risky",
+      analytics: { strategy: "risky", worsenedRate: 0.5, worsenedCount: 1, policyDeniedCount: 0, manualReviewCount: 0, effectivenessScore: -3 }
+    });
+    if (high.riskLevel !== "high" || high.recommendedAction !== "manual-review") {
+      throw new Error(`expected high manual-review risk, got ${JSON.stringify(high)}`);
+    }
+
+    console.log("PASS repair-regression-guard-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-regression-guard-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairRegressionRiskUnit() {
+  const { assessRepairRegressionRisk } = require(path.join(projectRoot, "dist", "repair", "repairRegressionGuard.js"));
+
+  try {
+    const block = assessRepairRegressionRisk({
+      failureSignature: "sig",
+      strategy: "undefined-symbol",
+      analytics: { strategy: "undefined-symbol", worsenedRate: 0.1, worsenedCount: 1, policyDeniedCount: 0, manualReviewCount: 0, effectivenessScore: 2 },
+      memoryMatches: [
+        { errorSignature: "sig", strategy: "undefined-symbol", outcome: "failed-worse" },
+        { errorSignature: "sig", strategy: "undefined-symbol", outcome: "failed-worse" }
+      ]
+    });
+    if (!block.blocked || block.recommendedAction !== "block" || block.riskLevel !== "high") {
+      throw new Error(`expected repeated failed-worse block, got ${JSON.stringify(block)}`);
+    }
+
+    const downgrade = assessRepairRegressionRisk({
+      strategy: "policy-risk",
+      analytics: { strategy: "policy-risk", worsenedRate: 0, worsenedCount: 0, policyDeniedCount: 2, manualReviewCount: 0, effectivenessScore: 1 }
+    });
+    if (downgrade.recommendedAction !== "downgrade-to-conservative" || downgrade.riskLevel !== "medium") {
+      throw new Error(`expected conservative downgrade, got ${JSON.stringify(downgrade)}`);
+    }
+
+    const manual = assessRepairRegressionRisk({
+      strategy: "manual-risk",
+      analytics: { strategy: "manual-risk", worsenedRate: 0, worsenedCount: 0, policyDeniedCount: 0, manualReviewCount: 2, effectivenessScore: 1 }
+    });
+    if (manual.recommendedAction !== "manual-review" || manual.riskLevel !== "high") {
+      throw new Error(`expected manual-review escalation, got ${JSON.stringify(manual)}`);
+    }
+
+    const warning = assessRepairRegressionRisk({
+      strategy: "low-score",
+      analytics: { strategy: "low-score", worsenedRate: 0, worsenedCount: 0, policyDeniedCount: 0, manualReviewCount: 0, effectivenessScore: -1 }
+    });
+    if (warning.recommendedAction !== "proceed-with-warning" || warning.riskLevel !== "medium") {
+      throw new Error(`expected warning-only risk, got ${JSON.stringify(warning)}`);
+    }
+
+    console.log("PASS repair-regression-risk-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-regression-risk-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairRegressionReportUnit() {
+  try {
+    const repairRegressionRisk = {
+      riskLevel: "medium",
+      blocked: false,
+      riskReasons: ["Multiple historical policy-denied outcomes for this strategy."],
+      recommendedAction: "downgrade-to-conservative",
+      warnings: ["Strategy should be downgraded to conservative policy mode."]
+    };
+    const observability = JSON.parse(JSON.stringify({ repairRegressionRisk }));
+    const report = [
+      "## Regression Risk",
+      `- Risk level: ${repairRegressionRisk.riskLevel}`,
+      `- Blocked: ${repairRegressionRisk.blocked ? "yes" : "no"}`,
+      `- Recommended action: ${repairRegressionRisk.recommendedAction}`,
+      `- Risk reasons: ${repairRegressionRisk.riskReasons.join(", ")}`,
+      `- Warnings: ${repairRegressionRisk.warnings.join(", ")}`
+    ].join("\n");
+    if (!observability.repairRegressionRisk || observability.repairRegressionRisk.recommendedAction !== "downgrade-to-conservative") {
+      throw new Error(`observability missing regression risk: ${JSON.stringify(observability)}`);
+    }
+    for (const needle of ["Regression Risk", "Risk level", "Recommended action", "Risk reasons", "Warnings"]) {
+      if (!report.includes(needle)) {
+        throw new Error(`report missing ${needle}: ${report}`);
+      }
+    }
+
+    console.log("PASS repair-regression-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-regression-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairRegressionPolicyIntegrationUnit() {
+  const { assessRepairRegressionRisk } = require(path.join(projectRoot, "dist", "repair", "repairRegressionGuard.js"));
+  const { decideRepairPatchPolicy } = require(path.join(projectRoot, "dist", "repair", "repairPatchPolicy.js"));
+  const { validatePatchIntent } = require(path.join(projectRoot, "dist", "repair", "patchIntentGuard.js"));
+
+  function guardedEvidence(evidence, risk) {
+    if (risk.blocked || risk.recommendedAction === "block" || risk.recommendedAction === "manual-review") {
+      return { ...evidence, ok: risk.recommendedAction === "manual-review" ? evidence.ok : false, allowedRepairMode: "manual-review", confidence: "low" };
+    }
+    if (risk.recommendedAction === "downgrade-to-conservative" && evidence.allowedRepairMode === "normal") {
+      return { ...evidence, allowedRepairMode: "conservative", confidence: "medium" };
+    }
+    return evidence;
+  }
+
+  try {
+    const risk = assessRepairRegressionRisk({
+      strategy: "policy-risk",
+      analytics: { strategy: "policy-risk", policyDeniedCount: 2, manualReviewCount: 0, worsenedRate: 0, worsenedCount: 0, effectivenessScore: 2 }
+    });
+    const policy = decideRepairPatchPolicy({
+      repairIntent: { targetFile: "index.js", repairType: "runtime-local-error" },
+      evidenceValidation: guardedEvidence({ ok: true, confidence: "high", allowedRepairMode: "normal" }, risk),
+      proposedPatchOperations: [{ operation: "exact-replacement", targetFile: "index.js" }]
+    });
+    if (policy.mode !== "conservative" || !policy.ok) {
+      throw new Error(`regression guard should only downgrade to conservative policy, got ${JSON.stringify(policy)}`);
+    }
+
+    const blockRisk = assessRepairRegressionRisk({
+      failureSignature: "sig",
+      strategy: "risky",
+      memoryMatches: [
+        { errorSignature: "sig", strategy: "risky", outcome: "failed-worse" },
+        { errorSignature: "sig", strategy: "risky", outcome: "failed-worse" }
+      ]
+    });
+    const blockedPolicy = decideRepairPatchPolicy({
+      repairIntent: { targetFile: "index.js", repairType: "runtime-local-error" },
+      evidenceValidation: guardedEvidence({ ok: true, confidence: "high", allowedRepairMode: "normal" }, blockRisk),
+      proposedPatchOperations: [{ operation: "exact-replacement", targetFile: "index.js" }]
+    });
+    if (blockedPolicy.ok || blockedPolicy.recommendedAction !== "manual-review") {
+      throw new Error(`regression block should route through policy as manual review, got ${JSON.stringify(blockedPolicy)}`);
+    }
+
+    const deniedPolicy = decideRepairPatchPolicy({
+      repairIntent: { targetFile: "index.js", repairType: "runtime-local-error" },
+      evidenceValidation: { ok: true, confidence: "medium", allowedRepairMode: "conservative" },
+      proposedPatchOperations: [{ operation: "risky-append", targetFile: "index.js" }]
+    });
+    if (deniedPolicy.ok) {
+      throw new Error(`patch policy must remain authoritative, got ${JSON.stringify(deniedPolicy)}`);
+    }
+
+    const patchIntent = validatePatchIntent(
+      { repairType: "runtime-local-error", targetFile: "index.js", reason: "unit", confidence: "high", allowedMutationScope: "single-file", safetyNotes: ["unit"] },
+      { targetFile: "helper.js", patchFiles: ["helper.js"], patchContent: "console.log('x');" }
+    );
+    if (patchIntent.ok) {
+      throw new Error(`regression guard cannot bypass patch intent validation, got ${JSON.stringify(patchIntent)}`);
+    }
+
+    const safePatchReached = blockedPolicy.ok && patchIntent.ok;
+    if (safePatchReached) {
+      throw new Error("regression guard must not bypass Safe Patch Engine gates");
+    }
+
+    console.log("PASS repair-regression-policy-integration-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-regression-policy-integration-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairRegressionHistoryPatternUnit() {
+  const { assessRepairRegressionRisk } = require(path.join(projectRoot, "dist", "repair", "repairRegressionGuard.js"));
+
+  try {
+    const cases = [
+      ["regression-high-risk-strategy", assessRepairRegressionRisk({ strategy: "risky", analytics: { worsenedRate: 0.4, worsenedCount: 1, policyDeniedCount: 0, manualReviewCount: 0, effectivenessScore: -2 } }), "manual-review"],
+      ["regression-policy-denied-history", assessRepairRegressionRisk({ strategy: "policy", analytics: { worsenedRate: 0, worsenedCount: 0, policyDeniedCount: 2, manualReviewCount: 0, effectivenessScore: 0 } }), "downgrade-to-conservative"],
+      ["regression-manual-review-escalation", assessRepairRegressionRisk({ strategy: "manual", analytics: { worsenedRate: 0, worsenedCount: 0, policyDeniedCount: 0, manualReviewCount: 2, effectivenessScore: 0 } }), "manual-review"],
+      ["regression-conservative-downgrade", assessRepairRegressionRisk({ strategy: "downgrade", analytics: { worsenedRate: 0, worsenedCount: 0, policyDeniedCount: 3, manualReviewCount: 0, effectivenessScore: 2 } }), "downgrade-to-conservative"],
+      ["regression-warning-only", assessRepairRegressionRisk({ strategy: "warning", analytics: { worsenedRate: 0, worsenedCount: 0, policyDeniedCount: 0, manualReviewCount: 0, effectivenessScore: -1 } }), "proceed-with-warning"],
+      ["regression-block-repeated-failure", assessRepairRegressionRisk({ failureSignature: "sig", strategy: "block", memoryMatches: [{ errorSignature: "sig", strategy: "block", outcome: "failed-worse" }, { errorSignature: "sig", strategy: "block", outcome: "failed-worse" }] }), "block"]
+    ];
+
+    for (const [name, risk, expectedAction] of cases) {
+      if (risk.recommendedAction !== expectedAction) {
+        throw new Error(`${name}: expected ${expectedAction}, got ${JSON.stringify(risk)}`);
+      }
+      console.log(`PASS ${name}`);
+    }
+
+    console.log("PASS repair-regression-history-pattern-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-regression-history-pattern-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -5183,6 +5404,21 @@ async function main() {
     failed += 1;
   }
   if (!runRepairAnalyticsAdvisoryOnlyUnit()) {
+    failed += 1;
+  }
+  if (!runRepairRegressionGuardUnit()) {
+    failed += 1;
+  }
+  if (!runRepairRegressionRiskUnit()) {
+    failed += 1;
+  }
+  if (!runRepairRegressionReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairRegressionPolicyIntegrationUnit()) {
+    failed += 1;
+  }
+  if (!runRepairRegressionHistoryPatternUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {
