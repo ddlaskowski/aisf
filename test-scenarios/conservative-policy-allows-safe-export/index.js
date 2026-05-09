@@ -1,2 +1,2 @@
 const { greet } = require("./helper.js");
-greet("Factory");
+typeof greet === "function" && greet("Factory");

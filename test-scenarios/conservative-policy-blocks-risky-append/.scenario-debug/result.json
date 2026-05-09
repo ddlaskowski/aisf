@@ -1,0 +1,70 @@
+{
+  "status": 0,
+  "signal": null,
+  "cliPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\dist\\cli.js",
+  "scenarioRepoPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\conservative-policy-blocks-risky-append",
+  "runsDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\conservative-policy-blocks-risky-append\\.factory\\runs",
+  "runsDirExists": true,
+  "latestRunDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\conservative-policy-blocks-risky-append\\.factory\\runs\\policy-scenario",
+  "finalReportExists": true,
+  "classificationFilesFound": [],
+  "prevalidationClassificationExists": false,
+  "selectedClassificationFile": null,
+  "contextAwareTargetFilesFound": [],
+  "selectedContextAwareTargetFile": null,
+  "contextAwareRepairTarget": null,
+  "repairIntentFilesFound": [
+    "repair-intent-policy-scenario.json"
+  ],
+  "selectedRepairIntentFile": "repair-intent-policy-scenario.json",
+  "repairIntent": {
+    "targetFile": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\conservative-policy-blocks-risky-append\\index.js",
+    "repairType": "runtime-local-error",
+    "confidence": "medium",
+    "allowedMutationScope": "single-file",
+    "safetyNotes": [
+      "Policy scenario repair intent."
+    ],
+    "reason": "Policy scenario uses conservative mode."
+  },
+  "repairEvidenceValidationFilesFound": [
+    "repair-evidence-validation-policy-scenario.json"
+  ],
+  "selectedRepairEvidenceValidationFile": "repair-evidence-validation-policy-scenario.json",
+  "repairEvidenceValidation": {
+    "ok": true,
+    "confidence": "medium",
+    "allowedRepairMode": "conservative"
+  },
+  "repairPatchPolicyFilesFound": [
+    "repair-patch-policy-policy-scenario.json"
+  ],
+  "selectedRepairPatchPolicyFile": "repair-patch-policy-policy-scenario.json",
+  "repairPatchPolicy": {
+    "ok": false,
+    "mode": "conservative",
+    "allowedOperations": [
+      "exact-replacement",
+      "add-missing-export",
+      "correct-imported-symbol",
+      "remove-duplicate-declaration",
+      "small-single-line-edit"
+    ],
+    "blockedOperations": [
+      "risky-append"
+    ],
+    "warnings": [
+      "Operation blocked by conservative policy: risky-append"
+    ],
+    "reason": "Conservative patch policy blocked one or more proposed operations.",
+    "recommendedAction": "block-mutation"
+  },
+  "patchIntentValidationFilesFound": [],
+  "selectedPatchIntentValidationFile": null,
+  "patchIntentValidation": null,
+  "changes": {
+    "operations": []
+  },
+  "retryStopExists": false,
+  "patch": null
+}

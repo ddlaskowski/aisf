@@ -1,0 +1,264 @@
+Running software-factory pipeline...
+Mode detected: bugfix
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\wrong-import-name\.factory\runs\2026-05-09T11-14-09-693Z
+Repository has existing uncommitted changes.
+M ../../scripts/run-scenarios.js
+ M ../../src/orchestrator/runTask.ts
+ M ../access-before-init/index.js
+ M ../access-before-init/package.json
+ M ../conservative-policy-allows-safe-export/expected.json
+ M ../conservative-policy-blocks-risky-append/expected.json
+ M ../duplicate-declaration/index.js
+ M ../duplicate-declaration/package.json
+ M ../manual-review-policy-blocks-mutation/expected.json
+ M ../missing-local-module-export/helper.js
+ M ../missing-local-module-export/index.js
+ M ../missing-local-module-export/package.json
+ M ../missing-module/index.js
+ M ../missing-module/package.json
+ M ../normal-policy-allows-validated-patch/expected.json
+ M ../not-a-function/index.js
+ M ../not-a-function/package.json
+ M ../undefined-variable/index.js
+ M ../undefined-variable/package.json
+ M helper.js
+ M index.js
+ M package.json
+?? ../../.scenario-unit/
+?? ../../src/repair/repairDecisionAudit.ts
+?? ../../src/repair/repairOutcomeClassifier.ts
+?? ../../src/repair/validationDelta.ts
+?? ../access-before-init/.scenario-debug/
+?? ../duplicate-declaration/.scenario-debug/
+?? ../missing-local-module-export/.scenario-debug/
+?? ../missing-module/.scenario-debug/
+?? ../missing-module/package-lock.json
+?? ../not-a-function/.scenario-debug/
+?? ../undefined-variable/.scenario-debug/
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Running bugfix pre-validation...
+Running validation: node index.js
+Pre-validation failure classified: unknown -> ai-fix (low confidence)
+AI generating multi-file operations...
+{
+  "id": "resp_00f73c1e818e69dc0069ff17013bf08193a3f411cf09343fd2",
+  "object": "response",
+  "created_at": 1778325249,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1778325252,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4o-mini-2024-07-18",
+  "moderation": null,
+  "output": [
+    {
+      "id": "msg_00f73c1e818e69dc0069ff1701f590819388515e6cb4f8fb4a",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"helper.js\",\n      \"patch\": {\n        \"replace\": {\n          \"target\": \"export const greet = () => {\",\n          \"with\": \"export const greetUser = () => {\"\n        }\n      },\n      \"reason\": \"Renamed the export from 'greet' to 'greetUser' to match the import statement in index.js.\"\n    },\n    {\n      \"type\": \"modify\",\n      \"path\": \"index.js\",\n      \"patch\": {\n        \"replace\": {\n          \"target\": \"import { greet } from \\\"./helper.js\\\";\",\n          \"with\": \"import { greetUser } from \\\"./helper.js\\\";\"\n        }\n      },\n      \"reason\": \"Updated the import statement to match the renamed export in helper.js.\"\n    }\n  ]\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "in_memory",
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 0,
+  "text": {
+    "format": {
+      "type": "json_object"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 1526,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 183,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 1709
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"helper.js\",\n      \"patch\": {\n        \"replace\": {\n          \"target\": \"export const greet = () => {\",\n          \"with\": \"export const greetUser = () => {\"\n        }\n      },\n      \"reason\": \"Renamed the export from 'greet' to 'greetUser' to match the import statement in index.js.\"\n    },\n    {\n      \"type\": \"modify\",\n      \"path\": \"index.js\",\n      \"patch\": {\n        \"replace\": {\n          \"target\": \"import { greet } from \\\"./helper.js\\\";\",\n          \"with\": \"import { greetUser } from \\\"./helper.js\\\";\"\n        }\n      },\n      \"reason\": \"Updated the import statement to match the renamed export in helper.js.\"\n    }\n  ]\n}"
+}
+RAW AI TEXT LENGTH: 692
+Extracted AI text: {
+  "operations": [
+    {
+      "type": "modify",
+      "path": "helper.js",
+      "patch": {
+        "replace": {
+          "target": "export const greet = () => {",
+          "with": "export const g
+AI response received
+Parsing AI response...
+Filtering operation (MODIFY helper.js): unsupported operation type
+Filtered 1 operations (policy enforcement)
+
+Proposed file operations:
+- PATCH index.js (Updated the import statement to match the renamed export in helper.js.)
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Changes approved. Applying file operations...
+Applying changes and running post-approval steps...
+Running validation: node index.js
+Failure classified: unknown -> ai-fix (low confidence)
+Self-healing attempt 1
+Runtime error passed to AI:
+file:///C:/Users/ddlas/Code/AI%20Software%20Factory/software-factory/test-scenarios/wrong-import-name/index.js:1
+import { greetUser } from "./helper.js";
+         ^^^^^^^^^
+SyntaxError: The requested module './helper.js' does not provide an export named 'greetUser'
+    at ModuleJob._instantiate (node:internal/modules/esm/module_job:181:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:264:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:580:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:98:5)
+
+Node.js v23.6.0
+AI generating multi-file operations...
+{
+  "id": "resp_01bd4c30d641d50e0069ff17067c7c819394b8997082dc4619",
+  "object": "response",
+  "created_at": 1778325254,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1778325256,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4o-mini-2024-07-18",
+  "moderation": null,
+  "output": [
+    {
+      "id": "msg_01bd4c30d641d50e0069ff1706fd108193a4e21971f17a5e3a",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"index.js\",\n      \"patch\": {\n        \"replace\": {\n          \"target\": \"import { greetUser } from \\\"./helper.js\\\";\",\n          \"with\": \"import { correctGreetUser } from \\\"./helper.js\\\";\"\n        }\n      },\n      \"reason\": \"Updated the import statement to match the renamed export in helper.js.\"\n    }\n  ]\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "in_memory",
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 0,
+  "text": {
+    "format": {
+      "type": "json_object"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 1549,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 97,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 1646
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"index.js\",\n      \"patch\": {\n        \"replace\": {\n          \"target\": \"import { greetUser } from \\\"./helper.js\\\";\",\n          \"with\": \"import { correctGreetUser } from \\\"./helper.js\\\";\"\n        }\n      },\n      \"reason\": \"Updated the import statement to match the renamed export in helper.js.\"\n    }\n  ]\n}"
+}
+RAW AI TEXT LENGTH: 369
+Extracted AI text: {
+  "operations": [
+    {
+      "type": "modify",
+      "path": "index.js",
+      "patch": {
+        "replace": {
+          "target": "import { greetUser } from \"./helper.js\";",
+          "with": "i
+AI response received
+Parsing AI response...
+Filtered 0 operations (policy enforcement)
+
+Proposed file operations:
+- PATCH index.js (Updated the import statement to match the renamed export in helper.js.)
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Changes approved. Applying file operations...
+Applying fix changes...
+Re-running commands...
+Running validation: node index.js
+Retry stopped: Same failure repeated twice
+Applied operation path: index.js
+Applied operation path: index.js
+Commit candidate path: index.js
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\wrong-import-name\.factory\runs\2026-05-09T11-14-09-693Z\final-report.md
+Suggested commit message: fix: fix wrong import name
+Run completed.
+
+Final Summary
+Run ID: 2026-05-09T11-14-09-693Z
+Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\wrong-import-name
+Task: Fix wrong import name
+Attempts: 2
+Applied changes: 2
+Final status: fail
+Review status: fail
+Successful commands: None
+Skipped commands: None
+Failed commands: node index.js
+Notes: Command failed: node index.js | Retry stopped: Same failure repeated twice

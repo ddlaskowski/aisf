@@ -1,0 +1,111 @@
+Running software-factory pipeline...
+Mode detected: bugfix
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\.factory\runs\2026-05-09T11-15-17-130Z
+Repository has existing uncommitted changes.
+M ../../scripts/run-scenarios.js
+ M ../../src/orchestrator/runTask.ts
+ M ../access-before-init/index.js
+ M ../access-before-init/package.json
+ M ../confidence-downgrade-on-ambiguous-context/helper.js
+ M ../confidence-downgrade-on-ambiguous-context/index.js
+ M ../confidence-downgrade-on-ambiguous-context/package.json
+ M ../conservative-policy-allows-safe-export/expected.json
+ M ../conservative-policy-allows-safe-export/helper.js
+ M ../conservative-policy-allows-safe-export/index.js
+ M ../conservative-policy-allows-safe-export/package.json
+ M ../conservative-policy-blocks-risky-append/expected.json
+ M ../conservative-policy-blocks-risky-append/index.js
+ M ../conservative-policy-blocks-risky-append/package.json
+ M ../duplicate-declaration/index.js
+ M ../duplicate-declaration/package.json
+ M ../helper-function-not-exported/helper.js
+ M ../helper-function-not-exported/index.js
+ M ../helper-function-not-exported/package.json
+ M ../low-confidence-fallback-intent/index.js
+ M ../low-confidence-fallback-intent/package.json
+ M ../manual-review-policy-blocks-mutation/expected.json
+ M ../manual-review-policy-blocks-mutation/index.js
+ M ../manual-review-policy-blocks-mutation/package.json
+ M ../missing-export-evidence-validated/helper.js
+ M ../missing-export-evidence-validated/index.js
+ M ../missing-export-evidence-validated/package.json
+ M ../missing-export-with-intent/helper.js
+ M ../missing-export-with-intent/index.js
+ M ../missing-export-with-intent/package.json
+ M ../missing-local-module-export/helper.js
+ M ../missing-local-module-export/index.js
+ M ../missing-local-module-export/package.json
+ M ../missing-module/index.js
+ M ../missing-module/package.json
+ M ../normal-policy-allows-validated-patch/expected.json
+ M ../normal-policy-allows-validated-patch/index.js
+ M ../normal-policy-allows-validated-patch/package.json
+ M ../not-a-function/index.js
+ M ../not-a-function/package.json
+ M index.js
+ M package.json
+ M ../runtime-error-in-imported-file/helper.js
+ M ../runtime-error-in-imported-file/index.js
+ M ../runtime-error-in-imported-file/package.json
+ M ../same-file-reference-error-with-intent/index.js
+ M ../same-file-reference-error-with-intent/package.json
+ M ../undefined-variable/index.js
+ M ../undefined-variable/package.json
+ M ../weak-evidence-rejected/index.js
+ M ../weak-evidence-rejected/package.json
+ M ../wrong-import-evidence-validated/helper.js
+ M ../wrong-import-evidence-validated/index.js
+ M ../wrong-import-evidence-validated/package.json
+ M ../wrong-import-name-with-intent/helper.js
+ M ../wrong-import-name-with-intent/index.js
+ M ../wrong-import-name-with-intent/package.json
+ M ../wrong-import-name/helper.js
+ M ../wrong-import-name/index.js
+ M ../wrong-import-name/package.json
+?? ../../.scenario-unit/
+?? ../../src/repair/repairDecisionAudit.ts
+?? ../../src/repair/repairOutcomeClassifier.ts
+?? ../../src/repair/validationDelta.ts
+?? ../access-before-init/.scenario-debug/
+?? ../confidence-downgrade-on-ambiguous-context/.scenario-debug/
+?? ../conservative-policy-allows-safe-export/.scenario-debug/
+?? ../conservative-policy-blocks-risky-append/.scenario-debug/
+?? ../duplicate-declaration/.scenario-debug/
+?? ../helper-function-not-exported/.scenario-debug/
+?? ../low-confidence-fallback-intent/.scenario-debug/
+?? ../manual-review-policy-blocks-mutation/.scenario-debug/
+?? ../missing-export-evidence-validated/.scenario-debug/
+?? ../missing-export-with-intent/.scenario-debug/
+?? ../missing-local-module-export/.scenario-debug/
+?? ../missing-module/.scenario-debug/
+?? ../missing-module/package-lock.json
+?? ../normal-policy-allows-validated-patch/.scenario-debug/
+?? ../not-a-function/.scenario-debug/
+?? ../runtime-error-in-imported-file/.scenario-debug/
+?? ../same-file-reference-error-with-intent/.scenario-debug/
+?? ../undefined-variable/.scenario-debug/
+?? ../weak-evidence-rejected/.scenario-debug/
+?? ../wrong-import-evidence-validated/.scenario-debug/
+?? ../wrong-import-name-with-intent/.scenario-debug/
+?? ../wrong-import-name/.scenario-debug/
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Running bugfix pre-validation...
+Running validation: node index.js
+Pre-validation failure classified: unknown -> ai-fix (low confidence)
+Context-aware repair target: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\index.js (low) - Fallback to failing file because no specific repair target rule matched.
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop\.factory\runs\2026-05-09T11-15-17-130Z\final-report.md
+Suggested commit message: fix: fix app
+Run completed.
+
+Final Summary
+Run ID: 2026-05-09T11-15-17-130Z
+Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\retry-stop
+Task: Fix app
+Attempts: 1
+Applied changes: 0
+Final status: fail
+Review status: fail
+Successful commands: None
+Skipped commands: None
+Failed commands: node index.js
+Notes: Command failed: node index.js | Repair strategy requested more context; continuing with context-aware target selection. | Mutation skipped before patch intent validation because repair evidence requires manual review. | No file operations were generated; feature implementation was not applied. | Retry stopped: Repair evidence validation requires manual review

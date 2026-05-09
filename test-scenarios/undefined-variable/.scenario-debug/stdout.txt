@@ -1,0 +1,55 @@
+Running software-factory pipeline...
+Mode detected: bugfix
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\undefined-variable\.factory\runs\2026-05-09T11-13-48-722Z
+Repository has existing uncommitted changes.
+M ../../scripts/run-scenarios.js
+ M ../../src/orchestrator/runTask.ts
+ M ../conservative-policy-allows-safe-export/expected.json
+ M ../conservative-policy-blocks-risky-append/expected.json
+ M ../duplicate-declaration/index.js
+ M ../duplicate-declaration/package.json
+ M ../manual-review-policy-blocks-mutation/expected.json
+ M ../missing-module/index.js
+ M ../missing-module/package.json
+ M ../normal-policy-allows-validated-patch/expected.json
+ M index.js
+ M package.json
+?? ../../.scenario-unit/
+?? ../../src/repair/repairDecisionAudit.ts
+?? ../../src/repair/repairOutcomeClassifier.ts
+?? ../../src/repair/validationDelta.ts
+?? ../duplicate-declaration/.scenario-debug/
+?? ../missing-module/.scenario-debug/
+?? ../missing-module/package-lock.json
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Running bugfix pre-validation...
+Running validation: node index.js
+Pre-validation failure classified: undefined-variable -> safe-replacement (high confidence)
+Context-aware repair target: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\undefined-variable\index.js (low) - Fallback to failing file because no specific repair target rule matched.
+Applied safe-replacement for symbol: testVar
+
+Proposed file operations:
+- PATCH index.js (Safe replacement for undefined variable testVar in console.log)
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Changes approved. Applying file operations...
+Applying changes and running post-approval steps...
+SafePatchEngine: applied patch
+Running validation: node index.js
+Applied operation path: index.js
+Commit candidate path: index.js
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\undefined-variable\.factory\runs\2026-05-09T11-13-48-722Z\final-report.md
+Suggested commit message: fix: fix undefined variable
+Run completed.
+
+Final Summary
+Run ID: 2026-05-09T11-13-48-722Z
+Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\undefined-variable
+Task: Fix undefined variable
+Attempts: 1
+Applied changes: 1
+Final status: pass
+Review status: pass
+Successful commands: node index.js
+Skipped commands: None
+Failed commands: None
+Notes: No command failures detected in mock review. | Evidence validation allowed conservative repair mode.

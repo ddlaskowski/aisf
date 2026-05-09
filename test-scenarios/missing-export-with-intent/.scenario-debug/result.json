@@ -1,0 +1,36 @@
+{
+  "status": 0,
+  "signal": null,
+  "cliPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\dist\\cli.js",
+  "scenarioRepoPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\missing-export-with-intent",
+  "runsDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\missing-export-with-intent\\.factory\\runs",
+  "runsDirExists": true,
+  "latestRunDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\missing-export-with-intent\\.factory\\runs\\2026-05-09T11-14-38-239Z",
+  "finalReportExists": true,
+  "classificationFilesFound": [
+    "failure-classification-attempt-1.json",
+    "failure-classification-prevalidation.json"
+  ],
+  "prevalidationClassificationExists": true,
+  "selectedClassificationFile": "failure-classification-prevalidation.json",
+  "contextAwareTargetFilesFound": [],
+  "selectedContextAwareTargetFile": null,
+  "contextAwareRepairTarget": null,
+  "repairIntentFilesFound": [],
+  "selectedRepairIntentFile": null,
+  "repairIntent": null,
+  "repairEvidenceValidationFilesFound": [],
+  "selectedRepairEvidenceValidationFile": null,
+  "repairEvidenceValidation": null,
+  "repairPatchPolicyFilesFound": [],
+  "selectedRepairPatchPolicyFile": null,
+  "repairPatchPolicy": null,
+  "patchIntentValidationFilesFound": [],
+  "selectedPatchIntentValidationFile": null,
+  "patchIntentValidation": null,
+  "changes": {
+    "operations": []
+  },
+  "retryStopExists": true,
+  "patch": null
+}

@@ -1,0 +1,253 @@
+Running software-factory pipeline...
+Mode detected: bugfix
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\helper-function-not-exported\.factory\runs\2026-05-09T11-14-20-679Z
+Repository has existing uncommitted changes.
+M ../../scripts/run-scenarios.js
+ M ../../src/orchestrator/runTask.ts
+ M ../access-before-init/index.js
+ M ../access-before-init/package.json
+ M ../conservative-policy-allows-safe-export/expected.json
+ M ../conservative-policy-blocks-risky-append/expected.json
+ M ../duplicate-declaration/index.js
+ M ../duplicate-declaration/package.json
+ M helper.js
+ M index.js
+ M package.json
+ M ../manual-review-policy-blocks-mutation/expected.json
+ M ../missing-local-module-export/helper.js
+ M ../missing-local-module-export/index.js
+ M ../missing-local-module-export/package.json
+ M ../missing-module/index.js
+ M ../missing-module/package.json
+ M ../normal-policy-allows-validated-patch/expected.json
+ M ../not-a-function/index.js
+ M ../not-a-function/package.json
+ M ../undefined-variable/index.js
+ M ../undefined-variable/package.json
+ M ../wrong-import-name/helper.js
+ M ../wrong-import-name/index.js
+ M ../wrong-import-name/package.json
+?? ../../.scenario-unit/
+?? ../../src/repair/repairDecisionAudit.ts
+?? ../../src/repair/repairOutcomeClassifier.ts
+?? ../../src/repair/validationDelta.ts
+?? ../access-before-init/.scenario-debug/
+?? ../duplicate-declaration/.scenario-debug/
+?? ../missing-local-module-export/.scenario-debug/
+?? ../missing-module/.scenario-debug/
+?? ../missing-module/package-lock.json
+?? ../not-a-function/.scenario-debug/
+?? ../undefined-variable/.scenario-debug/
+?? ../wrong-import-name/.scenario-debug/
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Running bugfix pre-validation...
+Running validation: node index.js
+Pre-validation failure classified: unknown -> ai-fix (low confidence)
+AI generating multi-file operations...
+{
+  "id": "resp_0e1ffa208706f2a70069ff170c2914819498384813d7884a96",
+  "object": "response",
+  "created_at": 1778325260,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1778325262,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4o-mini-2024-07-18",
+  "moderation": null,
+  "output": [
+    {
+      "id": "msg_0e1ffa208706f2a70069ff170ced78819494c365d2501a534c",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"helper.js\",\n      \"patch\": {\n        \"insertAfter\": \"export function calculateTotal() {\",\n        \"content\": \"  // Your implementation here\\n  return 0;\\n}\",\n        \"replace\": {\n          \"target\": \"export function calculateTotal() {\",\n          \"with\": \"export function calculateTotal() {\\n  // Your implementation here\\n  return 0;\\n}\"\n        }\n      },\n      \"reason\": \"Add the calculateTotal function export to helper.js to resolve the import error in index.js.\"\n    }\n  ]\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "in_memory",
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 0,
+  "text": {
+    "format": {
+      "type": "json_object"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 1537,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 134,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 1671
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"helper.js\",\n      \"patch\": {\n        \"insertAfter\": \"export function calculateTotal() {\",\n        \"content\": \"  // Your implementation here\\n  return 0;\\n}\",\n        \"replace\": {\n          \"target\": \"export function calculateTotal() {\",\n          \"with\": \"export function calculateTotal() {\\n  // Your implementation here\\n  return 0;\\n}\"\n        }\n      },\n      \"reason\": \"Add the calculateTotal function export to helper.js to resolve the import error in index.js.\"\n    }\n  ]\n}"
+}
+RAW AI TEXT LENGTH: 545
+Extracted AI text: {
+  "operations": [
+    {
+      "type": "modify",
+      "path": "helper.js",
+      "patch": {
+        "insertAfter": "export function calculateTotal() {",
+        "content": "  // Your implementation 
+AI response received
+Parsing AI response...
+Filtering operation (MODIFY helper.js): unsupported operation type
+Filtered 1 operations (policy enforcement)
+AI returned no bugfix operations and no bugfix fallback target was available.
+AI returned no file operations. Nothing to apply.
+Failure classified: unknown -> ai-fix (low confidence)
+Self-healing attempt 1
+Runtime error passed to AI:
+file:///C:/Users/ddlas/Code/AI%20Software%20Factory/software-factory/test-scenarios/helper-function-not-exported/index.js:1
+import { calculateTotal } from "./helper.js";
+         ^^^^^^^^^^^^^^
+SyntaxError: The requested module './helper.js' does not provide an export named 'calculateTotal'
+    at ModuleJob._instantiate (node:internal/modules/esm/module_job:181:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:264:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:580:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:98:5)
+
+Node.js v23.6.0
+AI generating multi-file operations...
+{
+  "id": "resp_07c001022fd93bb30069ff170ef5f48193be64a1759e81e99f",
+  "object": "response",
+  "created_at": 1778325262,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1778325264,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4o-mini-2024-07-18",
+  "moderation": null,
+  "output": [
+    {
+      "id": "msg_07c001022fd93bb30069ff170f896c8193b2f791744b9ae4ab",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"helper.js\",\n      \"patch\": {\n        \"insertAfter\": \"export const calculateTotal = (items) => {\",\n        \"content\": \"  return items.reduce((total, item) => total + item.price, 0);\\n};\"\n      },\n      \"reason\": \"Adding the calculateTotal function export to helper.js to resolve the import error in index.js.\"\n    }\n  ]\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "in_memory",
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 0,
+  "text": {
+    "format": {
+      "type": "json_object"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 1528,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 102,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 1630
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "{\n  \"operations\": [\n    {\n      \"type\": \"modify\",\n      \"path\": \"helper.js\",\n      \"patch\": {\n        \"insertAfter\": \"export const calculateTotal = (items) => {\",\n        \"content\": \"  return items.reduce((total, item) => total + item.price, 0);\\n};\"\n      },\n      \"reason\": \"Adding the calculateTotal function export to helper.js to resolve the import error in index.js.\"\n    }\n  ]\n}"
+}
+RAW AI TEXT LENGTH: 385
+Extracted AI text: {
+  "operations": [
+    {
+      "type": "modify",
+      "path": "helper.js",
+      "patch": {
+        "insertAfter": "export const calculateTotal = (items) => {",
+        "content": "  return items.re
+AI response received
+Parsing AI response...
+Filtering operation (MODIFY helper.js): unsupported operation type
+Filtered 1 operations (policy enforcement)
+AI returned no bugfix operations and no bugfix fallback target was available.
+AI returned no file operations. Nothing to apply.
+Retry stopped: Same failure repeated twice
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\helper-function-not-exported\.factory\runs\2026-05-09T11-14-20-679Z\final-report.md
+Suggested commit message: fix: fix helper function export
+Run completed.
+
+Final Summary
+Run ID: 2026-05-09T11-14-20-679Z
+Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\helper-function-not-exported
+Task: Fix helper function export
+Attempts: 1
+Applied changes: 0
+Final status: fail
+Review status: fail
+Successful commands: None
+Skipped commands: None
+Failed commands: node index.js
+Notes: Command failed: node index.js | No file operations were generated; feature implementation was not applied. | Self-healing attempt 1 generated no file operations. | Retry stopped: Same failure repeated twice

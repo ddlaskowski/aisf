@@ -1,2 +1,2 @@
-import { greet } from "./helper.js";
+import { correctGreetUser } from "./helper.js";
 console.log(greet("Factory"));

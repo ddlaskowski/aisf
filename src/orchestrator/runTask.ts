@@ -60,6 +60,12 @@ import { buildFailureSignature } from "../repair/failureSignature.js";
 import { getProjectId, loadFailureMemory, type FailureMemoryStore, type FailureMemoryOutcome } from "../repair/failureMemory.js";
 import { lookupFailureMemory, type FailureMemoryHint } from "../repair/failureMemoryLookup.js";
 import { updateFailureMemory } from "../repair/failureMemoryUpdate.js";
+import { buildValidationDelta, type ValidationDelta } from "../repair/validationDelta.js";
+import {
+  classifyRepairOutcome,
+  type RepairOutcomeClassification
+} from "../repair/repairOutcomeClassifier.js";
+import { auditRepairDecision, type RepairDecisionAudit } from "../repair/repairDecisionAudit.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -946,7 +952,11 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let repairPatchPolicy: RepairPatchPolicyDecision | null = null;
   let patchIntentValidation: PatchIntentValidationResult | null = null;
   let errorSignature: string | null = null;
+  let initialFailureSignature: string | null = null;
   let failureMemoryHint: FailureMemoryHint | null = null;
+  let validationDelta: ValidationDelta | null = null;
+  let repairOutcome: RepairOutcomeClassification | null = null;
+  let repairDecisionAudit: RepairDecisionAudit | null = null;
   let mutationSkippedForEvidence = false;
   let mutationSkippedForPolicy = false;
 
@@ -981,6 +991,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         failure: prevalidationFailure
       });
       errorSignature = prevalidationMemory.errorSignature;
+      initialFailureSignature = initialFailureSignature ?? errorSignature;
       failureMemoryHint = prevalidationMemory.hint;
       repairStrategy = await decideAndSaveRepairStrategy({
         runDir: state.runDir,
@@ -1354,6 +1365,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       targetFile: contextAwareRepairTarget?.filePath
     });
     errorSignature = retryMemory.errorSignature;
+    initialFailureSignature = initialFailureSignature ?? errorSignature;
     failureMemoryHint = retryMemory.hint;
     repairStrategy = await decideAndSaveRepairStrategy({
       runDir: state.runDir,
@@ -1884,16 +1896,55 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   }
 
   await saveStateFile(state.runDir, "commit-result.json", commitResult);
+  let finalFailureSignature: string | undefined;
+  if (review.verdict === "fail" && commandResults) {
+    const finalFailure = classifyCommandFailure(commandResults);
+    const finalRuntimeError = extractRuntimeError(commandResults);
+    finalFailureSignature = buildFailureSignature({
+      errorType: finalFailure.type,
+      errorMessage: finalFailure.details.rawMessage || finalRuntimeError,
+      stderr: finalRuntimeError,
+      topProjectStackFrame: findErrorFileFromStack(finalRuntimeError) ?? undefined,
+      targetFile: contextAwareRepairTarget?.filePath,
+      symbolName: finalFailure.details.symbol ?? finalFailure.details.moduleName
+    });
+  }
+  validationDelta = buildValidationDelta({
+    beforeSignature: initialFailureSignature ?? errorSignature,
+    afterSignature: finalFailureSignature,
+    validationPassed: review.verdict === "pass",
+    validationProgressed: !!finalFailureSignature && !!(initialFailureSignature ?? errorSignature) && finalFailureSignature !== (initialFailureSignature ?? errorSignature)
+  });
+  repairOutcome = classifyRepairOutcome({
+    validationDelta,
+    validationPassed: review.verdict === "pass",
+    evidenceManualReview: mutationSkippedForEvidence || repairRetryDecision?.nextAction === "manual-review",
+    patchPolicy: repairPatchPolicy,
+    retryBlockedByHistory: repairRetryDecision?.reason.toLowerCase().includes("failure memory") ?? false
+  });
+  repairDecisionAudit = auditRepairDecision({
+    retryDecision: repairRetryDecision,
+    reasonCode: repairOutcome.reasonCode,
+    policyDenied: mutationSkippedForPolicy || repairOutcome.outcome === "policy-denied",
+    manualReview: mutationSkippedForEvidence || repairOutcome.outcome === "manual-review-required",
+    historyBlocked: repairOutcome.reasonCode === "RETRY_BLOCKED_BY_HISTORY",
+    evidenceWarnings: repairEvidenceValidation?.warnings,
+    policyWarnings: repairPatchPolicy?.warnings,
+    memoryWarnings: failureMemoryHint?.warnings
+  });
+  await saveStateFile(state.runDir, "validation-delta.json", validationDelta);
+  await saveStateFile(state.runDir, "repair-outcome.json", repairOutcome);
+  await saveStateFile(state.runDir, "repair-decision-audit.json", repairDecisionAudit);
+
   let failureMemoryOutcome: FailureMemoryOutcome | null = null;
   if (errorSignature && repairStrategy) {
-    failureMemoryOutcome =
-      mutationSkippedForPolicy || repairPatchPolicy?.recommendedAction === "block-mutation"
-        ? "policy-denied"
-        : mutationSkippedForEvidence || repairRetryDecision?.nextAction === "manual-review"
-        ? "manual-review"
-        : review.verdict === "pass"
-        ? "success"
-        : "failed";
+    failureMemoryOutcome = repairOutcome.outcome === "policy-denied"
+      ? "policy-denied"
+      : repairOutcome.outcome === "manual-review-required"
+      ? "manual-review"
+      : repairOutcome.outcome === "success"
+      ? "success"
+      : "failed";
     const updatedMemory = await updateFailureMemory({
       repoPath,
       errorSignature,
@@ -1901,12 +1952,14 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       repairType: repairIntent?.repairType,
       targetFile: contextAwareRepairTarget?.filePath,
       outcome: failureMemoryOutcome,
-      validationChanged: totalAppliedChanges > 0,
+      validationChanged: repairOutcome.changedValidationState,
       retryCount: attempts
     });
     await saveStateFile(state.runDir, "failure-memory-update.json", {
       errorSignature,
       outcome: failureMemoryOutcome,
+      repairOutcome: repairOutcome.outcome,
+      reasonCode: repairOutcome.reasonCode,
       strategy: repairStrategy.strategy,
       repairType: repairIntent?.repairType,
       targetFile: contextAwareRepairTarget?.filePath,
@@ -1917,6 +1970,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   await saveStateFile(state.runDir, "repair-observability.json", {
     repairStrategy,
     repairRetryDecision,
+    validationDelta,
+    repairOutcome,
+    repairDecisionAudit,
     failureMemory: failureMemoryHint
       ? {
           ...failureMemoryHint,
@@ -1977,6 +2033,22 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       failureMemoryHint ? (failureMemoryHint.recommendManualReview ? "manual-review" : "continue-with-gates") : "not available"
     }`,
     `- Failure memory warnings: ${failureMemoryHint ? formatList(failureMemoryHint.warnings) : "not available"}`,
+    "",
+    "## Repair outcome",
+    `- Outcome: ${repairOutcome?.outcome ?? "not available"}`,
+    `- Reason code: ${repairOutcome?.reasonCode ?? "not available"}`,
+    `- Changed validation state: ${repairOutcome ? String(repairOutcome.changedValidationState) : "not available"}`,
+    `- Before failure signature: ${repairOutcome?.beforeFailureSignature ?? "not available"}`,
+    `- After failure signature: ${repairOutcome?.afterFailureSignature ?? "not available"}`,
+    `- Explanation: ${repairOutcome?.explanation ?? "not available"}`,
+    `- Warnings: ${repairOutcome ? formatList(repairOutcome.warnings) : "not available"}`,
+    "",
+    "## Retry audit",
+    `- Retry decision: ${repairDecisionAudit?.retryDecision ?? "not available"}`,
+    `- Reason code: ${repairDecisionAudit?.reasonCode ?? "not available"}`,
+    `- Explanation: ${repairDecisionAudit?.explanation ?? "not available"}`,
+    `- Blocking factors: ${repairDecisionAudit ? formatList(repairDecisionAudit.blockingFactors) : "not available"}`,
+    `- Influencing factors: ${repairDecisionAudit ? formatList(repairDecisionAudit.influencingFactors) : "not available"}`,
     "",
     `- Repair intent: ${repairIntent?.repairType ?? "None"}`,
     `- Repair intent target: ${repairIntent?.targetFile ?? "n/a"}`,

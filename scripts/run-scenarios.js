@@ -4485,6 +4485,274 @@ function runFailureMemoryScenarioHardeningUnit() {
   }
 }
 
+function runRepairValidationDeltaUnit() {
+  const { buildValidationDelta } = require(path.join(projectRoot, "dist", "repair", "validationDelta.js"));
+
+  try {
+    const resolved = buildValidationDelta({ beforeSignature: "a", validationPassed: true });
+    if (resolved.outcome !== "resolved" || !resolved.changed) {
+      throw new Error(`resolved delta mismatch: ${JSON.stringify(resolved)}`);
+    }
+
+    const unchanged = buildValidationDelta({ beforeSignature: "a", afterSignature: "a" });
+    if (unchanged.outcome !== "unchanged" || unchanged.changed) {
+      throw new Error(`unchanged delta mismatch: ${JSON.stringify(unchanged)}`);
+    }
+
+    const changed = buildValidationDelta({ beforeSignature: "a", afterSignature: "b" });
+    if (changed.outcome !== "changed" || !changed.changed) {
+      throw new Error(`changed delta mismatch: ${JSON.stringify(changed)}`);
+    }
+
+    const worsened = buildValidationDelta({ beforeSignature: "a", afterSignature: "b", validationRegressed: true });
+    if (worsened.outcome !== "worsened" || !worsened.changed) {
+      throw new Error(`worsened delta mismatch: ${JSON.stringify(worsened)}`);
+    }
+
+    console.log("PASS repair-validation-delta-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-validation-delta-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairOutcomeClassifierUnit() {
+  const { classifyRepairOutcome } = require(path.join(projectRoot, "dist", "repair", "repairOutcomeClassifier.js"));
+
+  function assertOutcome(name, actual, outcome, reasonCode) {
+    if (actual.outcome !== outcome || actual.reasonCode !== reasonCode) {
+      throw new Error(`${name}: expected ${outcome}/${reasonCode}, got ${JSON.stringify(actual)}`);
+    }
+  }
+
+  try {
+    assertOutcome(
+      "success",
+      classifyRepairOutcome({ validationPassed: true, validationDelta: { beforeSignature: "a", changed: true, outcome: "resolved" } }),
+      "success",
+      "VALIDATION_PASSED"
+    );
+    assertOutcome(
+      "same error",
+      classifyRepairOutcome({ validationDelta: { beforeSignature: "a", afterSignature: "a", changed: false, outcome: "unchanged" } }),
+      "failed-same-error",
+      "ERROR_UNCHANGED"
+    );
+    assertOutcome(
+      "new error",
+      classifyRepairOutcome({ validationDelta: { beforeSignature: "a", afterSignature: "b", changed: true, outcome: "changed" } }),
+      "failed-new-error",
+      "ERROR_CHANGED"
+    );
+    assertOutcome(
+      "worse",
+      classifyRepairOutcome({ validationDelta: { beforeSignature: "a", afterSignature: "b", changed: true, outcome: "worsened" } }),
+      "failed-worse",
+      "ERROR_WORSENED"
+    );
+    assertOutcome(
+      "policy denied",
+      classifyRepairOutcome({
+        validationDelta: { beforeSignature: "a", changed: false, outcome: "unchanged" },
+        patchPolicy: { ok: false, mode: "conservative", allowedOperations: [], blockedOperations: ["risky-append"], warnings: [], reason: "blocked", recommendedAction: "block-mutation" }
+      }),
+      "policy-denied",
+      "POLICY_DENIED"
+    );
+    assertOutcome(
+      "manual review",
+      classifyRepairOutcome({ validationDelta: { beforeSignature: "a", changed: false, outcome: "unchanged" }, evidenceManualReview: true }),
+      "manual-review-required",
+      "MANUAL_REVIEW_REQUIRED"
+    );
+
+    console.log("PASS repair-outcome-classifier-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-outcome-classifier-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairDecisionAuditUnit() {
+  const { auditRepairDecision } = require(path.join(projectRoot, "dist", "repair", "repairDecisionAudit.js"));
+
+  try {
+    const audit = auditRepairDecision({
+      retryDecision: {
+        shouldRetry: true,
+        nextAction: "retry-different-strategy",
+        reason: "switch strategy",
+        previousStrategies: ["undefined-symbol"],
+        blockedStrategies: ["undefined-symbol"]
+      },
+      reasonCode: "ERROR_CHANGED",
+      historyBlocked: true,
+      evidenceWarnings: ["medium confidence"],
+      memoryWarnings: ["historical failure"]
+    });
+    if (audit.retryDecision !== "retry-different-strategy" || !audit.blockingFactors.includes("historical-failure-memory")) {
+      throw new Error(`audit mismatch: ${JSON.stringify(audit)}`);
+    }
+    if (!audit.influencingFactors.some((factor) => factor.includes("evidence:")) || !audit.influencingFactors.some((factor) => factor.includes("memory:"))) {
+      throw new Error(`audit influencing factors missing: ${JSON.stringify(audit)}`);
+    }
+
+    const stop = auditRepairDecision({ retryDecision: null, reasonCode: "NO_RUNTIME_CHANGE" });
+    if (stop.retryDecision !== "stop") {
+      throw new Error(`missing retry decision should stop, got ${JSON.stringify(stop)}`);
+    }
+
+    console.log("PASS repair-decision-audit-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-decision-audit-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairOutcomeReportUnit() {
+  try {
+    const repairOutcome = {
+      outcome: "failed-same-error",
+      reasonCode: "ERROR_UNCHANGED",
+      changedValidationState: false,
+      beforeFailureSignature: "sig",
+      afterFailureSignature: "sig",
+      explanation: "same error",
+      warnings: []
+    };
+    const audit = {
+      retryDecision: "manual-review",
+      reasonCode: "ERROR_UNCHANGED",
+      explanation: "blocked",
+      blockingFactors: ["same-strategy"],
+      influencingFactors: []
+    };
+    const observability = JSON.parse(JSON.stringify({ repairOutcome, repairDecisionAudit: audit }));
+    const report = [
+      "## Repair outcome",
+      `- Outcome: ${repairOutcome.outcome}`,
+      `- Reason code: ${repairOutcome.reasonCode}`,
+      "## Retry audit",
+      `- Retry decision: ${audit.retryDecision}`,
+      `- Blocking factors: ${audit.blockingFactors.join(", ")}`
+    ].join("\n");
+
+    if (!observability.repairOutcome || !observability.repairDecisionAudit) {
+      throw new Error(`observability missing outcome/audit: ${JSON.stringify(observability)}`);
+    }
+    for (const needle of ["## Repair outcome", "- Outcome:", "- Reason code:", "## Retry audit", "- Retry decision:"]) {
+      if (!report.includes(needle)) {
+        throw new Error(`report missing ${needle}: ${report}`);
+      }
+    }
+
+    console.log("PASS repair-outcome-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-outcome-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairOutcomeMemoryIntegrationUnit() {
+  const { appendFailureMemoryRecord } = require(path.join(projectRoot, "dist", "repair", "failureMemoryUpdate.js"));
+  const { lookupFailureMemory } = require(path.join(projectRoot, "dist", "repair", "failureMemoryLookup.js"));
+
+  try {
+    const store = appendFailureMemoryRecord(
+      { schemaVersion: 1, records: [] },
+      {
+        schemaVersion: 1,
+        errorSignature: "sig",
+        strategy: "undefined-symbol",
+        repairType: "runtime-local-error",
+        targetFile: "index.js",
+        outcome: "failed",
+        validationChanged: false,
+        retryCount: 1,
+        timestamp: 1
+      }
+    );
+    const updated = appendFailureMemoryRecord(store, {
+      schemaVersion: 1,
+      errorSignature: "sig",
+      strategy: "undefined-symbol",
+      repairType: "runtime-local-error",
+      targetFile: "index.js",
+      outcome: "failed",
+      validationChanged: false,
+      retryCount: 2,
+      timestamp: 2
+    });
+    const hint = lookupFailureMemory({ store: updated, errorSignature: "sig" });
+    if (!hint.discouragedStrategies.includes("undefined-symbol")) {
+      throw new Error(`outcome memory integration should discourage repeated failed strategy, got ${JSON.stringify(hint)}`);
+    }
+
+    console.log("PASS repair-outcome-memory-integration-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-outcome-memory-integration-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairOutcomeScenarioHardeningUnit() {
+  const { classifyRepairOutcome } = require(path.join(projectRoot, "dist", "repair", "repairOutcomeClassifier.js"));
+  const { auditRepairDecision } = require(path.join(projectRoot, "dist", "repair", "repairDecisionAudit.js"));
+
+  try {
+    const scenarios = [
+      ["repair-outcome-success", classifyRepairOutcome({ validationPassed: true, validationDelta: { beforeSignature: "a", changed: true, outcome: "resolved" } }), "success"],
+      ["repair-outcome-same-error", classifyRepairOutcome({ validationDelta: { beforeSignature: "a", afterSignature: "a", changed: false, outcome: "unchanged" } }), "failed-same-error"],
+      ["repair-outcome-new-error", classifyRepairOutcome({ validationDelta: { beforeSignature: "a", afterSignature: "b", changed: true, outcome: "changed" } }), "failed-new-error"],
+      ["repair-outcome-worsened", classifyRepairOutcome({ validationDelta: { beforeSignature: "a", afterSignature: "b", changed: true, outcome: "worsened" } }), "failed-worse"],
+      ["repair-outcome-validation-improved", classifyRepairOutcome({ validationDelta: { beforeSignature: undefined, afterSignature: undefined, changed: true, outcome: "changed" } }), "validation-improved"],
+      ["repair-outcome-policy-denied", classifyRepairOutcome({ validationDelta: { beforeSignature: "a", changed: false, outcome: "unchanged" }, patchPolicy: { ok: false, mode: "conservative", allowedOperations: [], blockedOperations: ["risky-append"], warnings: [], reason: "blocked", recommendedAction: "block-mutation" } }), "policy-denied"],
+      ["repair-outcome-manual-review", classifyRepairOutcome({ validationDelta: { beforeSignature: "a", changed: false, outcome: "unchanged" }, evidenceManualReview: true }), "manual-review-required"]
+    ];
+    for (const [name, actual, expected] of scenarios) {
+      if (actual.outcome !== expected) {
+        throw new Error(`${name}: expected ${expected}, got ${JSON.stringify(actual)}`);
+      }
+      console.log(`PASS ${name}`);
+    }
+
+    const different = auditRepairDecision({
+      retryDecision: { shouldRetry: true, nextAction: "retry-different-strategy", reason: "switch", previousStrategies: ["a"], blockedStrategies: ["a"] },
+      reasonCode: "ERROR_CHANGED"
+    });
+    if (different.retryDecision !== "retry-different-strategy" || !different.blockingFactors.some((factor) => factor.includes("blocked-strategies"))) {
+      throw new Error(`retry-audit-different-strategy mismatch: ${JSON.stringify(different)}`);
+    }
+    console.log("PASS retry-audit-different-strategy");
+
+    const stop = auditRepairDecision({
+      retryDecision: { shouldRetry: false, nextAction: "manual-review", reason: "Failure memory recommends manual review", previousStrategies: ["a"], blockedStrategies: ["a"] },
+      reasonCode: "RETRY_BLOCKED_BY_HISTORY",
+      historyBlocked: true
+    });
+    if (stop.retryDecision !== "manual-review" || !stop.blockingFactors.includes("historical-failure-memory")) {
+      throw new Error(`retry-audit-stop-after-history mismatch: ${JSON.stringify(stop)}`);
+    }
+    console.log("PASS retry-audit-stop-after-history");
+
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-outcome-scenario-hardening-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -4638,6 +4906,24 @@ async function main() {
     failed += 1;
   }
   if (!runFailureMemoryScenarioHardeningUnit()) {
+    failed += 1;
+  }
+  if (!runRepairValidationDeltaUnit()) {
+    failed += 1;
+  }
+  if (!runRepairOutcomeClassifierUnit()) {
+    failed += 1;
+  }
+  if (!runRepairDecisionAuditUnit()) {
+    failed += 1;
+  }
+  if (!runRepairOutcomeReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairOutcomeMemoryIntegrationUnit()) {
+    failed += 1;
+  }
+  if (!runRepairOutcomeScenarioHardeningUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

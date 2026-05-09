@@ -1,0 +1,49 @@
+{
+  "status": 0,
+  "signal": null,
+  "cliPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\dist\\cli.js",
+  "scenarioRepoPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\duplicate-declaration",
+  "runsDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\duplicate-declaration\\.factory\\runs",
+  "runsDirExists": true,
+  "latestRunDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\duplicate-declaration\\.factory\\runs\\2026-05-09T11-13-45-461Z",
+  "finalReportExists": true,
+  "classificationFilesFound": [
+    "failure-classification-prevalidation.json"
+  ],
+  "prevalidationClassificationExists": true,
+  "selectedClassificationFile": "failure-classification-prevalidation.json",
+  "contextAwareTargetFilesFound": [],
+  "selectedContextAwareTargetFile": null,
+  "contextAwareRepairTarget": null,
+  "repairIntentFilesFound": [],
+  "selectedRepairIntentFile": null,
+  "repairIntent": null,
+  "repairEvidenceValidationFilesFound": [],
+  "selectedRepairEvidenceValidationFile": null,
+  "repairEvidenceValidation": null,
+  "repairPatchPolicyFilesFound": [],
+  "selectedRepairPatchPolicyFile": null,
+  "repairPatchPolicy": null,
+  "patchIntentValidationFilesFound": [],
+  "selectedPatchIntentValidationFile": null,
+  "patchIntentValidation": null,
+  "changes": {
+    "operations": [
+      {
+        "type": "modify",
+        "path": "index.js",
+        "patch": {
+          "type": "replace",
+          "target": {
+            "type": "exact",
+            "match": "\nconst logger = console.log;"
+          },
+          "replacement": ""
+        },
+        "reason": "Deterministic fix for duplicate declaration"
+      }
+    ]
+  },
+  "retryStopExists": false,
+  "patch": null
+}

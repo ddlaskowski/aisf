@@ -1,0 +1,124 @@
+{
+  "status": 0,
+  "signal": null,
+  "cliPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\dist\\cli.js",
+  "scenarioRepoPath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\same-file-reference-error-with-intent",
+  "runsDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\same-file-reference-error-with-intent\\.factory\\runs",
+  "runsDirExists": true,
+  "latestRunDir": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\same-file-reference-error-with-intent\\.factory\\runs\\2026-05-09T11-14-53-303Z",
+  "finalReportExists": true,
+  "classificationFilesFound": [
+    "failure-classification-prevalidation.json"
+  ],
+  "prevalidationClassificationExists": true,
+  "selectedClassificationFile": "failure-classification-prevalidation.json",
+  "contextAwareTargetFilesFound": [
+    "context-aware-repair-target-prevalidation.json"
+  ],
+  "selectedContextAwareTargetFile": "context-aware-repair-target-prevalidation.json",
+  "contextAwareRepairTarget": {
+    "filePath": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\same-file-reference-error-with-intent\\index.js",
+    "reason": "Fallback to failing file because no specific repair target rule matched.",
+    "confidence": "low",
+    "usedContextAwareDecision": true
+  },
+  "repairIntentFilesFound": [
+    "repair-intent-prevalidation.json"
+  ],
+  "selectedRepairIntentFile": "repair-intent-prevalidation.json",
+  "repairIntent": {
+    "repairType": "runtime-local-error",
+    "targetFile": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\same-file-reference-error-with-intent\\index.js",
+    "sourceFile": "C:\\Users\\ddlas\\Code\\AI Software Factory\\software-factory\\test-scenarios\\same-file-reference-error-with-intent\\index.js",
+    "symbolName": "localMissingValue",
+    "reason": "Runtime error appears local to the selected target file.",
+    "confidence": "medium",
+    "allowedMutationScope": "single-file",
+    "safetyNotes": [
+      "Mutation must remain constrained to the selected target file.",
+      "Avoid import/export rewrites unless directly required by the local runtime error."
+    ]
+  },
+  "repairEvidenceValidationFilesFound": [
+    "repair-evidence-validation-prevalidation.json"
+  ],
+  "selectedRepairEvidenceValidationFile": "repair-evidence-validation-prevalidation.json",
+  "repairEvidenceValidation": {
+    "ok": true,
+    "confidence": "medium",
+    "evidence": [
+      "Repair target file matches primary stack trace file.",
+      "Symbol localMissingValue appears in error message.",
+      "Symbol localMissingValue appears in error context.",
+      "Symbol localMissingValue appears in repair target decision.",
+      "Symbol localMissingValue appears in repair intent.",
+      "Symbol localMissingValue appears in dependency map.",
+      "Dependency/import/export relationship evidence is available."
+    ],
+    "warnings": [
+      "Evidence validation allowed conservative repair mode."
+    ],
+    "reason": "Repair evidence is sufficient for the selected repair intent.",
+    "allowedRepairMode": "conservative"
+  },
+  "repairPatchPolicyFilesFound": [
+    "repair-patch-policy-initial.json",
+    "repair-patch-policy-prevalidation.json"
+  ],
+  "selectedRepairPatchPolicyFile": "repair-patch-policy-prevalidation.json",
+  "repairPatchPolicy": {
+    "ok": true,
+    "mode": "conservative",
+    "allowedOperations": [
+      "exact-replacement",
+      "add-missing-export",
+      "correct-imported-symbol",
+      "remove-duplicate-declaration",
+      "small-single-line-edit"
+    ],
+    "blockedOperations": [
+      "risky-append",
+      "large-append",
+      "full-file-replacement",
+      "broad-import-rewrite",
+      "multi-file-mutation",
+      "wrong-target-file"
+    ],
+    "warnings": [
+      "Evidence validation allowed conservative repair mode."
+    ],
+    "reason": "Conservative patch policy allows the proposed operation set.",
+    "recommendedAction": "proceed"
+  },
+  "patchIntentValidationFilesFound": [
+    "patch-intent-validation-initial.json"
+  ],
+  "selectedPatchIntentValidationFile": "patch-intent-validation-initial.json",
+  "patchIntentValidation": {
+    "ok": true,
+    "reason": "Patch intent validated successfully.",
+    "safetyNotes": [
+      "Patch target matches repair intent target.",
+      "Single-file mutation invariant preserved."
+    ]
+  },
+  "changes": {
+    "operations": [
+      {
+        "type": "modify",
+        "path": "index.js",
+        "patch": {
+          "type": "replace",
+          "target": {
+            "type": "exact",
+            "match": "console.log(localMissingValue);"
+          },
+          "replacement": "console.log(typeof localMissingValue !== \"undefined\" ? localMissingValue : undefined);"
+        },
+        "reason": "Safe replacement for undefined variable localMissingValue in console.log"
+      }
+    ]
+  },
+  "retryStopExists": false,
+  "patch": null
+}

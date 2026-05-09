@@ -1,0 +1,60 @@
+Running software-factory pipeline...
+Mode detected: bugfix
+Run directory initialized at: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\access-before-init\.factory\runs\2026-05-09T11-13-55-344Z
+Repository has existing uncommitted changes.
+M ../../scripts/run-scenarios.js
+ M ../../src/orchestrator/runTask.ts
+ M index.js
+ M package.json
+ M ../conservative-policy-allows-safe-export/expected.json
+ M ../conservative-policy-blocks-risky-append/expected.json
+ M ../duplicate-declaration/index.js
+ M ../duplicate-declaration/package.json
+ M ../manual-review-policy-blocks-mutation/expected.json
+ M ../missing-module/index.js
+ M ../missing-module/package.json
+ M ../normal-policy-allows-validated-patch/expected.json
+ M ../not-a-function/index.js
+ M ../not-a-function/package.json
+ M ../undefined-variable/index.js
+ M ../undefined-variable/package.json
+?? ../../.scenario-unit/
+?? ../../src/repair/repairDecisionAudit.ts
+?? ../../src/repair/repairOutcomeClassifier.ts
+?? ../../src/repair/validationDelta.ts
+?? ../duplicate-declaration/.scenario-debug/
+?? ../missing-module/.scenario-debug/
+?? ../missing-module/package-lock.json
+?? ../not-a-function/.scenario-debug/
+?? ../undefined-variable/.scenario-debug/
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Running bugfix pre-validation...
+Running validation: node index.js
+Pre-validation failure classified: access-before-initialization -> reorder-init (high confidence)
+Context-aware repair target: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\access-before-init\index.js (low) - Fallback to failing file because no specific repair target rule matched.
+Applied reorder-init for symbol: value
+
+Proposed file operations:
+- PATCH index.js (Move value initialization before first console.log usage)
+Auto-approved due to --yes / SOFTWARE_FACTORY_YES
+Changes approved. Applying file operations...
+Applying changes and running post-approval steps...
+Running validation: node index.js
+Applied operation path: index.js
+Commit candidate path: index.js
+Final report saved to: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\access-before-init\.factory\runs\2026-05-09T11-13-55-344Z\final-report.md
+Suggested commit message: fix: fix initialization order
+Run completed.
+
+Final Summary
+Run ID: 2026-05-09T11-13-55-344Z
+Repo: C:\Users\ddlas\Code\AI Software Factory\software-factory\test-scenarios\access-before-init
+Task: Fix initialization order
+Attempts: 1
+Applied changes: 1
+Final status: pass
+Review status: pass
+Successful commands: node index.js
+Skipped commands: None
+Failed commands: None
+Notes: No command failures detected in mock review. | Repair strategy requested more context; continuing with context-aware target selection. | Evidence validation allowed conservative repair mode.
