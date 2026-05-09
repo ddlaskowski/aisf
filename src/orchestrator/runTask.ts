@@ -76,6 +76,9 @@ import {
   assessRepairRegressionRisk,
   type RepairRegressionRisk
 } from "../repair/repairRegressionGuard.js";
+import { buildRepairObservabilityReport } from "../repair/repairObservability.js";
+import { buildRepairDecisionTrace, renderRepairDecisionTraceMarkdown } from "../repair/repairDecisionTrace.js";
+import { buildRepairSummary } from "../repair/repairSummary.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -2113,9 +2116,13 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       hint: repairAnalytics
     });
   }
-  await saveStateFile(state.runDir, "repair-observability.json", {
+  const observabilityReport = buildRepairObservabilityReport({
+    runId: state.runId,
+    task: input.task,
+    timestamp: Date.now(),
     repairStrategy,
     repairRetryDecision,
+    failureSignature: errorSignature,
     validationDelta,
     repairOutcome,
     repairDecisionAudit,
@@ -2131,9 +2138,25 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     repairEvidenceValidation,
     repairPatchPolicy,
     patchIntentValidation,
+    repairTarget: contextAwareRepairTarget,
+    safePatch: {
+      appliedChanges: totalAppliedChanges,
+      changedFiles: appliedPaths,
+      commitCreated: commitResult.committed
+    },
+    validation: review,
     mutationSkippedForEvidence,
     mutationSkippedForPolicy
   });
+  await saveStateFile(state.runDir, "repair-observability.json", observabilityReport);
+  const decisionTraceSteps = buildRepairDecisionTrace(observabilityReport);
+  const decisionTraceMarkdown = renderRepairDecisionTraceMarkdown({
+    report: observabilityReport,
+    steps: decisionTraceSteps
+  });
+  await fs.writeFile(path.join(state.runDir, "decision-trace.md"), decisionTraceMarkdown, "utf8");
+  const repairSummary = buildRepairSummary(observabilityReport);
+  await saveStateFile(state.runDir, "repair-summary.json", repairSummary);
 
   const finalReport = [
     `# Final Report`,
@@ -2152,6 +2175,16 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Context-aware repair target: ${contextAwareRepairTarget?.filePath ?? "None"}`,
     `- Context-aware repair confidence: ${contextAwareRepairTarget?.confidence ?? "n/a"}`,
     `- Context-aware repair reason: ${contextAwareRepairTarget?.reason ?? "n/a"}`,
+    "",
+    "## Final decision",
+    `Status: ${observabilityReport.finalDecision.status}`,
+    `Reason: ${observabilityReport.finalDecision.reason}`,
+    `Blocking layer: ${observabilityReport.finalDecision.blockingLayer ?? "none"}`,
+    "",
+    "## Observability artifacts",
+    "- repair-observability.json",
+    "- decision-trace.md",
+    "- repair-summary.json",
     "",
     "## Repair strategy",
     `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,

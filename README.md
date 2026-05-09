@@ -33,6 +33,8 @@ v2.1 adds deterministic repository-local failure memory. It records stable failu
 
 v2.4 adds a deterministic Repair Regression Guard Layer. It asks whether a repair path appears historically risky and can only warn, downgrade to conservative mode, require manual review, or block before patch policy and Safe Patch Engine are reached.
 
+v2.5 adds deterministic repair observability and decision trace artifacts. It does not change repair behavior; it records what happened, which layer decided it, and why.
+
 ---
 
 ## 🧠 What It Does
@@ -563,6 +565,62 @@ Scenario-style deterministic checks:
 * regression-conservative-downgrade
 * regression-warning-only
 * regression-block-repeated-failure
+
+---
+
+## 🔎 Repair Observability & Decision Trace Layer (v2.5)
+
+v2.5 makes the repair lifecycle inspectable without changing repair behavior. It collects and normalizes existing decisions into deterministic artifacts that help answer:
+
+* why did the system do this?
+* which layer made the key decision?
+* which gate blocked or downgraded the repair?
+* what evidence supported the repair?
+* what history influenced the decision?
+* what risk was detected?
+* what final decision was made?
+
+Artifacts written per run:
+
+```text
+.factory/runs/<runId>/repair-observability.json
+.factory/runs/<runId>/decision-trace.md
+.factory/runs/<runId>/repair-summary.json
+```
+
+Example trace shape:
+
+```text
+1. PASS - Failure signature - Generated deterministic signature.
+2. PASS - Failure memory - Found 2 historical matches.
+3. WARN - Regression guard - Recommended action: proceed-with-warning.
+4. BLOCKED - Patch policy - Policy mode: conservative.
+5. SKIPPED - Safe patch - Safe patch was not applied or metadata was unavailable.
+```
+
+Final reports now include:
+
+* final decision status
+* final decision reason
+* blocking layer when present
+* names of observability artifacts
+
+Safety guarantees:
+
+* observability-only
+* no repair strategy changes
+* no patch policy changes
+* no mutation behavior changes
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+
+v2.5 deterministic checks:
+
+* repair-observability-schema-unit
+* repair-decision-trace-unit
+* repair-summary-unit
+* repair-observability-report-unit
+* repair-final-decision-unit
 
 ---
 

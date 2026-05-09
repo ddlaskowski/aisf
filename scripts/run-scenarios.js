@@ -5215,6 +5215,185 @@ function runRepairRegressionHistoryPatternUnit() {
   }
 }
 
+function sampleObservabilityInput(overrides = {}) {
+  return {
+    runId: "run-1",
+    task: "Fix app",
+    timestamp: 1,
+    failureSignature: "ReferenceError:index:foo",
+    failureMemory: { historicalMatches: 2, warnings: [] },
+    repairStrategy: { strategy: "undefined-symbol", warnings: [] },
+    repairTarget: { filePath: "index.js" },
+    repairIntent: { repairType: "runtime-local-error", targetFile: "index.js" },
+    repairEvidenceValidation: { ok: true, confidence: "high", allowedRepairMode: "normal", warnings: [] },
+    repairRegressionRisk: { riskLevel: "low", blocked: false, recommendedAction: "proceed", riskReasons: [], warnings: [] },
+    repairPatchPolicy: { ok: true, mode: "normal", recommendedAction: "proceed", warnings: [] },
+    patchIntentValidation: { ok: true, reason: "Patch target matches repair intent target.", safetyNotes: [] },
+    safePatch: { appliedChanges: 1, changedFiles: ["index.js"], commitCreated: false },
+    validation: { verdict: "pass", status: "pass" },
+    repairOutcome: { outcome: "success", explanation: "Validation passed after repair.", warnings: [] },
+    retryDecisionAudit: { retryDecision: "stop", reasonCode: "VALIDATION_PASSED", explanation: "done", blockingFactors: [], influencingFactors: [] },
+    mutationSkippedForEvidence: false,
+    mutationSkippedForPolicy: false,
+    ...overrides
+  };
+}
+
+function runRepairObservabilitySchemaUnit() {
+  const { buildRepairObservabilityReport } = require(path.join(projectRoot, "dist", "repair", "repairObservability.js"));
+
+  try {
+    const report = buildRepairObservabilityReport(sampleObservabilityInput());
+    const repeat = buildRepairObservabilityReport(sampleObservabilityInput());
+    if (report.schemaVersion !== 1) {
+      throw new Error(`schemaVersion should be 1, got ${JSON.stringify(report)}`);
+    }
+    if (!report.finalDecision || report.finalDecision.status !== "success") {
+      throw new Error(`finalDecision missing or incorrect, got ${JSON.stringify(report.finalDecision)}`);
+    }
+    if (!report.repairEvidenceValidation || !report.repairEvidence) {
+      throw new Error("Expected both normalized repairEvidence and backward-compatible repairEvidenceValidation fields.");
+    }
+    if (JSON.stringify(report) !== JSON.stringify(repeat)) {
+      throw new Error("Equivalent observability input should produce equivalent output.");
+    }
+
+    console.log("PASS repair-observability-schema-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-observability-schema-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairDecisionTraceUnit() {
+  const { buildRepairObservabilityReport } = require(path.join(projectRoot, "dist", "repair", "repairObservability.js"));
+  const { buildRepairDecisionTrace, renderRepairDecisionTraceMarkdown } = require(path.join(projectRoot, "dist", "repair", "repairDecisionTrace.js"));
+
+  try {
+    const report = buildRepairObservabilityReport(sampleObservabilityInput({
+      repairRegressionRisk: { riskLevel: "medium", blocked: false, recommendedAction: "proceed-with-warning", riskReasons: ["low score"], warnings: ["historical warning"] },
+      repairPatchPolicy: { ok: false, mode: "conservative", recommendedAction: "block-mutation", warnings: ["blocked"], reason: "blocked" }
+    }));
+    const steps = buildRepairDecisionTrace(report);
+    for (let i = 0; i < steps.length; i += 1) {
+      if (steps[i].order !== i + 1) {
+        throw new Error(`trace step order mismatch: ${JSON.stringify(steps)}`);
+      }
+    }
+    if (!steps.some((step) => step.status === "warn" && step.layer === "Regression guard")) {
+      throw new Error(`expected WARN regression step, got ${JSON.stringify(steps)}`);
+    }
+    if (!steps.some((step) => step.status === "blocked" && step.layer === "Patch policy")) {
+      throw new Error(`expected BLOCKED patch policy step, got ${JSON.stringify(steps)}`);
+    }
+    const markdown = renderRepairDecisionTraceMarkdown({ report, steps });
+    for (const needle of ["# Repair Decision Trace", "Final status:", "## Timeline", "## Warnings", "## Blocked Layers"]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`decision trace markdown missing ${needle}: ${markdown}`);
+      }
+    }
+
+    console.log("PASS repair-decision-trace-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-decision-trace-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairSummaryUnit() {
+  const { buildRepairObservabilityReport } = require(path.join(projectRoot, "dist", "repair", "repairObservability.js"));
+  const { buildRepairSummary } = require(path.join(projectRoot, "dist", "repair", "repairSummary.js"));
+
+  try {
+    const report = buildRepairObservabilityReport(sampleObservabilityInput());
+    const summary = buildRepairSummary(report);
+    const allowedKeys = [
+      "runId",
+      "status",
+      "strategy",
+      "targetFile",
+      "repairType",
+      "evidenceConfidence",
+      "riskLevel",
+      "patchPolicyMode",
+      "outcome",
+      "commitCreated"
+    ];
+    const keys = Object.keys(summary);
+    if (keys.some((key) => !allowedKeys.includes(key))) {
+      throw new Error(`repair summary contains non-minimal fields: ${JSON.stringify(summary)}`);
+    }
+    if (summary.runId !== "run-1" || summary.status !== "success" || summary.strategy !== "undefined-symbol") {
+      throw new Error(`repair summary fields mismatch: ${JSON.stringify(summary)}`);
+    }
+
+    console.log("PASS repair-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairObservabilityReportUnit() {
+  try {
+    const finalReport = [
+      "## Final decision",
+      "Status: success",
+      "Reason: Validation passed after safe patch.",
+      "Blocking layer: none",
+      "## Observability artifacts",
+      "- repair-observability.json",
+      "- decision-trace.md",
+      "- repair-summary.json"
+    ].join("\n");
+    for (const needle of ["Final decision", "Status:", "Reason:", "Blocking layer:", "repair-observability.json", "decision-trace.md", "repair-summary.json"]) {
+      if (!finalReport.includes(needle)) {
+        throw new Error(`final report observability section missing ${needle}: ${finalReport}`);
+      }
+    }
+
+    console.log("PASS repair-observability-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-observability-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairFinalDecisionUnit() {
+  const { buildRepairObservabilityReport } = require(path.join(projectRoot, "dist", "repair", "repairObservability.js"));
+
+  function assertDecision(name, input, status, blockingLayer) {
+    const report = buildRepairObservabilityReport(sampleObservabilityInput(input));
+    if (report.finalDecision.status !== status || (blockingLayer && report.finalDecision.blockingLayer !== blockingLayer)) {
+      throw new Error(`${name}: expected ${status}/${blockingLayer ?? "none"}, got ${JSON.stringify(report.finalDecision)}`);
+    }
+  }
+
+  try {
+    assertDecision("success", {}, "success");
+    assertDecision("policy blocked", { repairPatchPolicy: { ok: false, recommendedAction: "block-mutation" } }, "blocked", "repairPatchPolicy");
+    assertDecision("evidence manual review", { repairEvidenceValidation: { ok: false, allowedRepairMode: "manual-review" } }, "manual-review", "repairEvidence");
+    assertDecision("regression block", { repairRegressionRisk: { blocked: true, recommendedAction: "block" }, repairPatchPolicy: { ok: true, mode: "normal" } }, "blocked", "repairRegressionRisk");
+    assertDecision("patch intent blocked", { patchIntentValidation: { ok: false, reason: "bad target" } }, "blocked", "patchIntentValidation");
+    assertDecision("validation failed", { repairOutcome: { outcome: "failed-same-error" }, validation: { verdict: "fail" } }, "failed");
+
+    console.log("PASS repair-final-decision-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-final-decision-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -5419,6 +5598,21 @@ async function main() {
     failed += 1;
   }
   if (!runRepairRegressionHistoryPatternUnit()) {
+    failed += 1;
+  }
+  if (!runRepairObservabilitySchemaUnit()) {
+    failed += 1;
+  }
+  if (!runRepairDecisionTraceUnit()) {
+    failed += 1;
+  }
+  if (!runRepairSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runRepairObservabilityReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairFinalDecisionUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {
