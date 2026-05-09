@@ -1,0 +1,38 @@
+{
+  "name": "normal-policy-allows-validated-patch",
+  "task": "Fix normal policy validated patch",
+  "policyScenario": {
+    "evidenceValidation": {
+      "ok": true,
+      "confidence": "high",
+      "allowedRepairMode": "normal"
+    },
+    "repairIntent": {
+      "targetFile": "index.js",
+      "repairType": "syntax-error",
+      "confidence": "high",
+      "allowedMutationScope": "single-file",
+      "safetyNotes": [
+        "Policy scenario repair intent."
+      ],
+      "reason": "Policy scenario uses normal mode."
+    },
+    "proposedPatchOperations": [
+      {
+        "operation": "exact-replacement",
+        "targetFile": "index.js"
+      }
+    ]
+  },
+  "expect": {
+    "evidenceValidationAssertions": true,
+    "evidenceAllowedMode": "normal",
+    "repairPatchPolicyAssertions": true,
+    "policyMode": "normal",
+    "policyOk": true,
+    "policyRecommendedAction": "proceed",
+    "finalReportPolicyDetails": true,
+    "changedFilesIncludeOnly": [],
+    "finalIndexEqualsOriginal": true
+  }
+}

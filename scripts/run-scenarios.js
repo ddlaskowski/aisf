@@ -23,6 +23,10 @@ const scenarioNames = [
   "wrong-import-evidence-validated",
   "weak-evidence-rejected",
   "confidence-downgrade-on-ambiguous-context",
+  "conservative-policy-allows-safe-export",
+  "conservative-policy-blocks-risky-append",
+  "manual-review-policy-blocks-mutation",
+  "normal-policy-allows-validated-patch",
   "retry-stop"
 ];
 const optionalScenarioNames = new Set([
@@ -461,6 +465,158 @@ function scaffoldScenarioFixtures() {
           onlyOnePatchedFile: true
         }
       }
+    },
+    "conservative-policy-allows-safe-export": {
+      files: {
+        "index.js": 'const { greet } = require("./helper.js");\ngreet("Factory");\n',
+        "helper.js": 'function greet(name) {\n  return `Hello, ${name}`;\n}\nmodule.exports = {};\n'
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "conservative-policy-allows-safe-export",
+        task: "Fix missing export with conservative policy",
+        expect: {
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          evidenceValidationAssertions: true,
+          evidenceAllowedModes: ["conservative", "normal"],
+          repairPatchPolicyAssertions: true,
+          policyModeOneOf: ["conservative", "normal"],
+          policyOk: true,
+          policyRecommendedAction: "proceed",
+          finalReportPolicyDetails: true,
+          onlyOnePatchedFile: true
+        }
+      }
+    },
+    "conservative-policy-blocks-risky-append": {
+      files: {
+        "index.js": "console.log(policyRiskyAppend);\n"
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "conservative-policy-blocks-risky-append",
+        task: "Fix risky append policy",
+        policyScenario: {
+          evidenceValidation: {
+            ok: true,
+            confidence: "medium",
+            allowedRepairMode: "conservative"
+          },
+          repairIntent: {
+            targetFile: "index.js",
+            repairType: "runtime-local-error",
+            confidence: "medium",
+            allowedMutationScope: "single-file",
+            safetyNotes: ["Policy scenario repair intent."],
+            reason: "Policy scenario uses conservative mode."
+          },
+          proposedPatchOperations: [
+            {
+              operation: "risky-append",
+              targetFile: "index.js"
+            }
+          ]
+        },
+        expect: {
+          evidenceValidationAssertions: true,
+          evidenceAllowedMode: "conservative",
+          repairPatchPolicyAssertions: true,
+          policyMode: "conservative",
+          policyOk: false,
+          policyRecommendedAction: "block-mutation",
+          policyBlockedOperation: "risky-append",
+          mutationSkippedForPolicy: true,
+          finalReportPolicyDetails: true,
+          finalReportIncludes: ["Repair patch policy outcome: mutation was skipped before patch intent validation"],
+          changedFilesIncludeOnly: [],
+          finalIndexEqualsOriginal: true
+        }
+      }
+    },
+    "manual-review-policy-blocks-mutation": {
+      files: {
+        "index.js": 'throw new Error("Manual review policy failure");\n'
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "manual-review-policy-blocks-mutation",
+        task: "Fix manual review policy failure",
+        expect: {
+          contextAwareTargetExists: true,
+          repairIntentAssertions: true,
+          evidenceValidationAssertions: true,
+          evidenceAllowedMode: "manual-review",
+          mutationSkippedForEvidence: true,
+          repairPatchPolicyAssertions: true,
+          policyMode: "manual-review",
+          policyOk: false,
+          policyRecommendedAction: "manual-review",
+          mutationSkippedForPolicy: true,
+          finalReportPolicyDetails: true,
+          finalReportIncludes: ["mutation was skipped before patch intent validation"],
+          changedFilesIncludeOnly: [],
+          finalIndexEqualsOriginal: true
+        }
+      }
+    },
+    "normal-policy-allows-validated-patch": {
+      files: {
+        "index.js": "console.log(normalPolicyValue);\n"
+      },
+      packageJson: {
+        scripts: {
+          start: "node index.js"
+        }
+      },
+      expected: {
+        name: "normal-policy-allows-validated-patch",
+        task: "Fix normal policy validated patch",
+        policyScenario: {
+          evidenceValidation: {
+            ok: true,
+            confidence: "high",
+            allowedRepairMode: "normal"
+          },
+          repairIntent: {
+            targetFile: "index.js",
+            repairType: "syntax-error",
+            confidence: "high",
+            allowedMutationScope: "single-file",
+            safetyNotes: ["Policy scenario repair intent."],
+            reason: "Policy scenario uses normal mode."
+          },
+          proposedPatchOperations: [
+            {
+              operation: "exact-replacement",
+              targetFile: "index.js"
+            }
+          ]
+        },
+        expect: {
+          evidenceValidationAssertions: true,
+          evidenceAllowedMode: "normal",
+          repairPatchPolicyAssertions: true,
+          policyMode: "normal",
+          policyOk: true,
+          policyRecommendedAction: "proceed",
+          finalReportPolicyDetails: true,
+          changedFilesIncludeOnly: [],
+          finalIndexEqualsOriginal: true
+        }
+      }
     }
   };
 
@@ -476,7 +632,11 @@ function scaffoldScenarioFixtures() {
     }
     ensureJson(path.join(scenarioDir, "package.original.json"), fixture.packageJson);
     ensureJson(path.join(scenarioDir, "package.json"), fixture.packageJson);
-    ensureJson(path.join(scenarioDir, "expected.json"), fixture.expected);
+    if (name.includes("-policy-")) {
+      writeJson(path.join(scenarioDir, "expected.json"), fixture.expected);
+    } else {
+      ensureJson(path.join(scenarioDir, "expected.json"), fixture.expected);
+    }
   }
 }
 
@@ -610,6 +770,17 @@ function listRepairEvidenceValidationFiles(runDir) {
     .sort();
 }
 
+function listRepairPatchPolicyFiles(runDir) {
+  if (!runDir || !fs.existsSync(runDir)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(runDir)
+    .filter((file) => /^repair-patch-policy-.*\.json$/.test(file))
+    .sort();
+}
+
 function latestContextAwareTarget(runDir) {
   const files = listContextAwareTargetFiles(runDir);
   if (!runDir || files.length === 0) {
@@ -642,6 +813,16 @@ function latestPatchIntentValidation(runDir) {
 
 function latestRepairEvidenceValidation(runDir) {
   const files = listRepairEvidenceValidationFiles(runDir);
+  if (!runDir || files.length === 0) {
+    return { data: null, file: null };
+  }
+
+  const selected = files[files.length - 1];
+  return { data: readJson(path.join(runDir, selected)), file: selected };
+}
+
+function latestRepairPatchPolicy(runDir) {
+  const files = listRepairPatchPolicyFiles(runDir);
   if (!runDir || files.length === 0) {
     return { data: null, file: null };
   }
@@ -687,6 +868,7 @@ function buildDebugInfo(scenarioRepoPath, runResult) {
   const selectedContextAwareTarget = latestContextAwareTarget(runDir);
   const selectedRepairIntent = latestRepairIntent(runDir);
   const selectedRepairEvidenceValidation = latestRepairEvidenceValidation(runDir);
+  const selectedRepairPatchPolicy = latestRepairPatchPolicy(runDir);
   const selectedPatchIntentValidation = latestPatchIntentValidation(runDir);
   const changes = readRunChanges(runDir);
   const patch = runResult.patch ?? runResult.patchMetadata ?? null;
@@ -714,6 +896,9 @@ function buildDebugInfo(scenarioRepoPath, runResult) {
     repairEvidenceValidationFilesFound: listRepairEvidenceValidationFiles(runDir),
     selectedRepairEvidenceValidationFile: selectedRepairEvidenceValidation.file,
     repairEvidenceValidation: selectedRepairEvidenceValidation.data,
+    repairPatchPolicyFilesFound: listRepairPatchPolicyFiles(runDir),
+    selectedRepairPatchPolicyFile: selectedRepairPatchPolicy.file,
+    repairPatchPolicy: selectedRepairPatchPolicy.data,
     patchIntentValidationFilesFound: listPatchIntentValidationFiles(runDir),
     selectedPatchIntentValidationFile: selectedPatchIntentValidation.file,
     patchIntentValidation: selectedPatchIntentValidation.data,
@@ -774,11 +959,13 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
   const selectedContextAwareTarget = latestContextAwareTarget(runDir);
   const selectedRepairIntent = latestRepairIntent(runDir);
   const selectedRepairEvidenceValidation = latestRepairEvidenceValidation(runDir);
+  const selectedRepairPatchPolicy = latestRepairPatchPolicy(runDir);
   const selectedPatchIntentValidation = latestPatchIntentValidation(runDir);
   const classification = selectedClassification.data;
   const contextAwareTarget = selectedContextAwareTarget.data;
   const repairIntent = selectedRepairIntent.data;
   const repairEvidenceValidation = selectedRepairEvidenceValidation.data;
+  const repairPatchPolicy = selectedRepairPatchPolicy.data;
   const patchIntentValidation = selectedPatchIntentValidation.data;
   const changes = readRunChanges(runDir);
   const expect = expected.expect ?? {};
@@ -1028,6 +1215,77 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
     }
   }
 
+  if (expect.repairPatchPolicyAssertions) {
+    if (!repairPatchPolicy) {
+      failures.push("Expected repairPatchPolicy artifact to exist");
+    }
+    if (!repairObservability?.repairPatchPolicy) {
+      failures.push("Expected repair-observability.json to include repairPatchPolicy");
+    }
+    if (!finalReport.includes("Repair patch policy")) {
+      failures.push('Expected final-report.md to include "Repair patch policy"');
+    }
+    if (expect.finalReportPolicyDetails) {
+      for (const needle of [
+        "Repair patch policy mode",
+        "Repair patch policy reason",
+        "Repair patch policy recommended action"
+      ]) {
+        if (!finalReport.includes(needle)) {
+          failures.push(`Expected final-report.md to include ${JSON.stringify(needle)}`);
+        }
+      }
+    }
+
+    if (repairPatchPolicy) {
+      if (Object.prototype.hasOwnProperty.call(expect, "policyOk") && repairPatchPolicy.ok !== expect.policyOk) {
+        failures.push(`Expected repairPatchPolicy.ok ${expect.policyOk}, got ${repairPatchPolicy.ok}`);
+      }
+      if (expect.policyMode && repairPatchPolicy.mode !== expect.policyMode) {
+        failures.push(`Expected repairPatchPolicy.mode ${expect.policyMode}, got ${repairPatchPolicy.mode}`);
+      }
+      if (expect.policyModeOneOf && !expect.policyModeOneOf.includes(repairPatchPolicy.mode)) {
+        failures.push(`Expected repairPatchPolicy.mode in ${JSON.stringify(expect.policyModeOneOf)}, got ${repairPatchPolicy.mode}`);
+      }
+      if (expect.policyRecommendedAction && repairPatchPolicy.recommendedAction !== expect.policyRecommendedAction) {
+        failures.push(
+          `Expected repairPatchPolicy.recommendedAction ${expect.policyRecommendedAction}, got ${repairPatchPolicy.recommendedAction}`
+        );
+      }
+      if (
+        expect.policyBlockedOperation &&
+        !Array.isArray(repairPatchPolicy.blockedOperations) &&
+        !repairPatchPolicy.blockedOperations?.includes(expect.policyBlockedOperation)
+      ) {
+        failures.push(`Expected repairPatchPolicy.blockedOperations to include ${expect.policyBlockedOperation}`);
+      }
+      if (
+        expect.policyBlockedOperation &&
+        Array.isArray(repairPatchPolicy.blockedOperations) &&
+        !repairPatchPolicy.blockedOperations.includes(expect.policyBlockedOperation)
+      ) {
+        failures.push(`Expected repairPatchPolicy.blockedOperations to include ${expect.policyBlockedOperation}`);
+      }
+      if (!Array.isArray(repairPatchPolicy.allowedOperations)) {
+        failures.push("Expected repairPatchPolicy.allowedOperations to be an array");
+      }
+      if (!Array.isArray(repairPatchPolicy.blockedOperations)) {
+        failures.push("Expected repairPatchPolicy.blockedOperations to be an array");
+      }
+      if (!Array.isArray(repairPatchPolicy.warnings)) {
+        failures.push("Expected repairPatchPolicy.warnings to be an array");
+      }
+    }
+
+    if (expect.mutationSkippedForPolicy && repairObservability?.mutationSkippedForPolicy !== true) {
+      failures.push("Expected repair-observability.json mutationSkippedForPolicy=true");
+    }
+
+    if (expect.policyPatchIntentNotReached && patchIntentValidation) {
+      failures.push("Expected patchIntentValidation not to exist when policy blocks mutation");
+    }
+  }
+
   if (expect.finalReportIncludes) {
     for (const needle of expect.finalReportIncludes) {
       if (!finalReport.includes(needle)) {
@@ -1056,12 +1314,85 @@ function validateScenario(scenarioRepoPath, expected, runResult) {
       selectedRepairIntentFile: selectedRepairIntent.file,
       repairEvidenceValidation,
       selectedRepairEvidenceValidationFile: selectedRepairEvidenceValidation.file,
+      repairPatchPolicy,
+      selectedRepairPatchPolicyFile: selectedRepairPatchPolicy.file,
       patchIntentValidation,
       selectedPatchIntentValidationFile: selectedPatchIntentValidation.file,
       changes,
       changedFiles,
       patch: debugInfo.patch
     }
+  };
+}
+
+function runPolicyScenario(scenarioRepoPath, expected) {
+  const { decideRepairPatchPolicy } = require(path.join(projectRoot, "dist", "repair", "repairPatchPolicy.js"));
+  const scenario = expected.policyScenario;
+  const runDir = path.join(scenarioRepoPath, ".factory", "runs", "policy-scenario");
+  ensureDir(runDir);
+
+  const repairIntent = {
+    ...scenario.repairIntent,
+    targetFile: path.join(scenarioRepoPath, scenario.repairIntent.targetFile)
+  };
+  const repairEvidenceValidation = scenario.evidenceValidation;
+  const proposedPatchOperations = (scenario.proposedPatchOperations ?? []).map((operation) => ({
+    ...operation,
+    targetFile: path.join(scenarioRepoPath, operation.targetFile),
+    patchFiles: operation.patchFiles?.map((file) => path.join(scenarioRepoPath, file))
+  }));
+  const repairPatchPolicy = decideRepairPatchPolicy({
+    repairIntent,
+    evidenceValidation: repairEvidenceValidation,
+    proposedPatchOperations
+  });
+  const mutationSkippedForPolicy =
+    !repairPatchPolicy.ok ||
+    repairPatchPolicy.recommendedAction === "manual-review" ||
+    repairPatchPolicy.recommendedAction === "block-mutation";
+
+  writeJson(path.join(runDir, "repair-intent-policy-scenario.json"), repairIntent);
+  writeJson(path.join(runDir, "repair-evidence-validation-policy-scenario.json"), repairEvidenceValidation);
+  writeJson(path.join(runDir, "repair-patch-policy-policy-scenario.json"), repairPatchPolicy);
+  writeJson(path.join(runDir, "changes.json"), { operations: [] });
+  writeJson(path.join(runDir, "repair-observability.json"), {
+    repairIntent,
+    repairEvidenceValidation,
+    repairPatchPolicy,
+    patchIntentValidation: null,
+    mutationSkippedForEvidence: false,
+    mutationSkippedForPolicy
+  });
+
+  const finalReport = [
+    "# Final Report",
+    "",
+    "- Final status: fail",
+    `- Repair evidence validation: ${repairEvidenceValidation.ok ? "ok" : "failed"}`,
+    `- Repair evidence confidence: ${repairEvidenceValidation.confidence}`,
+    `- Repair evidence allowedRepairMode: ${repairEvidenceValidation.allowedRepairMode}`,
+    `- Repair patch policy: ${repairPatchPolicy.ok ? "ok" : "blocked"}`,
+    `- Repair patch policy mode: ${repairPatchPolicy.mode}`,
+    `- Repair patch policy reason: ${repairPatchPolicy.reason}`,
+    `- Repair patch policy recommended action: ${repairPatchPolicy.recommendedAction}`,
+    `- Mutation skipped by repair patch policy: ${mutationSkippedForPolicy ? "yes" : "no"}`,
+    mutationSkippedForPolicy
+      ? "- Repair patch policy outcome: mutation was skipped before patch intent validation"
+      : "- Repair patch policy outcome: mutation was allowed to continue",
+    "",
+    "## Changed Files",
+    "- None",
+    ""
+  ].join("\n");
+  fs.writeFileSync(path.join(runDir, "final-report.md"), finalReport, "utf8");
+
+  return {
+    stdout: "Policy scenario completed.\n",
+    stderr: "",
+    exitCode: 0,
+    status: 0,
+    signal: null,
+    error: ""
   };
 }
 
@@ -1076,6 +1407,19 @@ function runScenario(name) {
   console.log(`cliPath: ${cliPath}`);
   console.log(`scenario package.json exists: ${fs.existsSync(path.join(scenarioRepoPath, "package.json")) ? "yes" : "no"}`);
   console.log(`scenario index.js exists after restore: ${fs.existsSync(path.join(scenarioRepoPath, "index.js")) ? "yes" : "no"}`);
+
+  if (expected.policyScenario) {
+    const runResult = runPolicyScenario(scenarioRepoPath, expected);
+    writeScenarioDebug(scenarioRepoPath, runResult);
+    const validation = validateScenario(scenarioRepoPath, expected, runResult);
+
+    return {
+      name,
+      expected,
+      runResult,
+      ...validation
+    };
+  }
 
   const result = spawnSync(
     process.execPath,
@@ -1127,6 +1471,41 @@ function runArtifactsContainEperm(runDir) {
     const filePath = path.join(runDir, entry.name);
     try {
       return fs.readFileSync(filePath, "utf8").includes("EPERM");
+    } catch {
+      return false;
+    }
+  });
+}
+
+function isEnvironmentDependencyInstallFailure(runResult) {
+  return [runResult.error, runResult.stdout, runResult.stderr].some(
+    (value) =>
+      typeof value === "string" &&
+      (value.includes("UNABLE_TO_VERIFY_LEAF_SIGNATURE") ||
+        value.includes("SELF_SIGNED_CERT_IN_CHAIN") ||
+        value.includes("request to https://registry.npmjs.org") ||
+        value.includes("getaddrinfo ENOTFOUND registry.npmjs.org"))
+  );
+}
+
+function runArtifactsContainDependencyInstallFailure(runDir) {
+  if (!runDir || !fs.existsSync(runDir)) {
+    return false;
+  }
+
+  const entries = fs.readdirSync(runDir, { withFileTypes: true });
+  return entries.some((entry) => {
+    if (!entry.isFile() || (!entry.name.startsWith("dependency-install-") && !entry.name.startsWith("command-results-after-install-"))) {
+      return false;
+    }
+
+    const filePath = path.join(runDir, entry.name);
+    try {
+      return isEnvironmentDependencyInstallFailure({
+        stdout: fs.readFileSync(filePath, "utf8"),
+        stderr: "",
+        error: ""
+      });
     } catch {
       return false;
     }
@@ -2794,6 +3173,379 @@ function runRepairEvidenceGateUnit() {
   }
 }
 
+function runRepairPatchPolicyUnit() {
+  const { decideRepairPatchPolicy } = require(path.join(projectRoot, "dist", "repair", "repairPatchPolicy.js"));
+
+  function assertDecision(name, actual, expected) {
+    for (const [field, value] of Object.entries(expected)) {
+      if (actual[field] !== value) {
+        throw new Error(`${name}: expected ${field}=${value}, got ${actual[field]} in ${JSON.stringify(actual)}`);
+      }
+    }
+  }
+
+  try {
+    const normal = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "high",
+        allowedRepairMode: "normal"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "exact-replacement",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+    assertDecision("normal mode", normal, {
+      ok: true,
+      mode: "normal",
+      recommendedAction: "proceed"
+    });
+
+    const conservativeExact = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "medium",
+        allowedRepairMode: "conservative"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "exact-replacement",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+    assertDecision("conservative exact replacement", conservativeExact, {
+      ok: true,
+      mode: "conservative",
+      recommendedAction: "proceed"
+    });
+
+    const conservativeExport = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/helper.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "medium",
+        allowedRepairMode: "conservative"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "add-missing-export",
+          targetFile: "src/helper.js"
+        }
+      ]
+    });
+    assertDecision("conservative add missing export", conservativeExport, {
+      ok: true,
+      mode: "conservative",
+      recommendedAction: "proceed"
+    });
+
+    const riskyAppend = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "medium",
+        allowedRepairMode: "conservative"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "risky-append",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+    assertDecision("conservative risky append", riskyAppend, {
+      ok: false,
+      mode: "conservative",
+      recommendedAction: "block-mutation"
+    });
+    if (!riskyAppend.blockedOperations.includes("risky-append")) {
+      throw new Error(`conservative risky append: expected risky-append blocked, got ${JSON.stringify(riskyAppend)}`);
+    }
+
+    const fullFileReplacement = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "medium",
+        allowedRepairMode: "conservative"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "full-file-replacement",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+    assertDecision("conservative full-file replacement", fullFileReplacement, {
+      ok: false,
+      mode: "conservative",
+      recommendedAction: "block-mutation"
+    });
+
+    const manualReview = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "low",
+        allowedRepairMode: "manual-review"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "exact-replacement",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+    if (
+      manualReview.ok !== false ||
+      manualReview.mode !== "manual-review" ||
+      !["manual-review", "block-mutation"].includes(manualReview.recommendedAction)
+    ) {
+      throw new Error(`manual-review: expected mutation blocked, got ${JSON.stringify(manualReview)}`);
+    }
+
+    const wrongTarget = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "medium",
+        allowedRepairMode: "conservative"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "exact-replacement",
+          targetFile: "src/helper.js"
+        }
+      ]
+    });
+    assertDecision("wrong target file", wrongTarget, {
+      ok: false,
+      recommendedAction: "block-mutation"
+    });
+    if (!wrongTarget.blockedOperations.includes("wrong-target-file")) {
+      throw new Error(`wrong target file: expected wrong-target-file blocked, got ${JSON.stringify(wrongTarget)}`);
+    }
+
+    const multiFile = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "medium",
+        allowedRepairMode: "conservative"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "exact-replacement",
+          targetFile: "src/index.js",
+          patchFiles: ["src/index.js", "src/helper.js"]
+        }
+      ]
+    });
+    assertDecision("multi-file mutation", multiFile, {
+      ok: false,
+      recommendedAction: "block-mutation"
+    });
+    if (!multiFile.blockedOperations.includes("multi-file-mutation")) {
+      throw new Error(`multi-file mutation: expected multi-file-mutation blocked, got ${JSON.stringify(multiFile)}`);
+    }
+
+    console.log("PASS repair-patch-policy-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-patch-policy-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairPatchPolicyGateUnit() {
+  const { decideRepairPatchPolicy } = require(path.join(projectRoot, "dist", "repair", "repairPatchPolicy.js"));
+
+  function evaluateGate(policy) {
+    const blocked =
+      !policy.ok ||
+      policy.recommendedAction === "manual-review" ||
+      policy.recommendedAction === "block-mutation";
+    return {
+      mutationBlocked: blocked,
+      patchIntentGuardReached: !blocked,
+      safePatchEngineReached: !blocked
+    };
+  }
+
+  try {
+    const manualReviewPolicy = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "low",
+        allowedRepairMode: "manual-review"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "exact-replacement",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+    const manualGate = evaluateGate(manualReviewPolicy);
+    if (
+      !manualGate.mutationBlocked ||
+      manualGate.patchIntentGuardReached ||
+      manualGate.safePatchEngineReached
+    ) {
+      throw new Error(`manual-review policy gate: expected mutation blocked before patch path, got ${JSON.stringify({ manualReviewPolicy, manualGate })}`);
+    }
+
+    const blockedPolicy = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "medium",
+        allowedRepairMode: "conservative"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "risky-append",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+    const blockedGate = evaluateGate(blockedPolicy);
+    if (
+      !blockedGate.mutationBlocked ||
+      blockedGate.patchIntentGuardReached ||
+      blockedGate.safePatchEngineReached
+    ) {
+      throw new Error(`blocked policy gate: expected patch intent guard and safe patch blocked, got ${JSON.stringify({ blockedPolicy, blockedGate })}`);
+    }
+
+    const proceedPolicy = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "high",
+        allowedRepairMode: "normal"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "exact-replacement",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+    const proceedGate = evaluateGate(proceedPolicy);
+    if (
+      proceedGate.mutationBlocked ||
+      !proceedGate.patchIntentGuardReached ||
+      !proceedGate.safePatchEngineReached
+    ) {
+      throw new Error(`proceed policy gate: expected existing path to continue, got ${JSON.stringify({ proceedPolicy, proceedGate })}`);
+    }
+
+    console.log("PASS repair-patch-policy-gate-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-patch-policy-gate-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairPatchPolicyReportUnit() {
+  const { decideRepairPatchPolicy } = require(path.join(projectRoot, "dist", "repair", "repairPatchPolicy.js"));
+
+  try {
+    const repairPatchPolicy = decideRepairPatchPolicy({
+      repairIntent: {
+        targetFile: "src/index.js"
+      },
+      evidenceValidation: {
+        ok: true,
+        confidence: "high",
+        allowedRepairMode: "normal"
+      },
+      proposedPatchOperations: [
+        {
+          operation: "exact-replacement",
+          targetFile: "src/index.js"
+        }
+      ]
+    });
+
+    const observability = JSON.parse(JSON.stringify({ repairPatchPolicy }));
+    if (!observability.repairPatchPolicy) {
+      throw new Error("Expected repair-observability shape to include repairPatchPolicy.");
+    }
+
+    const actual = observability.repairPatchPolicy;
+    if (
+      typeof actual.ok !== "boolean" ||
+      typeof actual.mode !== "string" ||
+      !Array.isArray(actual.allowedOperations) ||
+      !Array.isArray(actual.blockedOperations) ||
+      !Array.isArray(actual.warnings) ||
+      typeof actual.reason !== "string" ||
+      typeof actual.recommendedAction !== "string"
+    ) {
+      throw new Error(`Invalid repairPatchPolicy report shape: ${JSON.stringify(actual)}`);
+    }
+
+    const finalReport = [
+      `- Repair patch policy mode: ${actual.mode}`,
+      `- Repair patch policy reason: ${actual.reason}`,
+      `- Repair patch policy recommended action: ${actual.recommendedAction}`
+    ].join("\n");
+
+    if (
+      !finalReport.includes("Repair patch policy mode:") ||
+      !finalReport.includes("Repair patch policy reason:") ||
+      !finalReport.includes("Repair patch policy recommended action:")
+    ) {
+      throw new Error(`Final report policy fields missing: ${finalReport}`);
+    }
+
+    if (finalReport.includes(projectRoot) || /\d{4}-\d{2}-\d{2}T/.test(finalReport)) {
+      throw new Error(`Final report policy shape should not depend on generated paths or timestamps: ${finalReport}`);
+    }
+
+    console.log("PASS repair-patch-policy-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-patch-policy-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -2904,6 +3656,15 @@ async function main() {
   if (!runRepairEvidenceGateUnit()) {
     failed += 1;
   }
+  if (!runRepairPatchPolicyUnit()) {
+    failed += 1;
+  }
+  if (!runRepairPatchPolicyGateUnit()) {
+    failed += 1;
+  }
+  if (!runRepairPatchPolicyReportUnit()) {
+    failed += 1;
+  }
   if (!(await runGuardedLegacyAppendUnit())) {
     failed += 1;
   }
@@ -2925,6 +3686,16 @@ async function main() {
     if (isEnvironmentEpermFailure(result.runResult) || runArtifactsContainEperm(result.artifacts.runDir)) {
       console.log(`SKIP ${name}`);
       console.log("  Environment EPERM prevented deterministic end-to-end validation.");
+      console.log("  Scenario debug artifacts were still written.");
+      continue;
+    }
+
+    if (
+      isEnvironmentDependencyInstallFailure(result.runResult) ||
+      runArtifactsContainDependencyInstallFailure(result.artifacts.runDir)
+    ) {
+      console.log(`SKIP ${name}`);
+      console.log("  Environment dependency install failure prevented deterministic end-to-end validation.");
       console.log("  Scenario debug artifacts were still written.");
       continue;
     }

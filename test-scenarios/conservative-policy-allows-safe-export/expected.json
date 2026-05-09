@@ -1,0 +1,22 @@
+{
+  "name": "conservative-policy-allows-safe-export",
+  "task": "Fix missing export with conservative policy",
+  "expect": {
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "evidenceValidationAssertions": true,
+    "evidenceAllowedModes": [
+      "conservative",
+      "normal"
+    ],
+    "repairPatchPolicyAssertions": true,
+    "policyModeOneOf": [
+      "conservative",
+      "normal"
+    ],
+    "policyOk": true,
+    "policyRecommendedAction": "proceed",
+    "finalReportPolicyDetails": true,
+    "onlyOnePatchedFile": true
+  }
+}

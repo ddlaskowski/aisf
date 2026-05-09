@@ -1,0 +1,22 @@
+{
+  "name": "manual-review-policy-blocks-mutation",
+  "task": "Fix manual review policy failure",
+  "expect": {
+    "contextAwareTargetExists": true,
+    "repairIntentAssertions": true,
+    "evidenceValidationAssertions": true,
+    "evidenceAllowedMode": "manual-review",
+    "mutationSkippedForEvidence": true,
+    "repairPatchPolicyAssertions": true,
+    "policyMode": "manual-review",
+    "policyOk": false,
+    "policyRecommendedAction": "manual-review",
+    "mutationSkippedForPolicy": true,
+    "finalReportPolicyDetails": true,
+    "finalReportIncludes": [
+      "mutation was skipped before patch intent validation"
+    ],
+    "changedFilesIncludeOnly": [],
+    "finalIndexEqualsOriginal": true
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "conservative-policy-blocks-risky-append",
+  "task": "Fix risky append policy",
+  "policyScenario": {
+    "evidenceValidation": {
+      "ok": true,
+      "confidence": "medium",
+      "allowedRepairMode": "conservative"
+    },
+    "repairIntent": {
+      "targetFile": "index.js",
+      "repairType": "runtime-local-error",
+      "confidence": "medium",
+      "allowedMutationScope": "single-file",
+      "safetyNotes": [
+        "Policy scenario repair intent."
+      ],
+      "reason": "Policy scenario uses conservative mode."
+    },
+    "proposedPatchOperations": [
+      {
+        "operation": "risky-append",
+        "targetFile": "index.js"
+      }
+    ]
+  },
+  "expect": {
+    "evidenceValidationAssertions": true,
+    "evidenceAllowedMode": "conservative",
+    "repairPatchPolicyAssertions": true,
+    "policyMode": "conservative",
+    "policyOk": false,
+    "policyRecommendedAction": "block-mutation",
+    "policyBlockedOperation": "risky-append",
+    "mutationSkippedForPolicy": true,
+    "finalReportPolicyDetails": true,
+    "finalReportIncludes": [
+      "Repair patch policy outcome: mutation was skipped before patch intent validation"
+    ],
+    "changedFilesIncludeOnly": [],
+    "finalIndexEqualsOriginal": true
+  }
+}

@@ -44,6 +44,10 @@ import {
   validateRepairEvidence,
   type RepairEvidenceValidation
 } from "../repair/repairEvidenceValidator.js";
+import {
+  decideRepairPatchPolicy,
+  type RepairPatchPolicyDecision
+} from "../repair/repairPatchPolicy.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -553,6 +557,89 @@ function operationPatchContent(operation: ChangeOperation): string | undefined {
   return operation.reason;
 }
 
+function inferPolicyOperation(operation: ChangeOperation): string {
+  if (operation.type === "delete") {
+    return "multi-file-mutation";
+  }
+
+  if (operation.type === "create") {
+    return operation.path.endsWith(".md") ? "risky-append" : "small-single-line-edit";
+  }
+
+  if (operation.content && !operation.patch) {
+    return "full-file-replacement";
+  }
+
+  const patch = operation.patch;
+  if (patch && "type" in patch && patch.type === "replace") {
+    return "exact-replacement";
+  }
+
+  if (patch && "replace" in patch && patch.replace) {
+    return "exact-replacement";
+  }
+
+  if (operation.reason?.toLowerCase().includes("missing export")) {
+    return "add-missing-export";
+  }
+
+  if (operation.reason?.toLowerCase().includes("import")) {
+    return "correct-imported-symbol";
+  }
+
+  if (operation.reason?.toLowerCase().includes("duplicate declaration")) {
+    return "remove-duplicate-declaration";
+  }
+
+  return "small-single-line-edit";
+}
+
+function buildPolicyOperations(repoPath: string, operations: ChangeOperation[]): Array<{
+  operation: string;
+  targetFile: string;
+  patchFiles: string[];
+}> {
+  return operations
+    .filter((operation) => operation.type !== "delete" && operation.path)
+    .map((operation) => {
+      const targetFile = path.resolve(repoPath, operation.path);
+      return {
+        operation: inferPolicyOperation(operation),
+        targetFile,
+        patchFiles: [targetFile]
+      };
+    });
+}
+
+async function decideAndSaveRepairPatchPolicy(input: {
+  runDir: string;
+  label: string;
+  repoPath: string;
+  repairIntent: RepairIntent | null;
+  repairEvidenceValidation: RepairEvidenceValidation | null;
+  contextAwareRepairTarget: ContextAwareRepairTarget | null;
+  operations: ChangeOperation[];
+}): Promise<RepairPatchPolicyDecision | null> {
+  if (!input.repairEvidenceValidation) {
+    return null;
+  }
+
+  const decision = decideRepairPatchPolicy({
+    repairIntent: input.repairIntent,
+    evidenceValidation: input.repairEvidenceValidation,
+    repairTargetDecision: input.contextAwareRepairTarget
+      ? {
+          targetFile: input.contextAwareRepairTarget.filePath,
+          reason: input.contextAwareRepairTarget.reason,
+          confidence: input.contextAwareRepairTarget.confidence
+        }
+      : undefined,
+    proposedPatchOperations: buildPolicyOperations(input.repoPath, input.operations)
+  });
+  await saveStateFile(input.runDir, `repair-patch-policy-${input.label}.json`, decision);
+  return decision;
+}
+
 function buildProposedPatchIntent(
   repoPath: string,
   operations: ChangeOperation[]
@@ -693,8 +780,10 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let contextAwareRepairTarget: ContextAwareRepairTarget | null = null;
   let repairIntent: RepairIntent | null = null;
   let repairEvidenceValidation: RepairEvidenceValidation | null = null;
+  let repairPatchPolicy: RepairPatchPolicyDecision | null = null;
   let patchIntentValidation: PatchIntentValidationResult | null = null;
   let mutationSkippedForEvidence = false;
+  let mutationSkippedForPolicy = false;
 
   if (mode === "bugfix") {
     console.log("Running bugfix pre-validation...");
@@ -741,6 +830,16 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           repairIntent,
           symbolName: prevalidationFailure.details.symbol
         });
+        repairPatchPolicy =
+          (await decideAndSaveRepairPatchPolicy({
+            runDir: state.runDir,
+            label: "prevalidation",
+            repoPath,
+            repairIntent,
+            repairEvidenceValidation,
+            contextAwareRepairTarget,
+            operations: []
+          })) ?? repairPatchPolicy;
         if (repairEvidenceValidation.allowedRepairMode === "conservative") {
           notes.push("Evidence validation allowed conservative repair mode.");
         }
@@ -749,6 +848,11 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           shouldSkipMutationForEvidenceValidation(repairEvidenceValidation)
         ) {
           mutationSkippedForEvidence = true;
+          mutationSkippedForPolicy =
+            !!repairPatchPolicy &&
+            (!repairPatchPolicy.ok ||
+              repairPatchPolicy.recommendedAction === "manual-review" ||
+              repairPatchPolicy.recommendedAction === "block-mutation");
           retryStopReason = "Repair evidence validation requires manual review";
           notes.push("Mutation skipped before patch intent validation because repair evidence requires manual review.");
         }
@@ -932,6 +1036,29 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     operations: restrictOperationsToContextAwareTarget(repoPath, initialChanges.operations, contextAwareRepairTarget)
   };
   if (!mutationSkippedForEvidence) {
+    repairPatchPolicy =
+      (await decideAndSaveRepairPatchPolicy({
+        runDir: state.runDir,
+        label: "initial",
+        repoPath,
+        repairIntent,
+        repairEvidenceValidation,
+        contextAwareRepairTarget,
+        operations: initialChanges.operations
+      })) ?? repairPatchPolicy;
+    if (
+      repairPatchPolicy &&
+      (!repairPatchPolicy.ok ||
+        repairPatchPolicy.recommendedAction === "manual-review" ||
+        repairPatchPolicy.recommendedAction === "block-mutation")
+    ) {
+      mutationSkippedForPolicy = true;
+      retryStopReason = "Repair patch policy blocked mutation";
+      notes.push(`Mutation skipped before patch intent validation because repair patch policy blocked mutation: ${repairPatchPolicy.reason}`);
+      initialChanges = { operations: [] };
+    }
+  }
+  if (!mutationSkippedForEvidence && !mutationSkippedForPolicy) {
     patchIntentValidation =
       (await validateAndSavePatchIntent({
         runDir: state.runDir,
@@ -984,7 +1111,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   review = parseWithSchema(reviewSchema, await reviewerAgent(brief, plan, commandResults, diffSummary), "ReviewResult");
   await saveStateFile(state.runDir, "review.json", review);
 
-  while (review.verdict === "fail" && selfHealingAttempt < 2 && !mutationSkippedForEvidence) {
+  while (review.verdict === "fail" && selfHealingAttempt < 2 && !mutationSkippedForEvidence && !mutationSkippedForPolicy) {
     const runtimeErrorForRetry = extractRuntimeError(commandResults);
     const failure = classifyCommandFailure(commandResults);
     const failureArtifactName = `failure-classification-attempt-${selfHealingAttempt + dependencyInstallCount + 1}.json`;
@@ -1021,11 +1148,26 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         repairIntent,
         symbolName: failure.details.symbol
       });
+      repairPatchPolicy =
+        (await decideAndSaveRepairPatchPolicy({
+          runDir: state.runDir,
+          label: `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`,
+          repoPath,
+          repairIntent,
+          repairEvidenceValidation,
+          contextAwareRepairTarget: retryContextAwareRepairTarget,
+          operations: []
+        })) ?? repairPatchPolicy;
       if (repairEvidenceValidation.allowedRepairMode === "conservative") {
         notes.push("Evidence validation allowed conservative repair mode.");
       }
       if (failure.strategy !== "install-dependency" && shouldSkipMutationForEvidenceValidation(repairEvidenceValidation)) {
         mutationSkippedForEvidence = true;
+        mutationSkippedForPolicy =
+          !!repairPatchPolicy &&
+          (!repairPatchPolicy.ok ||
+            repairPatchPolicy.recommendedAction === "manual-review" ||
+            repairPatchPolicy.recommendedAction === "block-mutation");
         retryStopReason = "Repair evidence validation requires manual review";
         notes.push("Mutation skipped before patch intent validation because repair evidence requires manual review.");
         break;
@@ -1177,6 +1319,33 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         retryContextAwareRepairTarget
       )
     };
+    repairPatchPolicy =
+      (await decideAndSaveRepairPatchPolicy({
+        runDir: state.runDir,
+        label: `self-heal-${selfHealingAttempt}`,
+        repoPath,
+        repairIntent,
+        repairEvidenceValidation,
+        contextAwareRepairTarget: retryContextAwareRepairTarget,
+        operations: fixChanges.operations
+      })) ?? repairPatchPolicy;
+    if (
+      repairPatchPolicy &&
+      (!repairPatchPolicy.ok ||
+        repairPatchPolicy.recommendedAction === "manual-review" ||
+        repairPatchPolicy.recommendedAction === "block-mutation")
+    ) {
+      mutationSkippedForPolicy = true;
+      retryStopReason = "Repair patch policy blocked mutation";
+      notes.push(`Mutation skipped before patch intent validation because repair patch policy blocked mutation: ${repairPatchPolicy.reason}`);
+      await saveStateFile(state.runDir, `self-heal-${selfHealingAttempt}-changes.json`, fixChanges);
+      await rememberFailure(
+        state.runDir,
+        failureMemory,
+        buildFailureMemoryEntry(attempts, failure, false, "Repair patch policy blocked mutation")
+      );
+      break;
+    }
     patchIntentValidation =
       (await validateAndSavePatchIntent({
         runDir: state.runDir,
@@ -1368,8 +1537,10 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   await saveStateFile(state.runDir, "repair-observability.json", {
     repairIntent,
     repairEvidenceValidation,
+    repairPatchPolicy,
     patchIntentValidation,
-    mutationSkippedForEvidence
+    mutationSkippedForEvidence,
+    mutationSkippedForPolicy
   });
 
   const finalReport = [
@@ -1408,6 +1579,14 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     mutationSkippedForEvidence
       ? "- Evidence validation outcome: mutation was skipped before patch intent validation"
       : "- Evidence validation outcome: mutation was allowed to continue",
+    `- Repair patch policy: ${repairPatchPolicy ? (repairPatchPolicy.ok ? "ok" : "blocked") : "n/a"}`,
+    `- Repair patch policy mode: ${repairPatchPolicy?.mode ?? "n/a"}`,
+    `- Repair patch policy recommended action: ${repairPatchPolicy?.recommendedAction ?? "n/a"}`,
+    `- Repair patch policy reason: ${repairPatchPolicy?.reason ?? "n/a"}`,
+    `- Mutation skipped by repair patch policy: ${mutationSkippedForPolicy ? "yes" : "no"}`,
+    mutationSkippedForPolicy
+      ? "- Repair patch policy outcome: mutation was skipped before patch intent validation"
+      : "- Repair patch policy outcome: mutation was allowed to continue or not evaluated",
     `- Patch intent validation: ${
       patchIntentValidation ? (patchIntentValidation.ok ? "ok" : "failed") : "n/a"
     }`,

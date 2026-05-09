@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v1.8 — Evidence Validation Layer**
+**v1.9 — Evidence-Aware Patch Policy Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -24,6 +24,8 @@ v1.6 added context-aware repair target selection: stack trace parsing, error con
 v1.7 adds a Repair Intent Layer between target selection and patching. It introduces semantic repair planning before patching, a `RepairIntent` model, a deterministic intent builder, patch intent validation, and report/debug observability. The single-file mutation invariant remains in place, and the Safe Patch Engine remains the only mutation layer.
 
 v1.8 validates whether a repair intent is sufficiently supported by available evidence before mutation. v1.7 can describe what it wants to repair; v1.8 checks whether that intent is backed by stack trace, context, dependency, symbol, and repair type evidence.
+
+v1.9 adds an Evidence-Aware Patch Policy Layer between evidence validation and patch intent validation. It constrains mutation based on evidence mode, allowed operations, blocked operations, and a deterministic recommended action.
 
 ---
 
@@ -324,6 +326,62 @@ v1.8 makes the system safer by requiring evidence before mutation while preservi
 
 ---
 
+## 🛡️ Evidence-Aware Patch Policy Layer (v1.9)
+
+v1.9 adds a deterministic policy gate after evidence validation and before Patch Intent Guard.
+
+Pipeline:
+
+```
+evidence validation
+→ patch policy decision
+→ patch intent validation
+→ safe patch
+```
+
+Purpose:
+
+* constrain mutation based on the evidence result
+* keep normal, conservative, and manual-review behavior explicit
+* block risky operations before Patch Intent Guard and Safe Patch Engine are reached
+
+The policy decides:
+
+* mode: `normal`, `conservative`, or `manual-review`
+* allowed operations
+* blocked operations
+* warnings
+* reason
+* recommended action: `proceed`, `downgrade-to-conservative`, `block-mutation`, or `manual-review`
+
+Safety guarantees:
+
+* does not replace the Evidence Validator
+* does not replace Patch Intent Guard
+* does not replace the Safe Patch Engine
+* Safe Patch Engine remains the only mutation layer
+* `manual-review` and `block-mutation` stop before Patch Intent Guard and Safe Patch Engine
+* single-file mutation invariant remains intact
+
+New module:
+
+* `src/repair/repairPatchPolicy.ts`
+
+v1.9 deterministic checks:
+
+* repair-patch-policy-unit
+* repair-patch-policy-gate-unit
+* repair-patch-policy-report-unit
+
+v1.9 scenario checks:
+
+* conservative-policy-allows-safe-export
+* conservative-policy-blocks-risky-append
+* manual-review-policy-blocks-mutation
+* normal-policy-allows-validated-patch
+
+---
+
 ## 🚀 Usage
 
 ### Basic
@@ -443,6 +501,14 @@ Pipeline:
 * `normal`, `conservative`, and `manual-review` repair modes
 * Manual-review mode skips mutation before patch intent validation
 * Evidence validation artifacts and final report observability
+
+### v1.9
+
+* Evidence-Aware Patch Policy Layer
+* Policy decision between evidence validation and Patch Intent Guard
+* Allowed and blocked operation lists
+* `manual-review` and `block-mutation` stop before Patch Intent Guard and Safe Patch Engine
+* Policy observability in final reports and repair debug artifacts
 
 ### v2.0
 
