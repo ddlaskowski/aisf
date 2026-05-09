@@ -48,6 +48,14 @@ import {
   decideRepairPatchPolicy,
   type RepairPatchPolicyDecision
 } from "../repair/repairPatchPolicy.js";
+import {
+  decideRepairStrategy,
+  type RepairStrategyDecision
+} from "../repair/repairStrategy.js";
+import {
+  decideRepairRetryStrategy,
+  type RepairRetryDecision
+} from "../repair/repairRetryStrategy.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -226,6 +234,10 @@ function buildCommitMessage(mode: "feature" | "bugfix", task: string): string {
   return `${mode === "bugfix" ? "fix" : "feat"}: ${shortTaskSummary(task)}`;
 }
 
+function formatList(values: string[] | undefined): string {
+  return values?.length ? values.join(", ") : "none";
+}
+
 function uniqueSorted(items: string[]): string[] {
   return Array.from(new Set(items)).sort((a, b) => a.localeCompare(b));
 }
@@ -386,6 +398,116 @@ async function buildAndSaveRepairEvidenceValidation(input: {
   });
   await saveStateFile(input.runDir, `repair-evidence-validation-${input.label}.json`, validation);
   return validation;
+}
+
+function buildRepairStrategyInput(
+  runtimeError: string,
+  commandResults: CommandResult[] | undefined,
+  failureMemory: FailureMemoryEntry[]
+) {
+  const failedCommand = commandResults?.find((result) => result.status === "failed");
+  return {
+    errorMessage: runtimeError,
+    stderr: failedCommand?.stderr,
+    stdout: failedCommand?.stdout,
+    command: failedCommand?.command,
+    stackTrace: {
+      message: runtimeError,
+      filePath: findErrorFileFromStack(runtimeError) ?? undefined
+    },
+    errorContext: {
+      message: runtimeError
+    },
+    previousAttempts: failureMemory.map((entry) => ({
+      strategy: entry.strategy,
+      validationChanged: entry.changeApplied,
+      policyDenied: entry.note?.toLowerCase().includes("policy") ?? false,
+      manualReview: entry.note?.toLowerCase().includes("manual review") ?? false
+    })),
+    failureMemory
+  };
+}
+
+async function decideAndSaveRepairStrategy(input: {
+  runDir: string;
+  label: string;
+  runtimeError: string;
+  commandResults: CommandResult[] | undefined;
+  failureMemory: FailureMemoryEntry[];
+}): Promise<RepairStrategyDecision> {
+  const strategy = decideRepairStrategy(
+    buildRepairStrategyInput(input.runtimeError, input.commandResults, input.failureMemory)
+  );
+  await saveStateFile(input.runDir, `repair-strategy-${input.label}.json`, strategy);
+  return strategy;
+}
+
+function errorSignatureFromResults(commandResults: CommandResult[] | undefined): string {
+  const runtimeError = commandResults ? extractRuntimeError(commandResults) : "";
+  return runtimeError
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(" | ");
+}
+
+function buildRetryAttempts(
+  failureMemory: FailureMemoryEntry[],
+  patchPolicy: RepairPatchPolicyDecision | null
+) {
+  return failureMemory.map((entry) => ({
+    strategy: entry.strategy,
+    validationChanged: entry.changeApplied,
+    validationPassed: false,
+    policyDenied: entry.note?.toLowerCase().includes("policy") ?? false,
+    manualReview: entry.note?.toLowerCase().includes("manual review") ?? false,
+    mutationApplied: entry.changeApplied,
+    errorSignature: entry.message,
+    patchPolicy: patchPolicy
+      ? {
+          allowed: patchPolicy.ok,
+          reason: patchPolicy.reason,
+          outcome: patchPolicy.recommendedAction
+        }
+      : undefined
+  }));
+}
+
+async function decideAndSaveRepairRetry(input: {
+  runDir: string;
+  label: string;
+  repairStrategy: RepairStrategyDecision | null;
+  repairPatchPolicy: RepairPatchPolicyDecision | null;
+  failureMemory: FailureMemoryEntry[];
+  commandResults: CommandResult[] | undefined;
+  retryCount: number;
+  maxRetries: number;
+  validationChanged?: boolean;
+  validationPassed?: boolean;
+}): Promise<RepairRetryDecision> {
+  const decision = decideRepairRetryStrategy({
+    currentStrategy: input.repairStrategy
+      ? {
+          strategy: input.repairStrategy.strategy,
+          confidence: input.repairStrategy.confidence,
+          recommendedAction: input.repairStrategy.recommendedAction,
+          mustAvoidStrategies: input.repairStrategy.mustAvoidStrategies
+        }
+      : undefined,
+    previousAttempts: buildRetryAttempts(input.failureMemory, input.repairPatchPolicy),
+    latestValidation: {
+      passed: input.validationPassed,
+      changed: input.validationChanged,
+      errorSignature: errorSignatureFromResults(input.commandResults),
+      stderr: input.commandResults?.find((result) => result.status === "failed")?.stderr,
+      stdout: input.commandResults?.find((result) => result.status === "failed")?.stdout
+    },
+    retryCount: input.retryCount,
+    maxRetries: input.maxRetries
+  });
+  await saveStateFile(input.runDir, `repair-retry-decision-${input.label}.json`, decision);
+  return decision;
 }
 
 async function confirmContinueWithDirtyRepo(statusBefore: string, autoApprove = false): Promise<boolean> {
@@ -778,6 +900,8 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let review: ReviewResult | undefined;
   let initialChanges: Changeset = { operations: [] };
   let contextAwareRepairTarget: ContextAwareRepairTarget | null = null;
+  let repairStrategy: RepairStrategyDecision | null = null;
+  let repairRetryDecision: RepairRetryDecision | null = null;
   let repairIntent: RepairIntent | null = null;
   let repairEvidenceValidation: RepairEvidenceValidation | null = null;
   let repairPatchPolicy: RepairPatchPolicyDecision | null = null;
@@ -807,6 +931,33 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       );
       await saveStateFile(state.runDir, "failure-classification-prevalidation.json", prevalidationFailure);
       const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
+      repairStrategy = await decideAndSaveRepairStrategy({
+        runDir: state.runDir,
+        label: "prevalidation",
+        runtimeError: runtimeErrorForPrevalidation,
+        commandResults,
+        failureMemory
+      });
+      if (repairStrategy.recommendedAction === "manual-review" || repairStrategy.recommendedAction === "stop") {
+        repairRetryDecision = await decideAndSaveRepairRetry({
+          runDir: state.runDir,
+          label: "prevalidation",
+          repairStrategy,
+          repairPatchPolicy,
+          failureMemory,
+          commandResults,
+          retryCount: selfHealingAttempt,
+          maxRetries: 2,
+          validationChanged: false,
+          validationPassed: false
+        });
+        mutationSkippedForEvidence = true;
+        retryStopReason = `Repair strategy requires ${repairStrategy.recommendedAction}`;
+        notes.push(`Mutation skipped before repair target selection because repair strategy recommended ${repairStrategy.recommendedAction}.`);
+      } else if (repairStrategy.recommendedAction === "collect-more-context") {
+        notes.push("Repair strategy requested more context; continuing with context-aware target selection.");
+      }
+      if (!mutationSkippedForEvidence) {
       contextAwareRepairTarget =
         (await selectAndSaveContextAwareRepairTarget(
           state.runDir,
@@ -814,6 +965,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           runtimeErrorForPrevalidation,
           "prevalidation"
         )) ?? contextAwareRepairTarget;
+      }
       if (contextAwareRepairTarget) {
         repairIntent = await buildAndSaveRepairIntent({
           runDir: state.runDir,
@@ -1052,6 +1204,18 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         repairPatchPolicy.recommendedAction === "manual-review" ||
         repairPatchPolicy.recommendedAction === "block-mutation")
     ) {
+      repairRetryDecision = await decideAndSaveRepairRetry({
+        runDir: state.runDir,
+        label: "initial-policy",
+        repairStrategy,
+        repairPatchPolicy,
+        failureMemory,
+        commandResults,
+        retryCount: selfHealingAttempt,
+        maxRetries: 2,
+        validationChanged: false,
+        validationPassed: false
+      });
       mutationSkippedForPolicy = true;
       retryStopReason = "Repair patch policy blocked mutation";
       notes.push(`Mutation skipped before patch intent validation because repair patch policy blocked mutation: ${repairPatchPolicy.reason}`);
@@ -1124,6 +1288,42 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       failureMemory,
       buildFailureMemoryEntry(attempts, failure, totalAppliedChanges > 0, "Validation failed before repair strategy")
     );
+    repairStrategy = await decideAndSaveRepairStrategy({
+      runDir: state.runDir,
+      label: `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`,
+      runtimeError: runtimeErrorForRetry,
+      commandResults,
+      failureMemory
+    });
+    repairRetryDecision = await decideAndSaveRepairRetry({
+      runDir: state.runDir,
+      label: `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`,
+      repairStrategy,
+      repairPatchPolicy,
+      failureMemory,
+      commandResults,
+      retryCount: selfHealingAttempt,
+      maxRetries: 2,
+      validationChanged: totalAppliedChanges > 0,
+      validationPassed: false
+    });
+    if (!repairRetryDecision.shouldRetry) {
+      retryStopReason = repairRetryDecision.reason;
+      notes.push(`Retry strategy stopped repair: ${repairRetryDecision.reason}`);
+      if (repairRetryDecision.nextAction === "manual-review") {
+        mutationSkippedForEvidence = true;
+      }
+      await saveRetryStop(state.runDir, attempts, retryStopReason, failure, failureMemory);
+      break;
+    }
+    if (repairStrategy.recommendedAction === "manual-review" || repairStrategy.recommendedAction === "stop") {
+      mutationSkippedForEvidence = true;
+      retryStopReason = `Repair strategy requires ${repairStrategy.recommendedAction}`;
+      notes.push(`Mutation skipped before repair target selection because repair strategy recommended ${repairStrategy.recommendedAction}.`);
+      break;
+    } else if (repairStrategy.recommendedAction === "collect-more-context") {
+      notes.push("Repair strategy requested more context; continuing with context-aware target selection.");
+    }
     const retryContextAwareRepairTarget =
       (await selectAndSaveContextAwareRepairTarget(
         state.runDir,
@@ -1223,6 +1423,30 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
             failureMemory,
             buildFailureMemoryEntry(attempts, postInstallFailure, true, "Validation still failed after dependency install")
           );
+          repairRetryDecision = await decideAndSaveRepairRetry({
+            runDir: state.runDir,
+            label: `after-install-${dependencyInstallCount}`,
+            repairStrategy,
+            repairPatchPolicy: null,
+            failureMemory,
+            commandResults,
+            retryCount: selfHealingAttempt,
+            maxRetries: 2,
+            validationChanged: true,
+            validationPassed: false
+          });
+          if (!repairRetryDecision.shouldRetry) {
+            retryStopReason = repairRetryDecision.reason;
+            console.log(`Retry stopped: ${retryStopReason}`);
+            await saveRetryStop(
+              state.runDir,
+              attempts,
+              retryStopReason ?? "Retry stopped",
+              postInstallFailure,
+              failureMemory
+            );
+            break;
+          }
           const decision = shouldContinueRetry({
             failureMemory,
             currentFailure: postInstallFailure,
@@ -1335,6 +1559,18 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         repairPatchPolicy.recommendedAction === "manual-review" ||
         repairPatchPolicy.recommendedAction === "block-mutation")
     ) {
+      repairRetryDecision = await decideAndSaveRepairRetry({
+        runDir: state.runDir,
+        label: `self-heal-${selfHealingAttempt}-policy`,
+        repairStrategy,
+        repairPatchPolicy,
+        failureMemory,
+        commandResults,
+        retryCount: selfHealingAttempt,
+        maxRetries: 2,
+        validationChanged: false,
+        validationPassed: false
+      });
       mutationSkippedForPolicy = true;
       retryStopReason = "Repair patch policy blocked mutation";
       notes.push(`Mutation skipped before patch intent validation because repair patch policy blocked mutation: ${repairPatchPolicy.reason}`);
@@ -1363,6 +1599,24 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         failureMemory,
         buildFailureMemoryEntry(attempts, failure, false, "Repair strategy generated no file operations")
       );
+      repairRetryDecision = await decideAndSaveRepairRetry({
+        runDir: state.runDir,
+        label: `self-heal-${selfHealingAttempt}-no-operations`,
+        repairStrategy,
+        repairPatchPolicy,
+        failureMemory,
+        commandResults,
+        retryCount: selfHealingAttempt,
+        maxRetries: 2,
+        validationChanged: false,
+        validationPassed: false
+      });
+      if (!repairRetryDecision.shouldRetry) {
+        retryStopReason = repairRetryDecision.reason;
+        console.log(`Retry stopped: ${retryStopReason}`);
+        await saveRetryStop(state.runDir, attempts, retryStopReason ?? "Retry stopped", failure, failureMemory);
+        break;
+      }
       const decision = shouldContinueRetry({
         failureMemory,
         currentFailure: failure,
@@ -1431,6 +1685,24 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
             : "Validation still failed after repair strategy; no effective change was applied"
         )
       );
+      repairRetryDecision = await decideAndSaveRepairRetry({
+        runDir: state.runDir,
+        label: `post-repair-${attempts}`,
+        repairStrategy,
+        repairPatchPolicy,
+        failureMemory,
+        commandResults,
+        retryCount: selfHealingAttempt,
+        maxRetries: 2,
+        validationChanged: fixChanged,
+        validationPassed: false
+      });
+      if (!repairRetryDecision.shouldRetry) {
+        retryStopReason = repairRetryDecision.reason;
+        console.log(`Retry stopped: ${retryStopReason}`);
+        await saveRetryStop(state.runDir, attempts, retryStopReason ?? "Retry stopped", postRepairFailure, failureMemory);
+        break;
+      }
       const decision = shouldContinueRetry({
         failureMemory,
         currentFailure: postRepairFailure,
@@ -1535,6 +1807,8 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
 
   await saveStateFile(state.runDir, "commit-result.json", commitResult);
   await saveStateFile(state.runDir, "repair-observability.json", {
+    repairStrategy,
+    repairRetryDecision,
     repairIntent,
     repairEvidenceValidation,
     repairPatchPolicy,
@@ -1560,6 +1834,24 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Context-aware repair target: ${contextAwareRepairTarget?.filePath ?? "None"}`,
     `- Context-aware repair confidence: ${contextAwareRepairTarget?.confidence ?? "n/a"}`,
     `- Context-aware repair reason: ${contextAwareRepairTarget?.reason ?? "n/a"}`,
+    "",
+    "## Repair strategy",
+    `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,
+    `- Confidence: ${repairStrategy?.confidence ?? "not available"}`,
+    `- Target kind: ${repairStrategy?.targetKind ?? "not available"}`,
+    `- Reason: ${repairStrategy?.reason ?? "not available"}`,
+    `- Recommended action: ${repairStrategy?.recommendedAction ?? "not available"}`,
+    `- Strategy source: ${repairStrategy?.strategySource ?? "not available"}`,
+    `- Warnings: ${repairStrategy ? formatList(repairStrategy.warnings) : "not available"}`,
+    `- Must avoid strategies: ${repairStrategy ? formatList(repairStrategy.mustAvoidStrategies) : "not available"}`,
+    "",
+    "## Retry strategy",
+    `- Should retry: ${repairRetryDecision ? String(repairRetryDecision.shouldRetry) : "not available"}`,
+    `- Next action: ${repairRetryDecision?.nextAction ?? "not available"}`,
+    `- Reason: ${repairRetryDecision?.reason ?? "not available"}`,
+    `- Previous strategies: ${repairRetryDecision ? formatList(repairRetryDecision.previousStrategies) : "not available"}`,
+    `- Blocked strategies: ${repairRetryDecision ? formatList(repairRetryDecision.blockedStrategies) : "not available"}`,
+    "",
     `- Repair intent: ${repairIntent?.repairType ?? "None"}`,
     `- Repair intent target: ${repairIntent?.targetFile ?? "n/a"}`,
     `- Repair intent confidence: ${repairIntent?.confidence ?? "n/a"}`,

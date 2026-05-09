@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v1.9 — Evidence-Aware Patch Policy Layer**
+**v2.0 — Repair Strategy Orchestration Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -26,6 +26,8 @@ v1.7 adds a Repair Intent Layer between target selection and patching. It introd
 v1.8 validates whether a repair intent is sufficiently supported by available evidence before mutation. v1.7 can describe what it wants to repair; v1.8 checks whether that intent is backed by stack trace, context, dependency, symbol, and repair type evidence.
 
 v1.9 adds an Evidence-Aware Patch Policy Layer between evidence validation and patch intent validation. It constrains mutation based on evidence mode, allowed operations, blocked operations, and a deterministic recommended action.
+
+v2.0 adds deterministic repair strategy orchestration before target selection and retry. Strategy and retry decisions are observable, conservative, and do not mutate files.
 
 ---
 
@@ -382,6 +384,55 @@ v1.9 scenario checks:
 
 ---
 
+## 🧭 Repair Strategy Orchestration Layer (v2.0)
+
+v2.0 adds deterministic strategy selection and retry control around the existing repair pipeline.
+
+Pipeline:
+
+```
+error
+→ failure intelligence
+→ repair strategy decision
+→ repair target decision
+→ repair intent
+→ evidence validation
+→ patch policy decision
+→ patch intent validation
+→ safe patch
+→ validation
+→ retry strategy decision
+```
+
+What v2.0 adds:
+
+* `src/repair/repairStrategy.ts`
+* `src/repair/repairRetryStrategy.ts`
+* strategy artifacts: `repair-strategy-*.json`
+* retry artifacts: `repair-retry-decision-*.json`
+* `repairStrategy` and `repairRetryDecision` in `repair-observability.json`
+* stable final-report sections for repair strategy and retry strategy
+
+Safety guarantees:
+
+* strategy does not mutate files
+* retry controller does not mutate files
+* Safe Patch Engine remains the only mutation layer
+* Evidence Validation and Patch Policy remain authoritative
+* single-file mutation invariant remains intact
+* manual-review and policy denial block retries
+
+v2.0 deterministic checks:
+
+* repair-strategy-unit
+* repair-strategy-gate-unit
+* repair-retry-strategy-unit
+* repair-retry-strategy-integration-unit
+* repair-strategy-report-unit
+* repair-strategy-scenario-hardening-unit
+
+---
+
 ## 🚀 Usage
 
 ### Basic
@@ -512,8 +563,16 @@ Pipeline:
 
 ### v2.0
 
-* Multi-agent system
-* Parallel tasks
+* Repair Strategy Orchestration Layer
+* Strategy decision before repair target selection
+* Retry strategy controller
+* Strategy and retry artifacts in run reports
+* Manual-review and policy-denied retry blocking
+
+### v2.1+
+
+* Multi-agent system exploration
+* Parallel task orchestration
 * Project scaffolding
 
 ---

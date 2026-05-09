@@ -3546,6 +3546,601 @@ function runRepairPatchPolicyReportUnit() {
   }
 }
 
+function runRepairStrategyUnit() {
+  const { decideRepairStrategy } = require(path.join(projectRoot, "dist", "repair", "repairStrategy.js"));
+
+  function assertDecision(name, actual, expected) {
+    for (const [field, value] of Object.entries(expected)) {
+      if (actual[field] !== value) {
+        throw new Error(`${name}: expected ${field}=${value}, got ${actual[field]} in ${JSON.stringify(actual)}`);
+      }
+    }
+  }
+
+  try {
+    assertDecision(
+      "missing dependency",
+      decideRepairStrategy({ stderr: "Error: Cannot find module 'express'" }),
+      {
+        ok: true,
+        strategy: "missing-dependency",
+        confidence: "high",
+        targetKind: "dependency",
+        recommendedAction: "proceed"
+      }
+    );
+
+    assertDecision(
+      "missing local module",
+      decideRepairStrategy({ stderr: "Error: Cannot find module './helper'" }),
+      {
+        ok: true,
+        strategy: "missing-local-module",
+        confidence: "high",
+        targetKind: "local-module",
+        recommendedAction: "proceed"
+      }
+    );
+
+    assertDecision(
+      "missing export",
+      decideRepairStrategy({ stderr: "The requested module './helper.js' does not provide an export named 'foo'" }),
+      {
+        ok: true,
+        strategy: "missing-export",
+        confidence: "high",
+        targetKind: "export",
+        recommendedAction: "proceed"
+      }
+    );
+
+    const wrongImport = decideRepairStrategy({
+      stderr: "Module './helper' has no exported member 'foo'. Did you mean 'bar'?"
+    });
+    if (
+      !(
+        (wrongImport.strategy === "wrong-import-name" || wrongImport.strategy === "missing-export") &&
+        wrongImport.warnings.some((warning) => warning.includes("overlap"))
+      )
+    ) {
+      throw new Error(`wrong import overlap: expected wrong-import-name or missing-export with overlap warning, got ${JSON.stringify(wrongImport)}`);
+    }
+
+    assertDecision(
+      "duplicate declaration",
+      decideRepairStrategy({ stderr: "SyntaxError: Identifier 'x' has already been declared" }),
+      {
+        ok: true,
+        strategy: "duplicate-declaration",
+        confidence: "high",
+        targetKind: "symbol",
+        recommendedAction: "proceed"
+      }
+    );
+
+    assertDecision(
+      "undefined symbol",
+      decideRepairStrategy({ stderr: "ReferenceError: x is not defined" }),
+      {
+        ok: true,
+        strategy: "undefined-symbol",
+        confidence: "high",
+        targetKind: "symbol",
+        recommendedAction: "proceed"
+      }
+    );
+
+    assertDecision(
+      "not a function",
+      decideRepairStrategy({ stderr: "TypeError: x is not a function" }),
+      {
+        ok: true,
+        strategy: "not-a-function",
+        confidence: "high",
+        targetKind: "symbol",
+        recommendedAction: "proceed"
+      }
+    );
+
+    assertDecision("empty error", decideRepairStrategy({}), {
+      ok: false,
+      strategy: "manual-review",
+      confidence: "low",
+      targetKind: "unknown",
+      recommendedAction: "manual-review"
+    });
+
+    const repeated = decideRepairStrategy({
+      stderr: "ReferenceError: x is not defined",
+      previousAttempts: [
+        { strategy: "undefined-symbol", validationChanged: false },
+        { strategy: "undefined-symbol", validationChanged: false }
+      ]
+    });
+    if (
+      !repeated.mustAvoidStrategies.includes("undefined-symbol") ||
+      repeated.recommendedAction !== "retry-with-different-strategy"
+    ) {
+      throw new Error(`repeated strategy: expected mustAvoidStrategies and retry action, got ${JSON.stringify(repeated)}`);
+    }
+
+    console.log("PASS repair-strategy-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-strategy-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairStrategyGateUnit() {
+  const { decideRepairStrategy } = require(path.join(projectRoot, "dist", "repair", "repairStrategy.js"));
+
+  function evaluateStrategyGate(strategy) {
+    const blocked = strategy.recommendedAction === "manual-review" || strategy.recommendedAction === "stop";
+    return {
+      mutationBlocked: blocked,
+      targetSelectionReached: !blocked,
+      evidenceValidationReached: !blocked,
+      patchPolicyReached: !blocked
+    };
+  }
+
+  try {
+    const manualReview = decideRepairStrategy({});
+    const manualGate = evaluateStrategyGate(manualReview);
+    if (
+      !manualGate.mutationBlocked ||
+      manualGate.targetSelectionReached ||
+      manualGate.evidenceValidationReached ||
+      manualGate.patchPolicyReached
+    ) {
+      throw new Error(`manual-review strategy gate: expected blocked path, got ${JSON.stringify({ manualReview, manualGate })}`);
+    }
+
+    const stop = decideRepairStrategy({
+      stderr: "ReferenceError: value is not defined",
+      previousAttempts: [{ strategy: "undefined-symbol", manualReview: true }]
+    });
+    const stopGate = evaluateStrategyGate(stop);
+    if (!stopGate.mutationBlocked || stop.recommendedAction !== "stop") {
+      throw new Error(`stop strategy gate: expected stop to block mutation path, got ${JSON.stringify({ stop, stopGate })}`);
+    }
+
+    const proceed = decideRepairStrategy({ stderr: "ReferenceError: value is not defined" });
+    const proceedGate = evaluateStrategyGate(proceed);
+    if (
+      proceedGate.mutationBlocked ||
+      !proceedGate.targetSelectionReached ||
+      !proceedGate.evidenceValidationReached ||
+      !proceedGate.patchPolicyReached
+    ) {
+      throw new Error(`proceed strategy gate: expected existing path to continue, got ${JSON.stringify({ proceed, proceedGate })}`);
+    }
+
+    const observability = JSON.parse(JSON.stringify({ repairStrategy: proceed }));
+    const finalReport = [
+      `- Repair strategy: ${proceed.strategy}`,
+      `- Repair strategy confidence: ${proceed.confidence}`,
+      `- Repair strategy reason: ${proceed.reason}`,
+      `- Repair strategy recommended action: ${proceed.recommendedAction}`
+    ].join("\n");
+    if (
+      !observability.repairStrategy ||
+      typeof observability.repairStrategy.strategy !== "string" ||
+      !finalReport.includes("Repair strategy recommended action:")
+    ) {
+      throw new Error(`strategy report shape: expected strategy in observability/report, got ${JSON.stringify({ observability, finalReport })}`);
+    }
+
+    console.log("PASS repair-strategy-gate-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-strategy-gate-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairRetryStrategyUnit() {
+  const { decideRepairRetryStrategy } = require(path.join(projectRoot, "dist", "repair", "repairRetryStrategy.js"));
+
+  function assertDecision(name, actual, expected) {
+    for (const [field, value] of Object.entries(expected)) {
+      if (actual[field] !== value) {
+        throw new Error(`${name}: expected ${field}=${value}, got ${actual[field]} in ${JSON.stringify(actual)}`);
+      }
+    }
+  }
+
+  try {
+    assertDecision(
+      "validation passed",
+      decideRepairRetryStrategy({ latestValidation: { passed: true } }),
+      { shouldRetry: false, nextAction: "stop" }
+    );
+
+    assertDecision(
+      "max retries",
+      decideRepairRetryStrategy({ retryCount: 2, maxRetries: 2 }),
+      { shouldRetry: false, nextAction: "stop" }
+    );
+
+    assertDecision(
+      "current stop",
+      decideRepairRetryStrategy({ currentStrategy: { recommendedAction: "stop" } }),
+      { shouldRetry: false, nextAction: "stop" }
+    );
+
+    assertDecision(
+      "current manual review",
+      decideRepairRetryStrategy({ currentStrategy: { recommendedAction: "manual-review" } }),
+      { shouldRetry: false, nextAction: "manual-review" }
+    );
+
+    assertDecision(
+      "previous manual review",
+      decideRepairRetryStrategy({ previousAttempts: [{ strategy: "unknown", manualReview: true }] }),
+      { shouldRetry: false, nextAction: "manual-review" }
+    );
+
+    const policyDenied = decideRepairRetryStrategy({
+      previousAttempts: [{ strategy: "undefined-symbol", policyDenied: true }]
+    });
+    assertDecision("policy denial", policyDenied, { shouldRetry: false, nextAction: "stop" });
+    if (!policyDenied.blockedStrategies.includes("undefined-symbol")) {
+      throw new Error(`policy denial: expected undefined-symbol blocked, got ${JSON.stringify(policyDenied)}`);
+    }
+
+    const mustAvoid = decideRepairRetryStrategy({
+      currentStrategy: {
+        strategy: "undefined-symbol",
+        mustAvoidStrategies: ["undefined-symbol"]
+      }
+    });
+    assertDecision("must avoid strategy", mustAvoid, {
+      shouldRetry: true,
+      nextAction: "retry-different-strategy"
+    });
+    if (!mustAvoid.blockedStrategies.includes("undefined-symbol")) {
+      throw new Error(`must avoid strategy: expected undefined-symbol blocked, got ${JSON.stringify(mustAvoid)}`);
+    }
+
+    const repeatedSame = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "undefined-symbol" },
+      previousAttempts: [{ strategy: "undefined-symbol", validationChanged: false }],
+      latestValidation: { changed: false },
+      retryCount: 1,
+      maxRetries: 3
+    });
+    assertDecision("repeated same unchanged", repeatedSame, {
+      shouldRetry: false,
+      nextAction: "manual-review"
+    });
+
+    const unchangedSignature = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "not-a-function" },
+      previousAttempts: [{ strategy: "undefined-symbol", errorSignature: "same-error", validationChanged: true }],
+      latestValidation: { changed: false, errorSignature: "same-error" },
+      retryCount: 1,
+      maxRetries: 3
+    });
+    assertDecision("unchanged signature", unchangedSignature, {
+      shouldRetry: true,
+      nextAction: "retry-different-strategy"
+    });
+    if (!unchangedSignature.blockedStrategies.includes("undefined-symbol")) {
+      throw new Error(`unchanged signature: expected previous strategy blocked, got ${JSON.stringify(unchangedSignature)}`);
+    }
+
+    assertDecision(
+      "collect more context",
+      decideRepairRetryStrategy({
+        currentStrategy: { recommendedAction: "collect-more-context", confidence: "medium" }
+      }),
+      { shouldRetry: true, nextAction: "collect-more-context" }
+    );
+
+    assertDecision(
+      "low confidence",
+      decideRepairRetryStrategy({
+        currentStrategy: { confidence: "low", recommendedAction: "proceed" }
+      }),
+      { shouldRetry: false, nextAction: "manual-review" }
+    );
+
+    assertDecision(
+      "normal retry",
+      decideRepairRetryStrategy({
+        currentStrategy: { strategy: "undefined-symbol", confidence: "high", recommendedAction: "proceed" },
+        retryCount: 0,
+        maxRetries: 2
+      }),
+      { shouldRetry: true, nextAction: "retry-same-strategy" }
+    );
+
+    console.log("PASS repair-retry-strategy-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-retry-strategy-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairRetryStrategyIntegrationUnit() {
+  const { decideRepairRetryStrategy } = require(path.join(projectRoot, "dist", "repair", "repairRetryStrategy.js"));
+
+  function gate(decision) {
+    return {
+      shouldContinueRetryLoop: decision.shouldRetry,
+      mutationPathAllowed: decision.shouldRetry && !["manual-review", "stop"].includes(decision.nextAction)
+    };
+  }
+
+  try {
+    const policyDenied = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "undefined-symbol", confidence: "high", recommendedAction: "proceed" },
+      previousAttempts: [{ strategy: "undefined-symbol", policyDenied: true }],
+      latestValidation: { passed: false, changed: false },
+      retryCount: 1,
+      maxRetries: 2
+    });
+    if (policyDenied.shouldRetry || gate(policyDenied).mutationPathAllowed || policyDenied.nextAction !== "stop") {
+      throw new Error(`policy denial integration: expected retry blocked, got ${JSON.stringify(policyDenied)}`);
+    }
+
+    const manualReview = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "manual-review", recommendedAction: "manual-review" },
+      retryCount: 0,
+      maxRetries: 2
+    });
+    if (manualReview.shouldRetry || manualReview.nextAction !== "manual-review") {
+      throw new Error(`manual-review integration: expected retry blocked, got ${JSON.stringify(manualReview)}`);
+    }
+
+    const unchangedSame = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "undefined-symbol", confidence: "high", recommendedAction: "proceed" },
+      previousAttempts: [{ strategy: "undefined-symbol", validationChanged: false }],
+      latestValidation: { passed: false, changed: false },
+      retryCount: 1,
+      maxRetries: 3
+    });
+    if (unchangedSame.shouldRetry || unchangedSame.nextAction !== "manual-review") {
+      throw new Error(`unchanged same strategy integration: expected manual review, got ${JSON.stringify(unchangedSame)}`);
+    }
+
+    const retrySame = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "undefined-symbol", confidence: "high", recommendedAction: "proceed" },
+      latestValidation: { passed: false, changed: true },
+      retryCount: 0,
+      maxRetries: 2
+    });
+    if (!retrySame.shouldRetry || retrySame.nextAction !== "retry-same-strategy") {
+      throw new Error(`retry same integration: expected existing retry path, got ${JSON.stringify(retrySame)}`);
+    }
+
+    const retryDifferent = decideRepairRetryStrategy({
+      currentStrategy: {
+        strategy: "undefined-symbol",
+        confidence: "high",
+        recommendedAction: "proceed",
+        mustAvoidStrategies: ["undefined-symbol"]
+      },
+      retryCount: 0,
+      maxRetries: 2
+    });
+    if (
+      !retryDifferent.shouldRetry ||
+      retryDifferent.nextAction !== "retry-different-strategy" ||
+      !retryDifferent.blockedStrategies.includes("undefined-symbol")
+    ) {
+      throw new Error(`retry different integration: expected blocked strategy, got ${JSON.stringify(retryDifferent)}`);
+    }
+
+    const observability = JSON.parse(JSON.stringify({ repairRetryDecision: retrySame }));
+    const finalReport = [
+      `- Retry strategy: ${retrySame.nextAction}`,
+      `- Retry strategy reason: ${retrySame.reason}`,
+      `- Previous strategies: ${retrySame.previousStrategies.length ? retrySame.previousStrategies.join(", ") : "none"}`,
+      `- Blocked strategies: ${retrySame.blockedStrategies.length ? retrySame.blockedStrategies.join(", ") : "none"}`
+    ].join("\n");
+    if (
+      !observability.repairRetryDecision ||
+      typeof observability.repairRetryDecision.shouldRetry !== "boolean" ||
+      !finalReport.includes("Retry strategy:") ||
+      !finalReport.includes("Blocked strategies:")
+    ) {
+      throw new Error(`retry report integration: expected observability/report shape, got ${JSON.stringify({ observability, finalReport })}`);
+    }
+
+    console.log("PASS repair-retry-strategy-integration-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-retry-strategy-integration-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function formatUnitList(values) {
+  return values?.length ? values.join(", ") : "none";
+}
+
+function renderStrategyReportUnit(repairStrategy, repairRetryDecision) {
+  return [
+    "## Repair strategy",
+    `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,
+    `- Confidence: ${repairStrategy?.confidence ?? "not available"}`,
+    `- Target kind: ${repairStrategy?.targetKind ?? "not available"}`,
+    `- Reason: ${repairStrategy?.reason ?? "not available"}`,
+    `- Recommended action: ${repairStrategy?.recommendedAction ?? "not available"}`,
+    `- Strategy source: ${repairStrategy?.strategySource ?? "not available"}`,
+    `- Warnings: ${repairStrategy ? formatUnitList(repairStrategy.warnings) : "not available"}`,
+    `- Must avoid strategies: ${repairStrategy ? formatUnitList(repairStrategy.mustAvoidStrategies) : "not available"}`,
+    "",
+    "## Retry strategy",
+    `- Should retry: ${repairRetryDecision ? String(repairRetryDecision.shouldRetry) : "not available"}`,
+    `- Next action: ${repairRetryDecision?.nextAction ?? "not available"}`,
+    `- Reason: ${repairRetryDecision?.reason ?? "not available"}`,
+    `- Previous strategies: ${repairRetryDecision ? formatUnitList(repairRetryDecision.previousStrategies) : "not available"}`,
+    `- Blocked strategies: ${repairRetryDecision ? formatUnitList(repairRetryDecision.blockedStrategies) : "not available"}`
+  ].join("\n");
+}
+
+function runRepairStrategyReportUnit() {
+  const { decideRepairStrategy } = require(path.join(projectRoot, "dist", "repair", "repairStrategy.js"));
+  const { decideRepairRetryStrategy } = require(path.join(projectRoot, "dist", "repair", "repairRetryStrategy.js"));
+
+  try {
+    const repairStrategy = decideRepairStrategy({ stderr: "ReferenceError: value is not defined" });
+    const repairRetryDecision = decideRepairRetryStrategy({
+      currentStrategy: {
+        strategy: repairStrategy.strategy,
+        confidence: repairStrategy.confidence,
+        recommendedAction: repairStrategy.recommendedAction,
+        mustAvoidStrategies: repairStrategy.mustAvoidStrategies
+      },
+      latestValidation: { changed: true, passed: false },
+      retryCount: 0,
+      maxRetries: 2
+    });
+
+    const strategyRequiredFields = [
+      "ok",
+      "strategy",
+      "confidence",
+      "targetKind",
+      "reason",
+      "warnings",
+      "recommendedAction",
+      "strategySource",
+      "mustAvoidStrategies"
+    ];
+    for (const field of strategyRequiredFields) {
+      if (!Object.prototype.hasOwnProperty.call(repairStrategy, field)) {
+        throw new Error(`repairStrategy missing field ${field}: ${JSON.stringify(repairStrategy)}`);
+      }
+    }
+
+    const retryRequiredFields = ["shouldRetry", "nextAction", "reason", "previousStrategies", "blockedStrategies"];
+    for (const field of retryRequiredFields) {
+      if (!Object.prototype.hasOwnProperty.call(repairRetryDecision, field)) {
+        throw new Error(`repairRetryDecision missing field ${field}: ${JSON.stringify(repairRetryDecision)}`);
+      }
+    }
+
+    const report = renderStrategyReportUnit(repairStrategy, repairRetryDecision);
+    for (const needle of [
+      "## Repair strategy",
+      "- Strategy:",
+      "- Confidence:",
+      "- Target kind:",
+      "- Recommended action:",
+      "- Strategy source:",
+      "- Warnings: none",
+      "- Must avoid strategies: none",
+      "## Retry strategy",
+      "- Should retry:",
+      "- Next action:",
+      "- Previous strategies: none",
+      "- Blocked strategies: none"
+    ]) {
+      if (!report.includes(needle)) {
+        throw new Error(`strategy report missing ${JSON.stringify(needle)} in ${report}`);
+      }
+    }
+
+    const missingRetryReport = renderStrategyReportUnit(repairStrategy, null);
+    if (!missingRetryReport.includes("- Should retry: not available") || !missingRetryReport.includes("- Next action: not available")) {
+      throw new Error(`missing retry decision did not render consistently: ${missingRetryReport}`);
+    }
+
+    console.log("PASS repair-strategy-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-strategy-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairStrategyScenarioHardeningUnit() {
+  const { decideRepairStrategy } = require(path.join(projectRoot, "dist", "repair", "repairStrategy.js"));
+  const { decideRepairRetryStrategy } = require(path.join(projectRoot, "dist", "repair", "repairRetryStrategy.js"));
+
+  function assertStrategy(name, actual, expectedStrategy) {
+    const artifact = JSON.parse(JSON.stringify(actual));
+    if (artifact.strategy !== expectedStrategy) {
+      throw new Error(`${name}: expected strategy ${expectedStrategy}, got ${artifact.strategy} in ${JSON.stringify(artifact)}`);
+    }
+    for (const field of ["ok", "strategy", "confidence", "targetKind", "reason", "warnings", "recommendedAction", "strategySource", "mustAvoidStrategies"]) {
+      if (!Object.prototype.hasOwnProperty.call(artifact, field)) {
+        throw new Error(`${name}: strategy artifact missing ${field}`);
+      }
+    }
+  }
+
+  try {
+    assertStrategy("missing dependency", decideRepairStrategy({ stderr: "Cannot find module 'express'" }), "missing-dependency");
+    assertStrategy("missing local module", decideRepairStrategy({ stderr: "Cannot find module './helper'" }), "missing-local-module");
+    assertStrategy("missing export", decideRepairStrategy({ stderr: "does not provide an export named 'foo'" }), "missing-export");
+    assertStrategy("duplicate declaration", decideRepairStrategy({ stderr: "Identifier 'x' has already been declared" }), "duplicate-declaration");
+    assertStrategy("undefined symbol", decideRepairStrategy({ stderr: "ReferenceError: x is not defined" }), "undefined-symbol");
+    assertStrategy("not a function", decideRepairStrategy({ stderr: "TypeError: x is not a function" }), "not-a-function");
+
+    const manualReview = decideRepairStrategy({});
+    if (manualReview.recommendedAction !== "manual-review" || manualReview.ok !== false) {
+      throw new Error(`manual review strategy should block mutation, got ${JSON.stringify(manualReview)}`);
+    }
+
+    const policyDenied = decideRepairRetryStrategy({
+      previousAttempts: [{ strategy: "undefined-symbol", policyDenied: true }],
+      retryCount: 1,
+      maxRetries: 2
+    });
+    if (policyDenied.shouldRetry !== false || policyDenied.nextAction !== "stop") {
+      throw new Error(`policy denial should block retry, got ${JSON.stringify(policyDenied)}`);
+    }
+
+    const unchanged = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "undefined-symbol", recommendedAction: "proceed", confidence: "high" },
+      previousAttempts: [{ strategy: "undefined-symbol", validationChanged: false }],
+      latestValidation: { changed: false },
+      retryCount: 1,
+      maxRetries: 3
+    });
+    if (unchanged.shouldRetry !== false || unchanged.nextAction !== "manual-review") {
+      throw new Error(`unchanged same strategy should block retry, got ${JSON.stringify(unchanged)}`);
+    }
+
+    const retryDifferent = decideRepairRetryStrategy({
+      currentStrategy: {
+        strategy: "undefined-symbol",
+        recommendedAction: "proceed",
+        confidence: "high",
+        mustAvoidStrategies: ["undefined-symbol"]
+      },
+      retryCount: 0,
+      maxRetries: 2
+    });
+    if (
+      retryDifferent.shouldRetry !== true ||
+      retryDifferent.nextAction !== "retry-different-strategy" ||
+      !retryDifferent.blockedStrategies.includes("undefined-symbol")
+    ) {
+      throw new Error(`retry different should record blocked strategy, got ${JSON.stringify(retryDifferent)}`);
+    }
+
+    console.log("PASS repair-strategy-scenario-hardening-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-strategy-scenario-hardening-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -3663,6 +4258,24 @@ async function main() {
     failed += 1;
   }
   if (!runRepairPatchPolicyReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairStrategyUnit()) {
+    failed += 1;
+  }
+  if (!runRepairStrategyGateUnit()) {
+    failed += 1;
+  }
+  if (!runRepairRetryStrategyUnit()) {
+    failed += 1;
+  }
+  if (!runRepairRetryStrategyIntegrationUnit()) {
+    failed += 1;
+  }
+  if (!runRepairStrategyReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairStrategyScenarioHardeningUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {
