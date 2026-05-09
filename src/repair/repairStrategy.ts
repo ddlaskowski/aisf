@@ -108,6 +108,18 @@ function objectContainsString(value: unknown, needle: string): boolean {
   return walk(value);
 }
 
+function readStringArray(value: unknown, field: string): string[] {
+  if (!isRecord(value) || !Array.isArray(value[field])) {
+    return [];
+  }
+
+  return value[field].filter((item): item is string => typeof item === "string" && item.length > 0);
+}
+
+function readBoolean(value: unknown, field: string): boolean {
+  return isRecord(value) && value[field] === true;
+}
+
 export function normalizeFailureText(input: DecideRepairStrategyInput): string {
   return [
     input.errorMessage,
@@ -180,6 +192,14 @@ function strategiesToAvoid(previousAttempts: DecideRepairStrategyInput["previous
     .map(([strategy]) => strategy);
 }
 
+function memoryStrategiesToAvoid(failureMemory: unknown): string[] {
+  return readStringArray(failureMemory, "discouragedStrategies");
+}
+
+function memoryPreferredStrategies(failureMemory: unknown): string[] {
+  return readStringArray(failureMemory, "preferredStrategies");
+}
+
 function hasProjectFileEvidence(input: DecideRepairStrategyInput): boolean {
   return (
     !!readString(input.stackTrace, "filePath") ||
@@ -218,10 +238,22 @@ function decision(params: {
 
 function applyRetryAwareness(
   base: RepairStrategyDecision,
-  previousAttempts: DecideRepairStrategyInput["previousAttempts"]
+  previousAttempts: DecideRepairStrategyInput["previousAttempts"],
+  failureMemory?: unknown
 ): RepairStrategyDecision {
-  const mustAvoidStrategies = strategiesToAvoid(previousAttempts);
+  const mustAvoidStrategies = Array.from(
+    new Set([...strategiesToAvoid(previousAttempts), ...memoryStrategiesToAvoid(failureMemory)])
+  );
+  const preferredStrategies = memoryPreferredStrategies(failureMemory);
   const warnings = [...base.warnings];
+
+  if (preferredStrategies.length > 0) {
+    warnings.push(`Failure memory preferred strategy hints: ${preferredStrategies.join(", ")}.`);
+  }
+
+  if (readBoolean(failureMemory, "recommendManualReview")) {
+    warnings.push("Failure memory recommends manual review for this signature.");
+  }
 
   if (mustAvoidStrategies.includes(base.strategy)) {
     warnings.push(`Strategy ${base.strategy} failed repeatedly without changing validation outcome.`);
@@ -229,14 +261,18 @@ function applyRetryAwareness(
       ...base,
       warnings,
       mustAvoidStrategies,
-      recommendedAction: base.confidence === "high" ? "retry-with-different-strategy" : "manual-review",
+      recommendedAction: readBoolean(failureMemory, "recommendManualReview")
+        ? "manual-review"
+        : base.confidence === "high"
+        ? "retry-with-different-strategy"
+        : "manual-review",
       strategySource: "failure-memory"
     };
   }
 
   return {
     ...base,
-    mustAvoidStrategies
+      mustAvoidStrategies
   };
 }
 
@@ -297,7 +333,7 @@ export function decideRepairStrategy(input: DecideRepairStrategyInput): RepairSt
           recommendedAction: "proceed",
           strategySource: "error-pattern"
         });
-    return applyRetryAwareness(base, previousAttempts);
+    return applyRetryAwareness(base, previousAttempts, input.failureMemory);
   }
 
   if (
@@ -315,7 +351,8 @@ export function decideRepairStrategy(input: DecideRepairStrategyInput): RepairSt
         recommendedAction: "proceed",
         strategySource: "error-pattern"
       }),
-      previousAttempts
+      previousAttempts,
+      input.failureMemory
     );
   }
 
@@ -334,7 +371,8 @@ export function decideRepairStrategy(input: DecideRepairStrategyInput): RepairSt
         recommendedAction: "proceed",
         strategySource: "error-pattern"
       }),
-      previousAttempts
+      previousAttempts,
+      input.failureMemory
     );
   }
 
@@ -353,7 +391,8 @@ export function decideRepairStrategy(input: DecideRepairStrategyInput): RepairSt
         recommendedAction: "proceed",
         strategySource: "error-pattern"
       }),
-      previousAttempts
+      previousAttempts,
+      input.failureMemory
     );
   }
 
@@ -368,7 +407,8 @@ export function decideRepairStrategy(input: DecideRepairStrategyInput): RepairSt
         recommendedAction: "proceed",
         strategySource: "error-pattern"
       }),
-      previousAttempts
+      previousAttempts,
+      input.failureMemory
     );
   }
 
@@ -383,7 +423,8 @@ export function decideRepairStrategy(input: DecideRepairStrategyInput): RepairSt
         recommendedAction: "proceed",
         strategySource: "error-pattern"
       }),
-      previousAttempts
+      previousAttempts,
+      input.failureMemory
     );
   }
 
@@ -398,13 +439,13 @@ export function decideRepairStrategy(input: DecideRepairStrategyInput): RepairSt
         recommendedAction: "collect-more-context",
         strategySource: "stack-trace"
       }),
-      previousAttempts
+      previousAttempts,
+      input.failureMemory
     );
   }
 
   return {
     ...manualReview("Failure text was ambiguous and did not match a known repair strategy."),
-    mustAvoidStrategies: strategiesToAvoid(previousAttempts)
+    mustAvoidStrategies: Array.from(new Set([...strategiesToAvoid(previousAttempts), ...memoryStrategiesToAvoid(input.failureMemory)]))
   };
 }
-

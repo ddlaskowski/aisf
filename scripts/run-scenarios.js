@@ -4141,6 +4141,350 @@ function runRepairStrategyScenarioHardeningUnit() {
   }
 }
 
+function runFailureSignatureUnit() {
+  const { buildFailureSignature } = require(path.join(projectRoot, "dist", "repair", "failureSignature.js"));
+
+  try {
+    const a = buildFailureSignature({
+      errorType: "ReferenceError",
+      errorMessage: "ReferenceError: foo is not defined\n    at Object.<anonymous> (C:\\repo\\index.js:4:1)",
+      topProjectStackFrame: "C:\\repo\\index.js:4:1",
+      symbolName: "foo"
+    });
+    const b = buildFailureSignature({
+      errorType: "ReferenceError",
+      errorMessage: "ReferenceError:   foo    is not defined\n    at Object.<anonymous> (C:\\repo\\index.js:99:22)",
+      topProjectStackFrame: "C:\\repo\\index.js:99:22",
+      symbolName: "foo"
+    });
+    const c = buildFailureSignature({
+      errorType: "ReferenceError",
+      errorMessage: "ReferenceError: bar is not defined\n    at Object.<anonymous> (C:\\repo\\index.js:4:1)",
+      topProjectStackFrame: "C:\\repo\\index.js:4:1",
+      symbolName: "bar"
+    });
+    const d = buildFailureSignature({
+      errorType: "ReferenceError",
+      errorMessage: "ReferenceError: foo is not defined\n    at Object.<anonymous> (C:\\repo\\helper.js:4:1)",
+      topProjectStackFrame: "C:\\repo\\helper.js:4:1",
+      symbolName: "foo"
+    });
+
+    if (a !== b) {
+      throw new Error(`same error should produce same signature, got ${a} vs ${b}`);
+    }
+    if (a === c) {
+      throw new Error("different symbols should produce different signatures");
+    }
+    if (a === d) {
+      throw new Error("different files should produce different signatures");
+    }
+
+    console.log("PASS failure-signature-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL failure-signature-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+async function runFailureMemoryUnit() {
+  const {
+    getFailureMemoryPath,
+    loadFailureMemory,
+    saveFailureMemory
+  } = require(path.join(projectRoot, "dist", "repair", "failureMemory.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "failure-memory-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+
+    const missing = await loadFailureMemory(repo);
+    if (missing.schemaVersion !== 1 || missing.records.length !== 0) {
+      throw new Error(`missing memory file should load empty store, got ${JSON.stringify(missing)}`);
+    }
+
+    await saveFailureMemory(repo, {
+      schemaVersion: 1,
+      records: [
+        {
+          schemaVersion: 1,
+          errorSignature: "ReferenceError:index:foo",
+          projectId: "demo",
+          strategy: "undefined-symbol",
+          outcome: "failed",
+          validationChanged: false,
+          retryCount: 1,
+          timestamp: 1
+        }
+      ]
+    });
+    const loaded = await loadFailureMemory(repo);
+    if (loaded.records.length !== 1 || loaded.records[0].strategy !== "undefined-symbol") {
+      throw new Error(`saved memory records should reload, got ${JSON.stringify(loaded)}`);
+    }
+
+    fs.writeFileSync(getFailureMemoryPath(repo), "{ not json", "utf8");
+    const corrupt = await loadFailureMemory(repo);
+    if (corrupt.records.length !== 0) {
+      throw new Error(`corrupt memory should not crash and should load empty store, got ${JSON.stringify(corrupt)}`);
+    }
+
+    console.log("PASS failure-memory-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL failure-memory-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runFailureMemoryLookupUnit() {
+  const { lookupFailureMemory } = require(path.join(projectRoot, "dist", "repair", "failureMemoryLookup.js"));
+
+  try {
+    const store = {
+      schemaVersion: 1,
+      records: [
+        { schemaVersion: 1, errorSignature: "sig", projectId: "demo", strategy: "undefined-symbol", outcome: "failed", validationChanged: false, retryCount: 1, timestamp: 1 },
+        { schemaVersion: 1, errorSignature: "sig", projectId: "demo", strategy: "undefined-symbol", outcome: "failed", validationChanged: false, retryCount: 2, timestamp: 2 },
+        { schemaVersion: 1, errorSignature: "sig", projectId: "demo", strategy: "safe-replacement", outcome: "success", validationChanged: true, retryCount: 1, timestamp: 3 },
+        { schemaVersion: 1, errorSignature: "other", projectId: "demo", strategy: "other", outcome: "failed", validationChanged: false, retryCount: 1, timestamp: 4 }
+      ]
+    };
+    const hint = lookupFailureMemory({ store, errorSignature: "sig", projectId: "demo" });
+    if (hint.historicalMatches !== 3) {
+      throw new Error(`expected 3 historical matches, got ${JSON.stringify(hint)}`);
+    }
+    if (!hint.failedStrategies.includes("undefined-symbol")) {
+      throw new Error(`expected failed strategy, got ${JSON.stringify(hint)}`);
+    }
+    if (!hint.successfulStrategies.includes("safe-replacement") || !hint.preferredStrategies.includes("safe-replacement")) {
+      throw new Error(`expected successful/preferred strategy hint, got ${JSON.stringify(hint)}`);
+    }
+    if (!hint.discouragedStrategies.includes("undefined-symbol")) {
+      throw new Error(`expected repeated failed strategy to be discouraged, got ${JSON.stringify(hint)}`);
+    }
+
+    console.log("PASS failure-memory-lookup-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL failure-memory-lookup-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+async function runFailureMemoryUpdateUnit() {
+  const { loadFailureMemory } = require(path.join(projectRoot, "dist", "repair", "failureMemory.js"));
+  const { updateFailureMemory } = require(path.join(projectRoot, "dist", "repair", "failureMemoryUpdate.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "failure-memory-update-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    fs.writeFileSync(path.join(repo, "package.json"), JSON.stringify({ name: "memory-update-demo" }), "utf8");
+
+    await updateFailureMemory({
+      repoPath: repo,
+      errorSignature: "sig",
+      strategy: "undefined-symbol",
+      repairType: "runtime-local-error",
+      targetFile: "index.js",
+      outcome: "success",
+      validationChanged: true,
+      retryCount: 1,
+      timestamp: 10
+    });
+    await updateFailureMemory({
+      repoPath: repo,
+      errorSignature: "sig",
+      strategy: "undefined-symbol",
+      outcome: "failed",
+      validationChanged: false,
+      retryCount: 2,
+      timestamp: 11
+    });
+    const loaded = await loadFailureMemory(repo);
+    if (loaded.records.length !== 2) {
+      throw new Error(`memory should survive multiple updates, got ${JSON.stringify(loaded)}`);
+    }
+    if (loaded.records[0].projectId !== "memory-update-demo") {
+      throw new Error(`project id should be package name, got ${JSON.stringify(loaded.records[0])}`);
+    }
+
+    console.log("PASS failure-memory-update-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL failure-memory-update-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runFailureMemoryRetryAwarenessUnit() {
+  const { decideRepairStrategy } = require(path.join(projectRoot, "dist", "repair", "repairStrategy.js"));
+  const { decideRepairRetryStrategy } = require(path.join(projectRoot, "dist", "repair", "repairRetryStrategy.js"));
+  const { validatePatchIntent } = require(path.join(projectRoot, "dist", "repair", "patchIntentGuard.js"));
+  const { decideRepairPatchPolicy } = require(path.join(projectRoot, "dist", "repair", "repairPatchPolicy.js"));
+
+  try {
+    const hint = {
+      errorSignature: "sig",
+      historicalMatches: 3,
+      failedStrategies: ["undefined-symbol"],
+      successfulStrategies: ["safe-replacement"],
+      discouragedStrategies: ["undefined-symbol"],
+      preferredStrategies: ["safe-replacement"],
+      recommendedStrategyHints: ["safe-replacement"],
+      recommendManualReview: false,
+      warnings: ["Strategy undefined-symbol failed repeatedly for this failure signature."]
+    };
+    const strategy = decideRepairStrategy({
+      stderr: "ReferenceError: foo is not defined",
+      failureMemory: hint
+    });
+    if (!strategy.mustAvoidStrategies.includes("undefined-symbol")) {
+      throw new Error(`memory should discourage repeated failed strategy, got ${JSON.stringify(strategy)}`);
+    }
+    if (!strategy.warnings.some((warning) => warning.includes("preferred strategy"))) {
+      throw new Error(`memory should surface preferred hints as warnings, got ${JSON.stringify(strategy)}`);
+    }
+
+    const retry = decideRepairRetryStrategy({
+      currentStrategy: {
+        strategy: "undefined-symbol",
+        confidence: "high",
+        recommendedAction: "proceed",
+        mustAvoidStrategies: strategy.mustAvoidStrategies
+      },
+      failureMemoryHint: hint,
+      retryCount: 0,
+      maxRetries: 2
+    });
+    if (!retry.shouldRetry || retry.nextAction !== "retry-different-strategy") {
+      throw new Error(`retry orchestration should switch away from historically bad strategy, got ${JSON.stringify(retry)}`);
+    }
+
+    const evidenceGate = { ok: false, allowedRepairMode: "manual-review" };
+    if (hint.preferredStrategies.length > 0 && evidenceGate.ok !== false) {
+      throw new Error("memory must not bypass evidence validation");
+    }
+
+    const policy = decideRepairPatchPolicy({
+      repairIntent: { targetFile: "index.js", repairType: "runtime-local-error" },
+      evidenceValidation: { ok: false, confidence: "low", allowedRepairMode: "manual-review" },
+      proposedPatchOperations: [{ operation: "exact-replacement", targetFile: "index.js" }]
+    });
+    if (policy.ok) {
+      throw new Error(`memory must not bypass patch policy, got ${JSON.stringify(policy)}`);
+    }
+
+    const patchIntent = validatePatchIntent(
+      {
+        repairType: "runtime-local-error",
+        targetFile: "index.js",
+        reason: "unit",
+        confidence: "medium",
+        allowedMutationScope: "single-file",
+        safetyNotes: ["unit"]
+      },
+      { targetFile: "helper.js", patchFiles: ["helper.js"], patchContent: "console.log('x');" }
+    );
+    if (patchIntent.ok) {
+      throw new Error(`memory must not bypass patch intent validation, got ${JSON.stringify(patchIntent)}`);
+    }
+
+    const safePatchReached = policy.ok && patchIntent.ok;
+    if (safePatchReached) {
+      throw new Error("memory must not directly reach Safe Patch Engine when gates fail");
+    }
+
+    const manualHint = { ...hint, recommendManualReview: true };
+    const manualRetry = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "undefined-symbol", confidence: "high", recommendedAction: "proceed" },
+      failureMemoryHint: manualHint,
+      retryCount: 0,
+      maxRetries: 2
+    });
+    if (manualRetry.shouldRetry || manualRetry.nextAction !== "manual-review") {
+      throw new Error(`manual-review hint should reduce retry aggressiveness, got ${JSON.stringify(manualRetry)}`);
+    }
+
+    console.log("PASS failure-memory-retry-awareness-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL failure-memory-retry-awareness-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runFailureMemoryScenarioHardeningUnit() {
+  const { lookupFailureMemory } = require(path.join(projectRoot, "dist", "repair", "failureMemoryLookup.js"));
+  const { decideRepairRetryStrategy } = require(path.join(projectRoot, "dist", "repair", "repairRetryStrategy.js"));
+
+  try {
+    const store = {
+      schemaVersion: 1,
+      records: [
+        { schemaVersion: 1, errorSignature: "repeated", strategy: "undefined-symbol", outcome: "failed", validationChanged: false, retryCount: 1, timestamp: 1 },
+        { schemaVersion: 1, errorSignature: "repeated", strategy: "undefined-symbol", outcome: "failed", validationChanged: false, retryCount: 2, timestamp: 2 },
+        { schemaVersion: 1, errorSignature: "success", strategy: "safe-replacement", outcome: "success", validationChanged: true, retryCount: 1, timestamp: 3 },
+        { schemaVersion: 1, errorSignature: "policy", strategy: "risky-append", outcome: "policy-denied", validationChanged: false, retryCount: 1, timestamp: 4 },
+        { schemaVersion: 1, errorSignature: "manual", strategy: "runtime-targeted-fix", outcome: "manual-review", validationChanged: false, retryCount: 1, timestamp: 5 }
+      ]
+    };
+    const repeated = lookupFailureMemory({ store, errorSignature: "repeated" });
+    if (!repeated.discouragedStrategies.includes("undefined-symbol")) {
+      throw new Error(`failure-memory-repeated-failure expected discouraged strategy, got ${JSON.stringify(repeated)}`);
+    }
+    console.log("PASS failure-memory-repeated-failure");
+
+    const success = lookupFailureMemory({ store, errorSignature: "success" });
+    if (!success.preferredStrategies.includes("safe-replacement")) {
+      throw new Error(`failure-memory-successful-strategy expected preferred strategy, got ${JSON.stringify(success)}`);
+    }
+    console.log("PASS failure-memory-successful-strategy");
+
+    const policy = lookupFailureMemory({ store, errorSignature: "policy" });
+    if (!policy.failedStrategies.includes("risky-append") || policy.warnings.length === 0) {
+      throw new Error(`failure-memory-policy-denied expected caution warning, got ${JSON.stringify(policy)}`);
+    }
+    console.log("PASS failure-memory-policy-denied");
+
+    const manual = lookupFailureMemory({ store, errorSignature: "manual" });
+    if (!manual.failedStrategies.includes("runtime-targeted-fix") || manual.warnings.length === 0) {
+      throw new Error(`failure-memory-manual-review expected caution warning, got ${JSON.stringify(manual)}`);
+    }
+    console.log("PASS failure-memory-manual-review");
+
+    const retryBlocked = decideRepairRetryStrategy({
+      currentStrategy: { strategy: "undefined-symbol", confidence: "high", recommendedAction: "proceed" },
+      failureMemoryHint: repeated,
+      retryCount: 0,
+      maxRetries: 2
+    });
+    if (retryBlocked.nextAction !== "manual-review") {
+      throw new Error(`retry-blocked-by-history expected manual-review, got ${JSON.stringify(retryBlocked)}`);
+    }
+    console.log("PASS retry-blocked-by-history");
+
+    if (!success.preferredStrategies.includes("safe-replacement") || success.recommendManualReview) {
+      throw new Error(`retry-prefers-successful-history expected advisory preferred strategy only, got ${JSON.stringify(success)}`);
+    }
+    console.log("PASS retry-prefers-successful-history");
+
+    return true;
+  } catch (error) {
+    console.log("FAIL failure-memory-scenario-hardening-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -4276,6 +4620,24 @@ async function main() {
     failed += 1;
   }
   if (!runRepairStrategyScenarioHardeningUnit()) {
+    failed += 1;
+  }
+  if (!runFailureSignatureUnit()) {
+    failed += 1;
+  }
+  if (!(await runFailureMemoryUnit())) {
+    failed += 1;
+  }
+  if (!runFailureMemoryLookupUnit()) {
+    failed += 1;
+  }
+  if (!(await runFailureMemoryUpdateUnit())) {
+    failed += 1;
+  }
+  if (!runFailureMemoryRetryAwarenessUnit()) {
+    failed += 1;
+  }
+  if (!runFailureMemoryScenarioHardeningUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

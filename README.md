@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v2.0 — Repair Strategy Orchestration Layer**
+**v2.1 — Failure Memory Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -28,6 +28,8 @@ v1.8 validates whether a repair intent is sufficiently supported by available ev
 v1.9 adds an Evidence-Aware Patch Policy Layer between evidence validation and patch intent validation. It constrains mutation based on evidence mode, allowed operations, blocked operations, and a deterministic recommended action.
 
 v2.0 adds deterministic repair strategy orchestration before target selection and retry. Strategy and retry decisions are observable, conservative, and do not mutate files.
+
+v2.1 adds deterministic repository-local failure memory. It records stable failure signatures, historical strategy outcomes, and advisory retry hints without approving patches or bypassing any existing safety gate.
 
 ---
 
@@ -430,6 +432,76 @@ v2.0 deterministic checks:
 * repair-retry-strategy-integration-unit
 * repair-strategy-report-unit
 * repair-strategy-scenario-hardening-unit
+
+---
+
+## 🧠 Failure Memory Layer (v2.1)
+
+v2.1 adds deterministic historical repair awareness. It is not ML, embeddings, a vector database, or an approval system; it is a bounded JSON memory that helps the retry layer avoid repeating known-bad repair paths.
+
+Pipeline:
+
+```
+error
+→ failure intelligence
+→ failure signature
+→ failure memory lookup
+→ repair strategy decision
+→ repair target decision
+→ repair intent
+→ evidence validation
+→ patch policy decision
+→ patch intent validation
+→ safe patch
+→ validation
+→ retry orchestration
+→ failure memory update
+```
+
+What v2.1 adds:
+
+* `src/repair/failureSignature.ts`
+* `src/repair/failureMemory.ts`
+* `src/repair/failureMemoryLookup.ts`
+* `src/repair/failureMemoryUpdate.ts`
+* repository-local storage at `.factory/memory/failure-memory.json`
+* `failure-signature-*.json` and `failure-memory-hint-*.json` run artifacts
+* `failureMemory` in `repair-observability.json`
+* final-report output for failure signatures and historical strategy hints
+
+Failure memory records:
+
+* stable, human-readable failure signature
+* strategy used
+* repair type and target file when available
+* outcome: `success`, `failed`, `manual-review`, or `policy-denied`
+* validation change signal
+* retry count
+
+Safety guarantees:
+
+* failure memory only provides hints
+* memory never approves patches
+* memory never bypasses Evidence Validation
+* memory never bypasses Patch Policy
+* memory never bypasses Patch Intent Guard
+* memory never bypasses the Safe Patch Engine
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains intact
+
+v2.1 deterministic checks:
+
+* failure-signature-unit
+* failure-memory-unit
+* failure-memory-lookup-unit
+* failure-memory-update-unit
+* failure-memory-retry-awareness-unit
+* failure-memory-repeated-failure
+* failure-memory-successful-strategy
+* failure-memory-policy-denied
+* failure-memory-manual-review
+* retry-blocked-by-history
+* retry-prefers-successful-history
 
 ---
 

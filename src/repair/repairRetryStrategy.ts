@@ -46,6 +46,12 @@ export type DecideRepairRetryStrategyInput = {
 
   retryCount?: number;
   maxRetries?: number;
+  failureMemoryHint?: {
+    discouragedStrategies?: string[];
+    preferredStrategies?: string[];
+    recommendManualReview?: boolean;
+    warnings?: string[];
+  };
 };
 
 function unique(values: string[]): string[] {
@@ -107,13 +113,23 @@ export function decideRepairRetryStrategy(input: DecideRepairRetryStrategyInput)
   const retryCount = input.retryCount ?? previousAttempts.length;
   const maxRetries = input.maxRetries ?? 2;
   const currentStrategy = input.currentStrategy?.strategy;
-  const mustAvoidStrategies = input.currentStrategy?.mustAvoidStrategies ?? [];
+  const memoryDiscouragedStrategies = input.failureMemoryHint?.discouragedStrategies ?? [];
+  const mustAvoidStrategies = unique([...(input.currentStrategy?.mustAvoidStrategies ?? []), ...memoryDiscouragedStrategies]);
 
   if (input.latestValidation?.passed === true) {
     return decision(input, {
       shouldRetry: false,
       nextAction: "stop",
       reason: "Validation passed; no retry needed."
+    });
+  }
+
+  if (input.failureMemoryHint?.recommendManualReview === true) {
+    return decision(input, {
+      shouldRetry: false,
+      nextAction: "manual-review",
+      reason: "Failure memory recommends manual review for this signature.",
+      blockedStrategies: mustAvoidStrategies
     });
   }
 
@@ -210,4 +226,3 @@ export function decideRepairRetryStrategy(input: DecideRepairRetryStrategyInput)
     reason: "Retry allowed within retry limit."
   });
 }
-

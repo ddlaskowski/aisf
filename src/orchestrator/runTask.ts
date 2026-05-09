@@ -56,6 +56,10 @@ import {
   decideRepairRetryStrategy,
   type RepairRetryDecision
 } from "../repair/repairRetryStrategy.js";
+import { buildFailureSignature } from "../repair/failureSignature.js";
+import { getProjectId, loadFailureMemory, type FailureMemoryStore, type FailureMemoryOutcome } from "../repair/failureMemory.js";
+import { lookupFailureMemory, type FailureMemoryHint } from "../repair/failureMemoryLookup.js";
+import { updateFailureMemory } from "../repair/failureMemoryUpdate.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -403,7 +407,8 @@ async function buildAndSaveRepairEvidenceValidation(input: {
 function buildRepairStrategyInput(
   runtimeError: string,
   commandResults: CommandResult[] | undefined,
-  failureMemory: FailureMemoryEntry[]
+  failureMemory: FailureMemoryEntry[],
+  failureMemoryHint?: FailureMemoryHint | null
 ) {
   const failedCommand = commandResults?.find((result) => result.status === "failed");
   return {
@@ -424,7 +429,7 @@ function buildRepairStrategyInput(
       policyDenied: entry.note?.toLowerCase().includes("policy") ?? false,
       manualReview: entry.note?.toLowerCase().includes("manual review") ?? false
     })),
-    failureMemory
+    failureMemory: failureMemoryHint ?? undefined
   };
 }
 
@@ -434,12 +439,40 @@ async function decideAndSaveRepairStrategy(input: {
   runtimeError: string;
   commandResults: CommandResult[] | undefined;
   failureMemory: FailureMemoryEntry[];
+  failureMemoryHint?: FailureMemoryHint | null;
 }): Promise<RepairStrategyDecision> {
   const strategy = decideRepairStrategy(
-    buildRepairStrategyInput(input.runtimeError, input.commandResults, input.failureMemory)
+    buildRepairStrategyInput(input.runtimeError, input.commandResults, input.failureMemory, input.failureMemoryHint)
   );
   await saveStateFile(input.runDir, `repair-strategy-${input.label}.json`, strategy);
   return strategy;
+}
+
+async function buildAndSaveFailureMemoryHint(input: {
+  runDir: string;
+  label: string;
+  store: FailureMemoryStore;
+  projectId: string;
+  runtimeError: string;
+  failure: ReturnType<typeof classifyFailure>;
+  targetFile?: string;
+}): Promise<{ errorSignature: string; hint: FailureMemoryHint }> {
+  const errorSignature = buildFailureSignature({
+    errorType: input.failure.type,
+    errorMessage: input.failure.details.rawMessage || input.runtimeError,
+    stderr: input.runtimeError,
+    topProjectStackFrame: findErrorFileFromStack(input.runtimeError) ?? undefined,
+    targetFile: input.targetFile,
+    symbolName: input.failure.details.symbol ?? input.failure.details.moduleName
+  });
+  const hint = lookupFailureMemory({
+    store: input.store,
+    errorSignature,
+    projectId: input.projectId
+  });
+  await saveStateFile(input.runDir, `failure-signature-${input.label}.json`, { errorSignature });
+  await saveStateFile(input.runDir, `failure-memory-hint-${input.label}.json`, hint);
+  return { errorSignature, hint };
 }
 
 function errorSignatureFromResults(commandResults: CommandResult[] | undefined): string {
@@ -485,6 +518,8 @@ async function decideAndSaveRepairRetry(input: {
   maxRetries: number;
   validationChanged?: boolean;
   validationPassed?: boolean;
+  failureMemoryHint?: FailureMemoryHint | null;
+  errorSignature?: string | null;
 }): Promise<RepairRetryDecision> {
   const decision = decideRepairRetryStrategy({
     currentStrategy: input.repairStrategy
@@ -499,12 +534,13 @@ async function decideAndSaveRepairRetry(input: {
     latestValidation: {
       passed: input.validationPassed,
       changed: input.validationChanged,
-      errorSignature: errorSignatureFromResults(input.commandResults),
+      errorSignature: input.errorSignature ?? errorSignatureFromResults(input.commandResults),
       stderr: input.commandResults?.find((result) => result.status === "failed")?.stderr,
       stdout: input.commandResults?.find((result) => result.status === "failed")?.stdout
     },
     retryCount: input.retryCount,
-    maxRetries: input.maxRetries
+    maxRetries: input.maxRetries,
+    failureMemoryHint: input.failureMemoryHint ?? undefined
   });
   await saveStateFile(input.runDir, `repair-retry-decision-${input.label}.json`, decision);
   return decision;
@@ -879,6 +915,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
 
   const repoSummary = await readRepoSummary(repoPath);
   await saveStateFile(state.runDir, "repo-summary.json", repoSummary);
+  const historicalFailureMemory = await loadFailureMemory(repoPath);
+  const projectId = await getProjectId(repoPath);
+  await saveStateFile(state.runDir, "failure-memory-store-before.json", historicalFailureMemory);
 
   const brief = parseWithSchema(briefSchema, await intakeAgent(input.task, repoSummary), "Brief");
   await saveStateFile(state.runDir, "brief.json", brief);
@@ -906,6 +945,8 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let repairEvidenceValidation: RepairEvidenceValidation | null = null;
   let repairPatchPolicy: RepairPatchPolicyDecision | null = null;
   let patchIntentValidation: PatchIntentValidationResult | null = null;
+  let errorSignature: string | null = null;
+  let failureMemoryHint: FailureMemoryHint | null = null;
   let mutationSkippedForEvidence = false;
   let mutationSkippedForPolicy = false;
 
@@ -931,12 +972,23 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       );
       await saveStateFile(state.runDir, "failure-classification-prevalidation.json", prevalidationFailure);
       const runtimeErrorForPrevalidation = extractRuntimeError(commandResults);
+      const prevalidationMemory = await buildAndSaveFailureMemoryHint({
+        runDir: state.runDir,
+        label: "prevalidation",
+        store: historicalFailureMemory,
+        projectId,
+        runtimeError: runtimeErrorForPrevalidation,
+        failure: prevalidationFailure
+      });
+      errorSignature = prevalidationMemory.errorSignature;
+      failureMemoryHint = prevalidationMemory.hint;
       repairStrategy = await decideAndSaveRepairStrategy({
         runDir: state.runDir,
         label: "prevalidation",
         runtimeError: runtimeErrorForPrevalidation,
         commandResults,
-        failureMemory
+        failureMemory,
+        failureMemoryHint
       });
       if (repairStrategy.recommendedAction === "manual-review" || repairStrategy.recommendedAction === "stop") {
         repairRetryDecision = await decideAndSaveRepairRetry({
@@ -949,7 +1001,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
           retryCount: selfHealingAttempt,
           maxRetries: 2,
           validationChanged: false,
-          validationPassed: false
+          validationPassed: false,
+          failureMemoryHint,
+          errorSignature
         });
         mutationSkippedForEvidence = true;
         retryStopReason = `Repair strategy requires ${repairStrategy.recommendedAction}`;
@@ -1214,7 +1268,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         retryCount: selfHealingAttempt,
         maxRetries: 2,
         validationChanged: false,
-        validationPassed: false
+        validationPassed: false,
+        failureMemoryHint,
+        errorSignature
       });
       mutationSkippedForPolicy = true;
       retryStopReason = "Repair patch policy blocked mutation";
@@ -1288,12 +1344,24 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       failureMemory,
       buildFailureMemoryEntry(attempts, failure, totalAppliedChanges > 0, "Validation failed before repair strategy")
     );
+    const retryMemory = await buildAndSaveFailureMemoryHint({
+      runDir: state.runDir,
+      label: `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`,
+      store: historicalFailureMemory,
+      projectId,
+      runtimeError: runtimeErrorForRetry,
+      failure,
+      targetFile: contextAwareRepairTarget?.filePath
+    });
+    errorSignature = retryMemory.errorSignature;
+    failureMemoryHint = retryMemory.hint;
     repairStrategy = await decideAndSaveRepairStrategy({
       runDir: state.runDir,
       label: `attempt-${selfHealingAttempt + dependencyInstallCount + 1}`,
       runtimeError: runtimeErrorForRetry,
       commandResults,
-      failureMemory
+      failureMemory,
+      failureMemoryHint
     });
     repairRetryDecision = await decideAndSaveRepairRetry({
       runDir: state.runDir,
@@ -1305,7 +1373,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
       retryCount: selfHealingAttempt,
       maxRetries: 2,
       validationChanged: totalAppliedChanges > 0,
-      validationPassed: false
+      validationPassed: false,
+      failureMemoryHint,
+      errorSignature
     });
     if (!repairRetryDecision.shouldRetry) {
       retryStopReason = repairRetryDecision.reason;
@@ -1433,7 +1503,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
             retryCount: selfHealingAttempt,
             maxRetries: 2,
             validationChanged: true,
-            validationPassed: false
+            validationPassed: false,
+            failureMemoryHint,
+            errorSignature
           });
           if (!repairRetryDecision.shouldRetry) {
             retryStopReason = repairRetryDecision.reason;
@@ -1569,7 +1641,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         retryCount: selfHealingAttempt,
         maxRetries: 2,
         validationChanged: false,
-        validationPassed: false
+        validationPassed: false,
+        failureMemoryHint,
+        errorSignature
       });
       mutationSkippedForPolicy = true;
       retryStopReason = "Repair patch policy blocked mutation";
@@ -1609,7 +1683,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         retryCount: selfHealingAttempt,
         maxRetries: 2,
         validationChanged: false,
-        validationPassed: false
+        validationPassed: false,
+        failureMemoryHint,
+        errorSignature
       });
       if (!repairRetryDecision.shouldRetry) {
         retryStopReason = repairRetryDecision.reason;
@@ -1695,7 +1771,9 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
         retryCount: selfHealingAttempt,
         maxRetries: 2,
         validationChanged: fixChanged,
-        validationPassed: false
+        validationPassed: false,
+        failureMemoryHint,
+        errorSignature
       });
       if (!repairRetryDecision.shouldRetry) {
         retryStopReason = repairRetryDecision.reason;
@@ -1806,9 +1884,45 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   }
 
   await saveStateFile(state.runDir, "commit-result.json", commitResult);
+  let failureMemoryOutcome: FailureMemoryOutcome | null = null;
+  if (errorSignature && repairStrategy) {
+    failureMemoryOutcome =
+      mutationSkippedForPolicy || repairPatchPolicy?.recommendedAction === "block-mutation"
+        ? "policy-denied"
+        : mutationSkippedForEvidence || repairRetryDecision?.nextAction === "manual-review"
+        ? "manual-review"
+        : review.verdict === "pass"
+        ? "success"
+        : "failed";
+    const updatedMemory = await updateFailureMemory({
+      repoPath,
+      errorSignature,
+      strategy: repairStrategy.strategy,
+      repairType: repairIntent?.repairType,
+      targetFile: contextAwareRepairTarget?.filePath,
+      outcome: failureMemoryOutcome,
+      validationChanged: totalAppliedChanges > 0,
+      retryCount: attempts
+    });
+    await saveStateFile(state.runDir, "failure-memory-update.json", {
+      errorSignature,
+      outcome: failureMemoryOutcome,
+      strategy: repairStrategy.strategy,
+      repairType: repairIntent?.repairType,
+      targetFile: contextAwareRepairTarget?.filePath,
+      retryCount: attempts
+    });
+    await saveStateFile(state.runDir, "failure-memory-store-after.json", updatedMemory);
+  }
   await saveStateFile(state.runDir, "repair-observability.json", {
     repairStrategy,
     repairRetryDecision,
+    failureMemory: failureMemoryHint
+      ? {
+          ...failureMemoryHint,
+          outcomeRecorded: failureMemoryOutcome
+        }
+      : null,
     repairIntent,
     repairEvidenceValidation,
     repairPatchPolicy,
@@ -1851,6 +1965,18 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Reason: ${repairRetryDecision?.reason ?? "not available"}`,
     `- Previous strategies: ${repairRetryDecision ? formatList(repairRetryDecision.previousStrategies) : "not available"}`,
     `- Blocked strategies: ${repairRetryDecision ? formatList(repairRetryDecision.blockedStrategies) : "not available"}`,
+    "",
+    "## Failure memory",
+    `- Failure signature: ${errorSignature ?? "not available"}`,
+    `- Historical matches: ${failureMemoryHint?.historicalMatches ?? "not available"}`,
+    `- Historically failed strategies: ${failureMemoryHint ? formatList(failureMemoryHint.failedStrategies) : "not available"}`,
+    `- Historically successful strategies: ${failureMemoryHint ? formatList(failureMemoryHint.successfulStrategies) : "not available"}`,
+    `- Discouraged strategies: ${failureMemoryHint ? formatList(failureMemoryHint.discouragedStrategies) : "not available"}`,
+    `- Preferred strategies: ${failureMemoryHint ? formatList(failureMemoryHint.preferredStrategies) : "not available"}`,
+    `- Retry recommendation: ${
+      failureMemoryHint ? (failureMemoryHint.recommendManualReview ? "manual-review" : "continue-with-gates") : "not available"
+    }`,
+    `- Failure memory warnings: ${failureMemoryHint ? formatList(failureMemoryHint.warnings) : "not available"}`,
     "",
     `- Repair intent: ${repairIntent?.repairType ?? "None"}`,
     `- Repair intent target: ${repairIntent?.targetFile ?? "n/a"}`,
