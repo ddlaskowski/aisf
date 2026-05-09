@@ -4753,6 +4753,247 @@ function runRepairOutcomeScenarioHardeningUnit() {
   }
 }
 
+async function runRepairAnalyticsUnit() {
+  const {
+    updateRepairAnalytics,
+    getRepairStrategyAnalytics,
+    buildRepairAnalyticsHint
+  } = require(path.join(projectRoot, "dist", "repair", "repairAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-analytics-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "undefined-symbol", outcome: "success" });
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "undefined-symbol", outcome: "failed-same-error" });
+    const analytics = await getRepairStrategyAnalytics({ projectRoot: repo, strategy: "undefined-symbol" });
+    if (!analytics || analytics.totalAttempts !== 2 || analytics.successCount !== 1 || analytics.failedCount !== 1) {
+      throw new Error(`analytics aggregate mismatch: ${JSON.stringify(analytics)}`);
+    }
+    const hint = buildRepairAnalyticsHint({ analytics });
+    if (hint.advisoryOnly !== true || hint.strategy !== "undefined-symbol") {
+      throw new Error(`analytics hint mismatch: ${JSON.stringify(hint)}`);
+    }
+
+    console.log("PASS repair-analytics-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-analytics-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+async function runRepairEffectivenessScoreUnit() {
+  const { updateRepairAnalytics, getRepairStrategyAnalytics } = require(path.join(projectRoot, "dist", "repair", "repairAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-effectiveness-score-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    const updates = [
+      "success",
+      "validation-improved",
+      "failed-same-error",
+      "failed-new-error",
+      "failed-worse",
+      "no-change",
+      "policy-denied",
+      "manual-review-required"
+    ];
+    for (const outcome of updates) {
+      await updateRepairAnalytics({ projectRoot: repo, strategy: "mixed", outcome });
+    }
+    const analytics = await getRepairStrategyAnalytics({ projectRoot: repo, strategy: "mixed" });
+    const expectedScore = 3 + 1 - 1 - 1 - 3 - 1 - 2 - 2;
+    if (!analytics || analytics.effectivenessScore !== expectedScore) {
+      throw new Error(`expected deterministic score ${expectedScore}, got ${JSON.stringify(analytics)}`);
+    }
+    if (analytics.validationImprovedCount !== 1 || analytics.worsenedCount !== 1 || analytics.policyDeniedCount !== 1 || analytics.manualReviewCount !== 1) {
+      throw new Error(`expected all outcome counters, got ${JSON.stringify(analytics)}`);
+    }
+
+    console.log("PASS repair-effectiveness-score-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-effectiveness-score-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairAnalyticsReportUnit() {
+  try {
+    const repairAnalytics = {
+      strategy: "undefined-symbol",
+      effectivenessScore: 2,
+      historicalSuccessRate: 0.5,
+      historicalFailureRate: 0.5,
+      validationImprovementRate: 0,
+      worsenedRate: 0,
+      policyDeniedRate: 0,
+      manualReviewRate: 0,
+      warnings: [],
+      advisoryOnly: true
+    };
+    const observability = JSON.parse(JSON.stringify({ repairAnalytics }));
+    const report = [
+      "## Historical strategy effectiveness",
+      `- Strategy: ${repairAnalytics.strategy}`,
+      `- Effectiveness score: ${repairAnalytics.effectivenessScore}`,
+      `- Historical success rate: ${repairAnalytics.historicalSuccessRate}`,
+      `- Historical failure rate: ${repairAnalytics.historicalFailureRate}`,
+      "## Strategy analytics recommendation",
+      "This analytics hint is advisory-only and does not bypass evidence validation, patch policy, patch intent validation, Safe Patch Engine, or retry safety rules."
+    ].join("\n");
+    if (!observability.repairAnalytics || observability.repairAnalytics.advisoryOnly !== true) {
+      throw new Error(`observability missing repairAnalytics advisory hint: ${JSON.stringify(observability)}`);
+    }
+    for (const needle of ["Historical strategy effectiveness", "Effectiveness score", "Strategy analytics recommendation", "advisory-only"]) {
+      if (!report.includes(needle)) {
+        throw new Error(`report missing ${needle}: ${report}`);
+      }
+    }
+
+    console.log("PASS repair-analytics-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-analytics-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+async function runRepairAnalyticsHistoryUnit() {
+  const { updateRepairAnalytics, getRepairStrategyAnalytics } = require(path.join(projectRoot, "dist", "repair", "repairAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-analytics-history-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "history", outcome: "success" });
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "history", outcome: "success" });
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "history", outcome: "failed-new-error" });
+    const analytics = await getRepairStrategyAnalytics({ projectRoot: repo, strategy: "history" });
+    if (!analytics || analytics.totalAttempts !== 3 || analytics.successCount !== 2 || analytics.failedCount !== 1) {
+      throw new Error(`history did not survive multiple updates: ${JSON.stringify(analytics)}`);
+    }
+    if (analytics.successRate !== 0.6667 || analytics.failureRate !== 0.3333) {
+      throw new Error(`history rates mismatch: ${JSON.stringify(analytics)}`);
+    }
+
+    console.log("PASS repair-analytics-history-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-analytics-history-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+async function runRepairAnalyticsTrendUnit() {
+  const { updateRepairAnalytics, getRepairStrategyAnalytics } = require(path.join(projectRoot, "dist", "repair", "repairAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-analytics-trend-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "trend", outcome: "validation-improved" });
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "trend", outcome: "failed-worse" });
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "trend", outcome: "policy-denied" });
+    await updateRepairAnalytics({ projectRoot: repo, strategy: "trend", outcome: "manual-review-required" });
+    const analytics = await getRepairStrategyAnalytics({ projectRoot: repo, strategy: "trend" });
+    if (
+      !analytics ||
+      analytics.validationImprovementRate !== 0.25 ||
+      analytics.worsenedRate !== 0.25 ||
+      analytics.policyDeniedRate !== 0.25 ||
+      analytics.manualReviewRate !== 0.25
+    ) {
+      throw new Error(`trend rates mismatch: ${JSON.stringify(analytics)}`);
+    }
+    if (analytics.warnings.length === 0) {
+      throw new Error(`trend warnings should be deterministic, got ${JSON.stringify(analytics)}`);
+    }
+
+    console.log("PASS repair-analytics-trend-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-analytics-trend-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairAnalyticsAdvisoryOnlyUnit() {
+  const { buildRepairAnalyticsHint } = require(path.join(projectRoot, "dist", "repair", "repairAnalytics.js"));
+  const { decideRepairPatchPolicy } = require(path.join(projectRoot, "dist", "repair", "repairPatchPolicy.js"));
+  const { validatePatchIntent } = require(path.join(projectRoot, "dist", "repair", "patchIntentGuard.js"));
+
+  try {
+    const hint = buildRepairAnalyticsHint({
+      analytics: {
+        strategy: "undefined-symbol",
+        totalAttempts: 10,
+        successCount: 10,
+        failedCount: 0,
+        validationImprovedCount: 0,
+        worsenedCount: 0,
+        policyDeniedCount: 0,
+        manualReviewCount: 0,
+        effectivenessScore: 30,
+        successRate: 1,
+        failureRate: 0,
+        validationImprovementRate: 0,
+        worsenedRate: 0,
+        policyDeniedRate: 0,
+        manualReviewRate: 0,
+        warnings: []
+      }
+    });
+    if (hint.advisoryOnly !== true) {
+      throw new Error(`analytics hint must be advisory-only, got ${JSON.stringify(hint)}`);
+    }
+
+    const policy = decideRepairPatchPolicy({
+      repairIntent: { targetFile: "index.js", repairType: "runtime-local-error" },
+      evidenceValidation: { ok: false, confidence: "low", allowedRepairMode: "manual-review" },
+      proposedPatchOperations: [{ operation: "exact-replacement", targetFile: "index.js" }]
+    });
+    if (policy.ok) {
+      throw new Error(`analytics cannot bypass patch policy, got ${JSON.stringify(policy)}`);
+    }
+
+    const patchIntent = validatePatchIntent(
+      {
+        repairType: "runtime-local-error",
+        targetFile: "index.js",
+        reason: "unit",
+        confidence: "high",
+        allowedMutationScope: "single-file",
+        safetyNotes: ["unit"]
+      },
+      { targetFile: "helper.js", patchFiles: ["helper.js"], patchContent: "console.log('x');" }
+    );
+    if (patchIntent.ok) {
+      throw new Error(`analytics cannot bypass patch intent validation, got ${JSON.stringify(patchIntent)}`);
+    }
+
+    const safePatchReached = policy.ok && patchIntent.ok;
+    if (safePatchReached) {
+      throw new Error("analytics must not bypass Safe Patch Engine gates or single-file invariant");
+    }
+
+    console.log("PASS repair-analytics-advisory-only-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-analytics-advisory-only-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -4924,6 +5165,24 @@ async function main() {
     failed += 1;
   }
   if (!runRepairOutcomeScenarioHardeningUnit()) {
+    failed += 1;
+  }
+  if (!(await runRepairAnalyticsUnit())) {
+    failed += 1;
+  }
+  if (!(await runRepairEffectivenessScoreUnit())) {
+    failed += 1;
+  }
+  if (!runRepairAnalyticsReportUnit()) {
+    failed += 1;
+  }
+  if (!(await runRepairAnalyticsHistoryUnit())) {
+    failed += 1;
+  }
+  if (!(await runRepairAnalyticsTrendUnit())) {
+    failed += 1;
+  }
+  if (!runRepairAnalyticsAdvisoryOnlyUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

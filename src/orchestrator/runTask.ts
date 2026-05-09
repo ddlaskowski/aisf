@@ -66,6 +66,11 @@ import {
   type RepairOutcomeClassification
 } from "../repair/repairOutcomeClassifier.js";
 import { auditRepairDecision, type RepairDecisionAudit } from "../repair/repairDecisionAudit.js";
+import {
+  buildRepairAnalyticsHint,
+  updateRepairAnalytics,
+  type RepairAnalyticsHint
+} from "../repair/repairAnalytics.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -957,6 +962,7 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   let validationDelta: ValidationDelta | null = null;
   let repairOutcome: RepairOutcomeClassification | null = null;
   let repairDecisionAudit: RepairDecisionAudit | null = null;
+  let repairAnalytics: RepairAnalyticsHint | null = null;
   let mutationSkippedForEvidence = false;
   let mutationSkippedForPolicy = false;
 
@@ -1967,12 +1973,27 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     });
     await saveStateFile(state.runDir, "failure-memory-store-after.json", updatedMemory);
   }
+  if (repairStrategy && repairOutcome) {
+    const analyticsStore = await updateRepairAnalytics({
+      projectRoot: repoPath,
+      strategy: repairStrategy.strategy,
+      outcome: repairOutcome.outcome
+    });
+    const strategyAnalytics = analyticsStore.strategies[repairStrategy.strategy] ?? null;
+    repairAnalytics = buildRepairAnalyticsHint({ analytics: strategyAnalytics });
+    await saveStateFile(state.runDir, "repair-analytics-update.json", {
+      strategy: repairStrategy.strategy,
+      analytics: strategyAnalytics,
+      hint: repairAnalytics
+    });
+  }
   await saveStateFile(state.runDir, "repair-observability.json", {
     repairStrategy,
     repairRetryDecision,
     validationDelta,
     repairOutcome,
     repairDecisionAudit,
+    repairAnalytics,
     failureMemory: failureMemoryHint
       ? {
           ...failureMemoryHint,
@@ -2049,6 +2070,22 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     `- Explanation: ${repairDecisionAudit?.explanation ?? "not available"}`,
     `- Blocking factors: ${repairDecisionAudit ? formatList(repairDecisionAudit.blockingFactors) : "not available"}`,
     `- Influencing factors: ${repairDecisionAudit ? formatList(repairDecisionAudit.influencingFactors) : "not available"}`,
+    "",
+    "## Historical strategy effectiveness",
+    `- Strategy: ${repairAnalytics?.strategy ?? repairStrategy?.strategy ?? "not available"}`,
+    `- Effectiveness score: ${repairAnalytics?.effectivenessScore ?? "not available"}`,
+    `- Historical success rate: ${repairAnalytics?.historicalSuccessRate ?? "not available"}`,
+    `- Historical failure rate: ${repairAnalytics?.historicalFailureRate ?? "not available"}`,
+    `- Validation improvement rate: ${repairAnalytics?.validationImprovementRate ?? "not available"}`,
+    `- Worsened rate: ${repairAnalytics?.worsenedRate ?? "not available"}`,
+    `- Policy denied rate: ${repairAnalytics?.policyDeniedRate ?? "not available"}`,
+    `- Manual review rate: ${repairAnalytics?.manualReviewRate ?? "not available"}`,
+    "",
+    "## Strategy analytics recommendation",
+    repairAnalytics
+      ? `Analytics hint: advisory-only; warnings: ${formatList(repairAnalytics.warnings)}`
+      : "Analytics hint: not available",
+    "This analytics hint is advisory-only and does not bypass evidence validation, patch policy, patch intent validation, Safe Patch Engine, or retry safety rules.",
     "",
     `- Repair intent: ${repairIntent?.repairType ?? "None"}`,
     `- Repair intent target: ${repairIntent?.targetFile ?? "n/a"}`,
