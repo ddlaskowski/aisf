@@ -84,6 +84,7 @@ import { updateRepairReviewAnalytics } from "../repair/repairReviewAnalytics.js"
 import { buildRepairTrustIndex, renderRepairTrustIndexMarkdown } from "../repair/repairTrustIndex.js";
 import { buildRepairReleaseGate, renderRepairReleaseGateMarkdown } from "../repair/repairReleaseGate.js";
 import { buildRepairGovernance, renderRepairGovernanceMarkdown } from "../repair/repairGovernance.js";
+import { buildRunIndexEntry, loadRunsIndex, saveRunsIndex, updateRunsIndex } from "../repair/runIndex.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -2223,6 +2224,27 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   });
   await saveStateFile(state.runDir, "repair-governance.json", repairGovernance);
   await fs.writeFile(path.join(state.runDir, "repair-governance.md"), renderRepairGovernanceMarkdown(repairGovernance), "utf8");
+  let runIndexUpdated = false;
+  let runIndexWarning: string | null = null;
+  try {
+    const runIndexEntry = buildRunIndexEntry({
+      projectRoot: repoPath,
+      runId: state.runId,
+      runDir: state.runDir,
+      repairSummary,
+      repairReview,
+      repairTrustIndex,
+      repairReleaseGate,
+      repairGovernance,
+      repairOutcome,
+      validation: review
+    });
+    const runsIndex = updateRunsIndex(loadRunsIndex(repoPath), runIndexEntry);
+    saveRunsIndex(repoPath, runsIndex);
+    runIndexUpdated = true;
+  } catch (error) {
+    runIndexWarning = error instanceof Error ? error.message : String(error);
+  }
 
   const finalReport = [
     `# Final Report`,
@@ -2316,6 +2338,11 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     "Artifacts:",
     "- repair-governance.json",
     "- repair-governance.md",
+    "",
+    "## Run Index",
+    `Run index updated: ${runIndexUpdated ? "yes" : "no"}`,
+    runIndexUpdated ? "Index artifact:" : "Index warning:",
+    runIndexUpdated ? "- .factory/runs-index.json" : `- ${runIndexWarning ?? "Unknown run index update failure"}`,
     "",
     "## Repair strategy",
     `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,

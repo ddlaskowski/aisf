@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.0 — Autonomous Repair Governance Layer**
+**v3.1 — Governance Snapshot & Run Index Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -44,6 +44,8 @@ v2.8 adds a deterministic Repair Trust Index. It combines completed-run signals 
 v2.9 adds a deterministic Repair Release Gate. It converts completed-run trust, review, validation, policy, regression, and analytics signals into one final release recommendation without changing repair behavior or orchestration.
 
 v3.0 adds a deterministic Autonomous Repair Governance Layer. It summarizes the completed repair lifecycle into one final governance status without changing repair behavior, release gate decisions, trust scores, or any safety gate.
+
+v3.1 adds a deterministic Governance Snapshot & Run Index Layer. It maintains a compact `.factory/runs-index.json` history of completed runs without scanning every run directory or changing repair behavior.
 
 ---
 
@@ -934,6 +936,53 @@ v3.0 deterministic checks:
 * repair-governance-report-unit
 * repair-governance-artifact-unit
 * repair-governance-no-behavior-change-unit
+
+---
+
+## 🗂️ Governance Snapshot & Run Index Layer (v3.1)
+
+v3.1 maintains a lightweight historical index of completed repair runs. It lets future CLI, dashboard, or reporting layers quickly inspect previous governance outcomes without parsing every `.factory/runs/<runId>` directory.
+
+Index artifact:
+
+```text
+.factory/runs-index.json
+```
+
+Each run contributes one compact entry with:
+
+* run ID
+* timestamp
+* repair outcome
+* repair review verdict
+* trust level and score
+* release decision and score
+* governance status
+* validation result
+* final decision flags
+* relative paths to key artifacts
+
+Safety guarantees:
+
+* index-only behavior
+* no patch generation
+* no retry behavior changes
+* no governance status changes
+* no trust score changes
+* no release gate decision changes
+* no repair outcome changes
+* no safety gate bypasses
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+
+v3.1 deterministic checks:
+
+* run-index-unit
+* run-index-entry-unit
+* run-index-update-unit
+* run-index-replace-existing-unit
+* run-index-artifact-unit
+* run-index-report-unit
 
 ---
 

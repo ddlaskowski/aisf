@@ -6617,6 +6617,180 @@ function runRepairGovernanceNoBehaviorChangeUnit() {
   }
 }
 
+function runRunIndexUnit() {
+  const { loadRunsIndex } = require(path.join(projectRoot, "dist", "repair", "runIndex.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "run-index-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    const index = loadRunsIndex(repo);
+    if (index.version !== 1 || index.totalRuns !== 0 || index.runs.length !== 0) {
+      throw new Error(`empty index mismatch: ${JSON.stringify(index)}`);
+    }
+
+    console.log("PASS run-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexEntryUnit() {
+  const { buildRunIndexEntry } = require(path.join(projectRoot, "dist", "repair", "runIndex.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "run-index-entry-unit");
+    const runDir = path.join(repo, ".factory", "runs", "run-1");
+    const entry = buildRunIndexEntry({
+      projectRoot: repo,
+      runId: "run-1",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      runDir,
+      repairSummary: { outcome: "success" },
+      repairReview: sampleRepairReview(),
+      repairTrustIndex: { trustLevel: "high", trustScore: 100 },
+      repairReleaseGate: { releaseDecision: "allow", releaseScore: 100 },
+      repairGovernance: { governanceStatus: "ready", finalDecision: { canProceed: true, requiresHumanReview: false, isBlocked: false } },
+      validation: { verdict: "pass", status: "pass" }
+    });
+
+    if (entry.runId !== "run-1" || entry.governanceStatus !== "ready" || entry.canProceed !== true || entry.validationPassed !== true) {
+      throw new Error(`entry fields mismatch: ${JSON.stringify(entry)}`);
+    }
+    for (const artifact of Object.values(entry.artifactPaths)) {
+      if (!artifact || path.isAbsolute(artifact) || artifact.includes("\\")) {
+        throw new Error(`artifact path should be stable relative slash path, got ${JSON.stringify(entry.artifactPaths)}`);
+      }
+    }
+
+    console.log("PASS run-index-entry-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-entry-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexUpdateUnit() {
+  const { updateRunsIndex } = require(path.join(projectRoot, "dist", "repair", "runIndex.js"));
+
+  try {
+    const empty = { version: 1, updatedAt: "2026-01-01T00:00:00.000Z", totalRuns: 0, runs: [] };
+    const one = updateRunsIndex(empty, {
+      runId: "b",
+      timestamp: "2026-01-02T00:00:00.000Z",
+      artifactPaths: {}
+    });
+    const two = updateRunsIndex(one, {
+      runId: "a",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      artifactPaths: {}
+    });
+
+    if (two.totalRuns !== two.runs.length || two.totalRuns !== 2 || two.runs[0].runId !== "a" || two.runs[1].runId !== "b") {
+      throw new Error(`index append/sort mismatch: ${JSON.stringify(two)}`);
+    }
+
+    console.log("PASS run-index-update-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-update-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexReplaceExistingUnit() {
+  const { updateRunsIndex } = require(path.join(projectRoot, "dist", "repair", "runIndex.js"));
+
+  try {
+    const base = {
+      version: 1,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      totalRuns: 1,
+      runs: [{ runId: "run-1", timestamp: "2026-01-01T00:00:00.000Z", governanceStatus: "blocked", artifactPaths: {} }]
+    };
+    const updated = updateRunsIndex(base, {
+      runId: "run-1",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      governanceStatus: "ready",
+      artifactPaths: {}
+    });
+    if (updated.totalRuns !== 1 || updated.runs.length !== 1 || updated.runs[0].governanceStatus !== "ready") {
+      throw new Error(`duplicate runId should replace old entry: ${JSON.stringify(updated)}`);
+    }
+
+    console.log("PASS run-index-replace-existing-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-replace-existing-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexArtifactUnit() {
+  const { buildRunIndexEntry, loadRunsIndex, saveRunsIndex, updateRunsIndex, getRunsIndexPath } = require(path.join(projectRoot, "dist", "repair", "runIndex.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "run-index-artifact-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    const entry = buildRunIndexEntry({
+      projectRoot: repo,
+      runId: "run-1",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      runDir: path.join(repo, ".factory", "runs", "run-1"),
+      repairReview: sampleRepairReview(),
+      repairTrustIndex: { trustLevel: "high", trustScore: 100 },
+      repairReleaseGate: { releaseDecision: "allow", releaseScore: 100 },
+      repairGovernance: { governanceStatus: "ready", finalDecision: { canProceed: true, requiresHumanReview: false, isBlocked: false } },
+      repairOutcome: { outcome: "success" },
+      validation: { verdict: "pass" }
+    });
+    saveRunsIndex(repo, updateRunsIndex(loadRunsIndex(repo), entry));
+    const indexPath = getRunsIndexPath(repo);
+    const fromDisk = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+    if (!fs.existsSync(indexPath) || fromDisk.totalRuns !== 1 || fromDisk.runs[0].runId !== "run-1") {
+      throw new Error(`runs index artifact mismatch: ${JSON.stringify(fromDisk)}`);
+    }
+
+    console.log("PASS run-index-artifact-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-artifact-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexReportUnit() {
+  try {
+    const report = [
+      "## Run Index",
+      "Run index updated: yes",
+      "Index artifact:",
+      "- .factory/runs-index.json"
+    ].join("\n");
+    for (const needle of ["Run Index", "Run index updated:", "Index artifact:", ".factory/runs-index.json"]) {
+      if (!report.includes(needle)) {
+        throw new Error(`final report run index section missing ${needle}: ${report}`);
+      }
+    }
+
+    console.log("PASS run-index-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -6923,6 +7097,24 @@ async function main() {
     failed += 1;
   }
   if (!runRepairGovernanceNoBehaviorChangeUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexEntryUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexUpdateUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexReplaceExistingUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexReportUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {
