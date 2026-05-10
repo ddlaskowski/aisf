@@ -5896,6 +5896,247 @@ function runRepairReviewAnalyticsArtifactUnit() {
   }
 }
 
+function sampleTrustInput(overrides = {}) {
+  return {
+    repairOutcome: { outcome: "success" },
+    repairReview: sampleRepairReview(),
+    repairReviewAnalytics: { warnings: [] },
+    repairAnalytics: { warnings: [] },
+    repairEvidenceValidation: { confidence: "high" },
+    repairRegressionRisk: { riskLevel: "low" },
+    repairPatchPolicy: { ok: true, mode: "normal", recommendedAction: "proceed" },
+    repairDecisionAudit: { retryDecision: "stop" },
+    validation: { verdict: "pass", status: "pass" },
+    ...overrides
+  };
+}
+
+function runRepairTrustIndexUnit() {
+  const { buildRepairTrustIndex } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+
+  try {
+    const trust = buildRepairTrustIndex(sampleTrustInput());
+    if (trust.version !== 1 || trust.trustLevel !== "high" || trust.trustScore !== 100) {
+      throw new Error(`clean successful run should produce high trust, got ${JSON.stringify(trust)}`);
+    }
+    for (const needle of ["Validation passed.", "Repair review approved the run.", "Evidence confidence was high."]) {
+      if (!trust.positiveSignals.includes(needle)) {
+        throw new Error(`positive signal missing ${needle}: ${JSON.stringify(trust)}`);
+      }
+    }
+
+    console.log("PASS repair-trust-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-trust-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairTrustIndexScoreUnit() {
+  const { buildRepairTrustIndex } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+
+  try {
+    const baseline = buildRepairTrustIndex(sampleTrustInput());
+    const cautious = buildRepairTrustIndex(sampleTrustInput({
+      repairReview: sampleRepairReview({ verdict: "approved-with-warnings" }),
+      repairPatchPolicy: { ok: true, mode: "conservative", recommendedAction: "proceed" }
+    }));
+    const warningHeavy = buildRepairTrustIndex(sampleTrustInput({
+      repairReview: sampleRepairReview({ verdict: "approved-with-warnings", blockingConcerns: ["Concern A", "Concern B", "Concern C", "Concern D"] }),
+      repairReviewAnalytics: { warnings: ["review warning 1", "review warning 2", "review warning 3", "review warning 4", "review warning 5"] },
+      repairAnalytics: { warnings: ["analytics warning 1", "analytics warning 2", "analytics warning 3", "analytics warning 4", "analytics warning 5"] },
+      repairEvidenceValidation: { confidence: "low" },
+      repairRegressionRisk: { riskLevel: "critical" },
+      repairPatchPolicy: { ok: false, mode: "manual-review", recommendedAction: "block-mutation" },
+      validation: { verdict: "fail", status: "fail" }
+    }));
+
+    if (cautious.trustScore !== 75 || cautious.trustLevel !== "medium") {
+      throw new Error(`expected deterministic cautious score 75/medium, got ${JSON.stringify(cautious)}`);
+    }
+    if (warningHeavy.trustScore < 0 || warningHeavy.trustScore > 100 || warningHeavy.trustScore >= baseline.trustScore) {
+      throw new Error(`warning-heavy trust score should be clamped and lower than baseline, got ${JSON.stringify(warningHeavy)}`);
+    }
+    if (warningHeavy.blockingConcerns.length === 0 || warningHeavy.warnings.length === 0) {
+      throw new Error(`expected warnings and blocking concerns, got ${JSON.stringify(warningHeavy)}`);
+    }
+
+    console.log("PASS repair-trust-index-score-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-trust-index-score-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairTrustIndexLevelUnit() {
+  const { buildRepairTrustIndex } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+
+  try {
+    const medium = buildRepairTrustIndex(sampleTrustInput({
+      repairReview: sampleRepairReview({ verdict: "approved-with-warnings" }),
+      repairPatchPolicy: { ok: true, mode: "conservative", recommendedAction: "proceed" }
+    }));
+    const low = buildRepairTrustIndex(sampleTrustInput({
+      repairReview: sampleRepairReview({ verdict: "approved-with-warnings" }),
+      repairEvidenceValidation: { confidence: "medium" },
+      repairRegressionRisk: { riskLevel: "medium" },
+      repairPatchPolicy: { ok: true, mode: "conservative", recommendedAction: "proceed" },
+      repairAnalytics: { warnings: ["historical warning", "policy warning"] }
+    }));
+    const unsafe = buildRepairTrustIndex(sampleTrustInput({
+      repairOutcome: { outcome: "failed-worse" },
+      validation: { verdict: "fail", status: "fail" }
+    }));
+
+    if (medium.trustLevel !== "medium") {
+      throw new Error(`expected medium trust, got ${JSON.stringify(medium)}`);
+    }
+    if (low.trustLevel !== "low") {
+      throw new Error(`expected low trust, got ${JSON.stringify(low)}`);
+    }
+    if (unsafe.trustLevel !== "unsafe") {
+      throw new Error(`expected unsafe trust, got ${JSON.stringify(unsafe)}`);
+    }
+
+    console.log("PASS repair-trust-index-level-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-trust-index-level-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairTrustIndexOverrideUnit() {
+  const { buildRepairTrustIndex } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+
+  try {
+    const failedValidation = buildRepairTrustIndex(sampleTrustInput({
+      validation: { verdict: "fail", status: "fail" }
+    }));
+    const rejectedReview = buildRepairTrustIndex(sampleTrustInput({
+      repairReview: sampleRepairReview({ verdict: "rejected" })
+    }));
+    const failedWorse = buildRepairTrustIndex(sampleTrustInput({
+      repairOutcome: { outcome: "failed-worse" }
+    }));
+    const policyBlocked = buildRepairTrustIndex(sampleTrustInput({
+      repairPatchPolicy: { ok: false, mode: "conservative", recommendedAction: "block-mutation" }
+    }));
+    const missingData = buildRepairTrustIndex({});
+
+    if (failedValidation.trustLevel === "high" || failedValidation.trustLevel === "medium") {
+      throw new Error(`failed validation must not produce high/medium trust: ${JSON.stringify(failedValidation)}`);
+    }
+    if (rejectedReview.trustLevel !== "unsafe") {
+      throw new Error(`rejected review must be unsafe: ${JSON.stringify(rejectedReview)}`);
+    }
+    if (failedWorse.trustLevel !== "unsafe") {
+      throw new Error(`failed-worse outcome must be unsafe: ${JSON.stringify(failedWorse)}`);
+    }
+    if (policyBlocked.trustLevel === "high" || policyBlocked.trustLevel === "medium") {
+      throw new Error(`policy block must not produce high/medium trust: ${JSON.stringify(policyBlocked)}`);
+    }
+    if (missingData.trustLevel === "high" || missingData.trustLevel === "medium") {
+      throw new Error(`missing required data must not produce high/medium trust: ${JSON.stringify(missingData)}`);
+    }
+
+    console.log("PASS repair-trust-index-override-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-trust-index-override-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairTrustIndexReportUnit() {
+  const { renderRepairTrustIndexMarkdown } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+
+  try {
+    const markdown = renderRepairTrustIndexMarkdown({
+      version: 1,
+      trustLevel: "medium",
+      trustScore: 72,
+      summary: "The repair is usable with caution because warnings or moderate risk signals were detected.",
+      positiveSignals: ["Validation passed"],
+      negativeSignals: ["Conservative patch policy was required"],
+      warnings: ["Recent safety score trend is degrading"],
+      blockingConcerns: [],
+      inputSignals: {}
+    });
+    for (const needle of [
+      "# Repair Trust Index",
+      "Trust level: medium",
+      "Trust score: 72",
+      "Summary:",
+      "Positive signals:",
+      "Negative signals:",
+      "Warnings:",
+      "Blocking concerns:"
+    ]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`trust index markdown missing ${needle}: ${markdown}`);
+      }
+    }
+
+    const finalReport = [
+      "## Repair Trust Index",
+      "Trust level: medium",
+      "Trust score: 72",
+      "Summary:",
+      "The repair is usable with caution because warnings or moderate risk signals were detected.",
+      "Artifacts:",
+      "- repair-trust-index.json",
+      "- repair-trust-index.md"
+    ].join("\n");
+    for (const needle of ["Repair Trust Index", "Trust level:", "Trust score:", "repair-trust-index.json", "repair-trust-index.md"]) {
+      if (!finalReport.includes(needle)) {
+        throw new Error(`final report trust index section missing ${needle}: ${finalReport}`);
+      }
+    }
+
+    console.log("PASS repair-trust-index-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-trust-index-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairTrustIndexArtifactUnit() {
+  const { buildRepairTrustIndex, renderRepairTrustIndexMarkdown } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+  const tmpDir = path.join(projectRoot, ".scenario-unit", "repair-trust-index-artifact");
+
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    ensureDir(tmpDir);
+    const index = buildRepairTrustIndex(sampleTrustInput());
+    const jsonPath = path.join(tmpDir, "repair-trust-index.json");
+    const mdPath = path.join(tmpDir, "repair-trust-index.md");
+    fs.writeFileSync(jsonPath, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+    fs.writeFileSync(mdPath, renderRepairTrustIndexMarkdown(index), "utf8");
+
+    const fromDisk = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const markdown = fs.readFileSync(mdPath, "utf8");
+    if (fromDisk.version !== 1 || fromDisk.trustLevel !== "high" || !markdown.includes("Trust level: high")) {
+      throw new Error(`trust artifacts invalid: json=${JSON.stringify(fromDisk)} md=${markdown}`);
+    }
+
+    console.log("PASS repair-trust-index-artifact-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-trust-index-artifact-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -6148,6 +6389,24 @@ async function main() {
     failed += 1;
   }
   if (!runRepairReviewAnalyticsArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runRepairTrustIndexUnit()) {
+    failed += 1;
+  }
+  if (!runRepairTrustIndexScoreUnit()) {
+    failed += 1;
+  }
+  if (!runRepairTrustIndexLevelUnit()) {
+    failed += 1;
+  }
+  if (!runRepairTrustIndexOverrideUnit()) {
+    failed += 1;
+  }
+  if (!runRepairTrustIndexReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairTrustIndexArtifactUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

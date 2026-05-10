@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v2.7 — Repair Review Analytics Layer**
+**v2.8 — Repair Trust Index Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -38,6 +38,8 @@ v2.5 adds deterministic repair observability and decision trace artifacts. It do
 v2.6 adds a deterministic repair review and recommendation layer. It evaluates the completed repair lifecycle for quality, safety, completeness, warnings, and human-review recommendations without changing repair behavior.
 
 v2.7 adds deterministic repair review analytics. It aggregates historical review verdicts, scores, warnings, recommendations, and trends without changing repair behavior or review verdicts.
+
+v2.8 adds a deterministic Repair Trust Index. It combines completed-run signals into one final trust score and trust level without changing repair behavior, review verdicts, patch policy, or orchestration decisions.
 
 ---
 
@@ -745,6 +747,66 @@ v2.7 deterministic checks:
 * repair-review-analytics-trend-unit
 * repair-review-analytics-report-unit
 * repair-review-analytics-artifact-unit
+
+---
+
+## 🛡️ Repair Trust Index Layer (v2.8)
+
+v2.8 calculates one final deterministic trust assessment after the repair lifecycle has completed. It answers:
+
+* can this repair result be trusted?
+* did validation pass?
+* did review approve the run?
+* did evidence, regression risk, policy, retry audit, or analytics introduce concerns?
+* are there blocking concerns that make the result unsafe?
+
+Artifacts written per run:
+
+```text
+.factory/runs/<runId>/repair-trust-index.json
+.factory/runs/<runId>/repair-trust-index.md
+```
+
+Trust levels:
+
+* high
+* medium
+* low
+* unsafe
+
+The trust index combines deterministic signals from:
+
+* repair outcome
+* repair review verdict
+* evidence confidence
+* regression risk
+* patch policy mode
+* retry audit
+* validation result
+* repair analytics warnings
+* repair review analytics warnings
+* blocking concerns
+
+Safety guarantees:
+
+* assessment-only behavior
+* no patch generation
+* no retry behavior changes
+* no review verdict changes
+* no repair outcome changes
+* no patch policy changes
+* no safety gate bypasses
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+
+v2.8 deterministic checks:
+
+* repair-trust-index-unit
+* repair-trust-index-score-unit
+* repair-trust-index-level-unit
+* repair-trust-index-override-unit
+* repair-trust-index-report-unit
+* repair-trust-index-artifact-unit
 
 ---
 

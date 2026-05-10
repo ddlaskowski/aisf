@@ -81,6 +81,7 @@ import { buildRepairDecisionTrace, renderRepairDecisionTraceMarkdown } from "../
 import { buildRepairSummary } from "../repair/repairSummary.js";
 import { buildRepairReview, renderRepairReviewMarkdown } from "../repair/buildRepairReview.js";
 import { updateRepairReviewAnalytics } from "../repair/repairReviewAnalytics.js";
+import { buildRepairTrustIndex, renderRepairTrustIndexMarkdown } from "../repair/repairTrustIndex.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -2175,6 +2176,19 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     patchPolicyMode: repairPatchPolicy?.mode
   });
   await saveStateFile(state.runDir, "repair-review-analytics-snapshot.json", repairReviewAnalytics);
+  const repairTrustIndex = buildRepairTrustIndex({
+    repairOutcome,
+    repairReview,
+    repairReviewAnalytics,
+    repairAnalytics,
+    repairEvidenceValidation,
+    repairRegressionRisk,
+    repairPatchPolicy,
+    repairDecisionAudit,
+    validation: review
+  });
+  await saveStateFile(state.runDir, "repair-trust-index.json", repairTrustIndex);
+  await fs.writeFile(path.join(state.runDir, "repair-trust-index.md"), renderRepairTrustIndexMarkdown(repairTrustIndex), "utf8");
 
   const finalReport = [
     `# Final Report`,
@@ -2231,6 +2245,17 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     repairReviewAnalytics.warnings.length
       ? repairReviewAnalytics.warnings.map((warning) => `- ${warning}`).join("\n")
       : "- None",
+    "",
+    "## Repair Trust Index",
+    `Trust level: ${repairTrustIndex.trustLevel}`,
+    `Trust score: ${repairTrustIndex.trustScore}`,
+    "",
+    "Summary:",
+    repairTrustIndex.summary,
+    "",
+    "Artifacts:",
+    "- repair-trust-index.json",
+    "- repair-trust-index.md",
     "",
     "## Repair strategy",
     `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,
