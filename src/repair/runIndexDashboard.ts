@@ -16,6 +16,7 @@ export type RunIndexDashboardRow = {
   trustLevel?: string;
   trustScore?: number;
   releaseDecision?: string;
+  releaseScore?: number;
   repairOutcome?: string;
   validationPassed?: boolean;
   canProceed?: boolean;
@@ -99,6 +100,7 @@ function toRow(run: RunIndexEntry): RunIndexDashboardRow {
     trustLevel: run.trustLevel,
     trustScore: run.trustScore,
     releaseDecision: run.releaseDecision,
+    releaseScore: run.releaseScore,
     repairOutcome: run.repairOutcome,
     validationPassed: run.validationPassed,
     canProceed: run.canProceed,

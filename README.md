@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.2 — Governance Dashboard CLI Layer**
+**v3.3 — Governance Export Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -48,6 +48,8 @@ v3.0 adds a deterministic Autonomous Repair Governance Layer. It summarizes the 
 v3.1 adds a deterministic Governance Snapshot & Run Index Layer. It maintains a compact `.factory/runs-index.json` history of completed runs without scanning every run directory or changing repair behavior.
 
 v3.2 adds a read-only Governance Dashboard CLI. It summarizes `.factory/runs-index.json` with stable text or JSON output and does not modify repair behavior, artifacts, or the run index.
+
+v3.3 adds deterministic dashboard exports for JSON, Markdown, and CSV. It reads `.factory/runs-index.json`, respects the same dashboard filters, and writes only under `.factory/exports` without modifying repair behavior or the run index.
 
 ---
 
@@ -1052,6 +1054,68 @@ v3.2 deterministic checks:
 * run-index-dashboard-render-unit
 * run-index-dashboard-missing-index-unit
 * run-index-dashboard-cli-unit
+
+---
+
+## 🧾 Governance Export Layer (v3.3)
+
+v3.3 persists the run governance dashboard as deterministic export artifacts for CI summaries, governance reports, audit archives, and future dashboard ingestion.
+
+Export commands:
+
+```bash
+node dist/cli.js runs --export
+node dist/cli.js runs --export json
+node dist/cli.js runs --export markdown
+node dist/cli.js runs --export csv
+node dist/cli.js runs --export all
+```
+
+Exports respect the same dashboard filters:
+
+```bash
+node dist/cli.js runs --status blocked --export markdown
+node dist/cli.js runs --limit 10 --export csv
+node dist/cli.js runs --human-review --export all
+node dist/cli.js runs --status blocked --export json --json
+```
+
+Output files:
+
+```text
+.factory/exports/runs-dashboard.json
+.factory/exports/runs-dashboard.md
+.factory/exports/runs-dashboard.csv
+```
+
+Formats:
+
+* JSON writes the full dashboard result with stable pretty JSON.
+* Markdown writes a human-readable governance dashboard table.
+* CSV writes stable headers and escaped values without external CSV dependencies.
+* `all` writes JSON, Markdown, and CSV together.
+
+Export-only guarantee:
+
+* reads `.factory/runs-index.json`
+* writes only under `.factory/exports`
+* does not update `.factory/runs-index.json`
+* does not generate patches
+* does not retry repairs
+* does not mutate source files
+* does not change governance, release, trust, review, or repair outcomes
+* does not bypass any safety gate
+
+v3.3 deterministic checks:
+
+* run-index-export-unit
+* run-index-export-json-unit
+* run-index-export-markdown-unit
+* run-index-export-csv-unit
+* run-index-export-all-unit
+* run-index-export-filter-unit
+* run-index-export-missing-index-unit
+* run-index-export-cli-unit
 
 ---
 

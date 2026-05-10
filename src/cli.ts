@@ -14,6 +14,7 @@ import {
   RUN_INDEX_DASHBOARD_STATUSES,
   type RunIndexDashboardOptions
 } from "./repair/runIndexDashboard.js";
+import { exportRunIndexDashboard, type RunIndexExportFormat } from "./repair/runIndexExport.js";
 
 const runInputSchema = z.object({
   repo: z.string().min(1),
@@ -47,6 +48,34 @@ function printDashboardResult(result: ReturnType<typeof buildRunIndexDashboard>,
     return;
   }
   console.log(renderRunIndexDashboardText(result));
+}
+
+function parseExportFormat(value: unknown): RunIndexExportFormat | null {
+  if (value === true) {
+    return "all";
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  return ["json", "markdown", "csv", "all"].includes(value) ? (value as RunIndexExportFormat) : null;
+}
+
+function printExportResult(result: ReturnType<typeof exportRunIndexDashboard>, asJson: boolean): void {
+  if (asJson) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log("Exported run dashboard:");
+  for (const file of result.files) {
+    console.log(`- ${file}`);
+  }
+  if (result.warnings.length) {
+    console.log("Warnings:");
+    for (const warning of result.warnings) {
+      console.log(`- ${warning}`);
+    }
+  }
 }
 
 program
@@ -115,6 +144,7 @@ program
   .option("--human-review", "Show only runs requiring human review")
   .option("--latest", "Show only the latest run")
   .option("--json", "Print machine-readable JSON")
+  .option("--export [format]", "Export dashboard as json, markdown, csv, or all")
   .action(async (options) => {
     const asJson = !!options.json;
     const dashboardOptions: RunIndexDashboardOptions = {
@@ -146,6 +176,27 @@ program
     }
 
     const repoPath = path.resolve(options.repo);
+    if (options.export !== undefined) {
+      const exportFormat = parseExportFormat(options.export);
+      if (exportFormat === null) {
+        console.error(`Invalid export format: ${options.export}`);
+        console.error("Allowed formats: json, markdown, csv, all");
+        process.exitCode = 1;
+        return;
+      }
+
+      const exportResult = exportRunIndexDashboard(repoPath, {
+        format: exportFormat,
+        limit: dashboardOptions.limit,
+        status: dashboardOptions.status,
+        blockedOnly: dashboardOptions.blockedOnly,
+        humanReviewOnly: dashboardOptions.humanReviewOnly,
+        latestOnly: dashboardOptions.latestOnly
+      });
+      printExportResult(exportResult, asJson);
+      return;
+    }
+
     const indexPath = getRunsIndexPath(repoPath);
     if (!(await fs.pathExists(indexPath))) {
       printDashboardResult(buildMissingRunIndexDashboard(dashboardOptions), asJson);

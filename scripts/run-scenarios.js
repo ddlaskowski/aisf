@@ -6804,6 +6804,7 @@ function sampleRunsIndexForDashboard() {
         trustLevel: "high",
         trustScore: 94,
         releaseDecision: "allow",
+        releaseScore: 98,
         repairOutcome: "success",
         validationPassed: true,
         canProceed: true,
@@ -6818,6 +6819,7 @@ function sampleRunsIndexForDashboard() {
         trustLevel: "medium",
         trustScore: 72,
         releaseDecision: "allow-with-warnings",
+        releaseScore: 76,
         repairOutcome: "success",
         validationPassed: true,
         canProceed: true,
@@ -6832,6 +6834,7 @@ function sampleRunsIndexForDashboard() {
         trustLevel: "low",
         trustScore: 51,
         releaseDecision: "require-human-review",
+        releaseScore: 50,
         repairOutcome: "manual-review-required",
         validationPassed: false,
         canProceed: false,
@@ -6846,6 +6849,7 @@ function sampleRunsIndexForDashboard() {
         trustLevel: "unsafe",
         trustScore: 18,
         releaseDecision: "block",
+        releaseScore: 10,
         repairOutcome: "failed-worse",
         validationPassed: false,
         canProceed: false,
@@ -7075,6 +7079,259 @@ function runRunIndexDashboardCliUnit() {
     return true;
   } catch (error) {
     console.log("FAIL run-index-dashboard-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function createExportTestRepo(name, withIndex = true) {
+  const repo = path.join(projectRoot, ".scenario-unit", name);
+  fs.rmSync(repo, { recursive: true, force: true });
+  ensureDir(repo);
+  if (withIndex) {
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    ensureDir(path.dirname(indexPath));
+    writeJson(indexPath, sampleRunsIndexForDashboard());
+  }
+  return repo;
+}
+
+function runRunIndexExportUnit() {
+  const { exportRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexExport.js"));
+
+  try {
+    const repo = createExportTestRepo("run-index-export-unit");
+    const beforeIndex = fs.readFileSync(path.join(repo, ".factory", "runs-index.json"), "utf8");
+    const result = exportRunIndexDashboard(repo, { format: "json" });
+    const afterIndex = fs.readFileSync(path.join(repo, ".factory", "runs-index.json"), "utf8");
+    if (!result.exported || result.format !== "json" || result.displayedRuns !== 4 || result.files.length !== 1) {
+      throw new Error(`export result mismatch: ${JSON.stringify(result)}`);
+    }
+    if (result.files[0] !== ".factory/exports/runs-dashboard.json") {
+      throw new Error(`export should return stable relative path, got ${JSON.stringify(result.files)}`);
+    }
+    if (beforeIndex !== afterIndex) {
+      throw new Error("export must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS run-index-export-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-export-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexExportJsonUnit() {
+  const { exportRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexExport.js"));
+
+  try {
+    const repo = createExportTestRepo("run-index-export-json");
+    const first = exportRunIndexDashboard(repo, { format: "json", limit: 2 });
+    const jsonPath = path.join(repo, first.files[0]);
+    const firstContent = fs.readFileSync(jsonPath, "utf8");
+    exportRunIndexDashboard(repo, { format: "json", limit: 2 });
+    const secondContent = fs.readFileSync(jsonPath, "utf8");
+    const parsed = JSON.parse(firstContent);
+    if (firstContent !== secondContent || parsed.displayedRuns !== 2 || parsed.rows[0].runId !== "2026-05-10-d-blocked") {
+      throw new Error(`JSON export should be stable and filtered: ${firstContent}`);
+    }
+
+    console.log("PASS run-index-export-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-export-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexExportMarkdownUnit() {
+  const { buildRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexDashboard.js"));
+  const { renderRunIndexDashboardMarkdown } = require(path.join(projectRoot, "dist", "repair", "runIndexExport.js"));
+
+  try {
+    const markdown = renderRunIndexDashboardMarkdown(buildRunIndexDashboard(sampleRunsIndexForDashboard(), { limit: 1 }));
+    for (const needle of [
+      "AI Software Factory",
+      "Run Governance Dashboard Export",
+      "Total indexed runs: 4",
+      "| Run ID | Timestamp | Governance | Trust | Release | Outcome | Validation |",
+      "| 2026-05-10-d-blocked |",
+      "unsafe/18",
+      "block/10"
+    ]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`Markdown export missing ${needle}: ${markdown}`);
+      }
+    }
+
+    console.log("PASS run-index-export-markdown-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-export-markdown-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexExportCsvUnit() {
+  const { renderRunIndexDashboardCsv } = require(path.join(projectRoot, "dist", "repair", "runIndexExport.js"));
+
+  try {
+    const csv = renderRunIndexDashboardCsv({
+      totalRuns: 1,
+      displayedRuns: 1,
+      filters: {},
+      summary: { ready: 1, readyWithCaution: 0, manualReviewRequired: 0, blocked: 0 },
+      rows: [
+        {
+          runId: "run,with,comma",
+          timestamp: "2026-05-10T12:00:00.000Z",
+          governanceStatus: "ready",
+          trustLevel: 'high "quoted"',
+          trustScore: 99,
+          releaseDecision: "allow",
+          releaseScore: 100,
+          repairOutcome: "success",
+          validationPassed: true,
+          canProceed: true,
+          requiresHumanReview: false,
+          isBlocked: false
+        }
+      ]
+    });
+    if (!csv.startsWith("runId,timestamp,governanceStatus,trustLevel,trustScore,releaseDecision,releaseScore,repairOutcome,validationPassed,canProceed,requiresHumanReview,isBlocked")) {
+      throw new Error(`CSV header mismatch: ${csv}`);
+    }
+    if (!csv.includes('"run,with,comma"') || !csv.includes('"high ""quoted"""') || !csv.includes(",true,true,false,false")) {
+      throw new Error(`CSV escaping mismatch: ${csv}`);
+    }
+
+    console.log("PASS run-index-export-csv-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-export-csv-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexExportAllUnit() {
+  const { exportRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexExport.js"));
+
+  try {
+    const repo = createExportTestRepo("run-index-export-all");
+    const result = exportRunIndexDashboard(repo, { format: "all" });
+    const expected = [
+      ".factory/exports/runs-dashboard.json",
+      ".factory/exports/runs-dashboard.md",
+      ".factory/exports/runs-dashboard.csv"
+    ];
+    if (JSON.stringify(result.files) !== JSON.stringify(expected)) {
+      throw new Error(`all export files mismatch: ${JSON.stringify(result)}`);
+    }
+    for (const file of expected) {
+      if (!fs.existsSync(path.join(repo, file))) {
+        throw new Error(`expected export file missing: ${file}`);
+      }
+    }
+
+    console.log("PASS run-index-export-all-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-export-all-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexExportFilterUnit() {
+  const { exportRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexExport.js"));
+
+  try {
+    const repo = createExportTestRepo("run-index-export-filter");
+    const result = exportRunIndexDashboard(repo, { format: "json", status: "blocked" });
+    const parsed = JSON.parse(fs.readFileSync(path.join(repo, result.files[0]), "utf8"));
+    if (parsed.displayedRuns !== 1 || parsed.rows[0].governanceStatus !== "blocked" || parsed.filters.status !== "blocked") {
+      throw new Error(`filtered export mismatch: ${JSON.stringify(parsed)}`);
+    }
+
+    console.log("PASS run-index-export-filter-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-export-filter-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexExportMissingIndexUnit() {
+  const { exportRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexExport.js"));
+
+  try {
+    const repo = createExportTestRepo("run-index-export-missing", false);
+    const result = exportRunIndexDashboard(repo, { format: "all" });
+    const json = JSON.parse(fs.readFileSync(path.join(repo, ".factory", "exports", "runs-dashboard.json"), "utf8"));
+    const markdown = fs.readFileSync(path.join(repo, ".factory", "exports", "runs-dashboard.md"), "utf8");
+    const csv = fs.readFileSync(path.join(repo, ".factory", "exports", "runs-dashboard.csv"), "utf8");
+    if (!result.warnings.includes("No runs index found") || json.displayedRuns !== 0 || !markdown.includes("No runs found.")) {
+      throw new Error(`missing index export mismatch: result=${JSON.stringify(result)} markdown=${markdown}`);
+    }
+    if (csv.trim() !== "runId,timestamp,governanceStatus,trustLevel,trustScore,releaseDecision,releaseScore,repairOutcome,validationPassed,canProceed,requiresHumanReview,isBlocked") {
+      throw new Error(`missing index CSV should contain only headers: ${csv}`);
+    }
+
+    console.log("PASS run-index-export-missing-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-export-missing-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexExportCliUnit() {
+  try {
+    const repo = createExportTestRepo("run-index-export-cli");
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+
+    const allResult = spawnSync(process.execPath, [cliPath, "runs", "--repo", repo, "--export"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (allResult.status !== 0 || !allResult.stdout.includes("Exported run dashboard:") || !allResult.stdout.includes(".factory/exports/runs-dashboard.csv")) {
+      throw new Error(`CLI export all mismatch: status=${allResult.status} stdout=${allResult.stdout} stderr=${allResult.stderr}`);
+    }
+
+    const jsonResult = spawnSync(process.execPath, [cliPath, "runs", "--repo", repo, "--status", "blocked", "--export", "json", "--json"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(jsonResult.stdout);
+    if (jsonResult.status !== 0 || parsed.format !== "json" || parsed.displayedRuns !== 1 || parsed.files[0] !== ".factory/exports/runs-dashboard.json") {
+      throw new Error(`CLI export JSON mismatch: status=${jsonResult.status} stdout=${jsonResult.stdout} stderr=${jsonResult.stderr}`);
+    }
+
+    const invalidResult = spawnSync(process.execPath, [cliPath, "runs", "--repo", repo, "--export", "xml"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (invalidResult.status === 0 || !invalidResult.stderr.includes("Invalid export format: xml")) {
+      throw new Error(`CLI invalid export mismatch: status=${invalidResult.status} stdout=${invalidResult.stdout} stderr=${invalidResult.stderr}`);
+    }
+
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (beforeIndex !== afterIndex) {
+      throw new Error("CLI export must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS run-index-export-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-export-cli-unit");
     console.log(`  ${error instanceof Error ? error.message : String(error)}`);
     return false;
   }
@@ -7428,6 +7685,30 @@ async function main() {
     failed += 1;
   }
   if (!runRunIndexDashboardCliUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexExportUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexExportJsonUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexExportMarkdownUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexExportCsvUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexExportAllUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexExportFilterUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexExportMissingIndexUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexExportCliUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {
