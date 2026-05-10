@@ -1,6 +1,11 @@
 import path from "node:path";
 import fs from "fs-extra";
 import { getRunsIndexPath, loadRunsIndex, type RunIndexEntry, type RunsIndex } from "./runIndex.js";
+import {
+  getGovernancePolicyProfile,
+  type GovernancePolicyProfile,
+  type GovernancePolicyProfileName
+} from "./governancePolicyProfile.js";
 
 export type GovernanceInsightSeverity = "info" | "warning" | "critical";
 
@@ -12,6 +17,11 @@ export type GovernanceInsight = {
 
 export type GovernanceInsights = {
   version: 1;
+  policyProfile: {
+    name: string;
+    operatorMode: string;
+    riskTolerance: string;
+  };
   totalRuns: number;
   summary: {
     ready: number;
@@ -55,6 +65,10 @@ export type GovernanceInsightsExportResult = {
   exported: boolean;
   files: string[];
   warnings: string[];
+};
+
+export type BuildGovernanceInsightsOptions = {
+  profile?: GovernancePolicyProfile | GovernancePolicyProfileName;
 };
 
 const RECENT_WINDOW = 10;
@@ -103,14 +117,22 @@ function mostCommon(values: Array<string | undefined>): string | undefined {
   return sorted[0]?.[0];
 }
 
-function trustTrend(overallAverage: number | null, recentAverage: number | null): GovernanceInsights["trends"]["trustTrend"] {
+function resolveProfile(profile?: GovernancePolicyProfile | GovernancePolicyProfileName): GovernancePolicyProfile {
+  return typeof profile === "object" && profile !== null ? profile : getGovernancePolicyProfile(profile);
+}
+
+function trustTrend(
+  overallAverage: number | null,
+  recentAverage: number | null,
+  degradingTrustDelta: number
+): GovernanceInsights["trends"]["trustTrend"] {
   if (overallAverage === null || recentAverage === null) {
     return "unknown";
   }
-  if (recentAverage <= overallAverage - 15) {
+  if (recentAverage <= overallAverage - degradingTrustDelta) {
     return "degrading";
   }
-  if (recentAverage >= overallAverage + 15) {
+  if (recentAverage >= overallAverage + degradingTrustDelta) {
     return "improving";
   }
   return "stable";
@@ -126,6 +148,7 @@ function buildInsightRules(input: {
   recentAverageTrustScore: number | null;
   readyRate: number;
   trustTrend: GovernanceInsights["trends"]["trustTrend"];
+  profile: GovernancePolicyProfile;
 }): GovernanceInsight[] {
   const insights: GovernanceInsight[] = [];
   if (input.totalRuns === 0) {
@@ -136,28 +159,31 @@ function buildInsightRules(input: {
     });
     return insights;
   }
-  if (input.blockedRate > 25) {
+  if (input.blockedRate > input.profile.thresholds.highBlockedRatePercent) {
     insights.push({
       severity: "critical",
       code: "HIGH_BLOCKED_RATE",
       message: "Blocked repair rate is above recommended threshold."
     });
   }
-  if (input.humanReviewRate > 30) {
+  if (input.humanReviewRate > input.profile.thresholds.highHumanReviewRatePercent) {
     insights.push({
       severity: "warning",
       code: "HIGH_HUMAN_REVIEW_RATE",
       message: "Human review rate is elevated."
     });
   }
-  if (input.validationSuccessRate < 80 && input.knownValidationCount >= 3) {
+  if (
+    input.validationSuccessRate < input.profile.thresholds.lowValidationSuccessRatePercent &&
+    input.knownValidationCount >= 3
+  ) {
     insights.push({
       severity: "warning",
       code: "LOW_VALIDATION_SUCCESS_RATE",
       message: "Validation success rate is below recommended threshold."
     });
   }
-  if (input.averageTrustScore !== null && input.averageTrustScore < 65) {
+  if (input.averageTrustScore !== null && input.averageTrustScore < input.profile.thresholds.lowAverageTrustScore) {
     insights.push({
       severity: "warning",
       code: "LOW_AVERAGE_TRUST",
@@ -171,7 +197,10 @@ function buildInsightRules(input: {
       message: "Recent trust score trend is degrading."
     });
   }
-  if (input.readyRate >= 80 && input.blockedRate <= 10) {
+  if (
+    input.readyRate >= input.profile.thresholds.healthyReadyRatePercent &&
+    input.blockedRate <= input.profile.thresholds.healthyMaxBlockedRatePercent
+  ) {
     insights.push({
       severity: "info",
       code: "HEALTHY_GOVERNANCE_RATE",
@@ -181,7 +210,11 @@ function buildInsightRules(input: {
   return insights;
 }
 
-export function buildGovernanceInsights(index: RunsIndex): GovernanceInsights {
+export function buildGovernanceInsights(
+  index: RunsIndex,
+  options: BuildGovernanceInsightsOptions = {}
+): GovernanceInsights {
+  const profile = resolveProfile(options.profile);
   const runs = Array.isArray(index.runs) ? index.runs : [];
   const totalRuns = runs.length;
   const ready = runs.filter((run) => run.governanceStatus === "ready").length;
@@ -196,7 +229,11 @@ export function buildGovernanceInsights(index: RunsIndex): GovernanceInsights {
   const recentTrustScores = numericTrustScores(recentRuns);
   const averageTrustScore = roundAverage(allTrustScores);
   const averageRecentTrustScore = roundAverage(recentTrustScores);
-  const computedTrustTrend = trustTrend(averageTrustScore, averageRecentTrustScore);
+  const computedTrustTrend = trustTrend(
+    averageTrustScore,
+    averageRecentTrustScore,
+    profile.thresholds.degradingTrustDelta
+  );
 
   const readyRate = roundPercent(ready, totalRuns);
   const cautionRate = roundPercent(readyWithCaution, totalRuns);
@@ -206,6 +243,11 @@ export function buildGovernanceInsights(index: RunsIndex): GovernanceInsights {
 
   return {
     version: 1,
+    policyProfile: {
+      name: profile.name,
+      operatorMode: profile.labels.operatorMode,
+      riskTolerance: profile.labels.riskTolerance
+    },
     totalRuns,
     summary: {
       ready,
@@ -250,7 +292,8 @@ export function buildGovernanceInsights(index: RunsIndex): GovernanceInsights {
       averageTrustScore,
       recentAverageTrustScore: averageRecentTrustScore,
       readyRate,
-      trustTrend: computedTrustTrend
+      trustTrend: computedTrustTrend,
+      profile
     }),
     generatedAt: index.updatedAt || new Date(0).toISOString()
   };
@@ -270,6 +313,10 @@ function formatPercent(value: number): string {
 export function renderGovernanceInsightsMarkdown(insights: GovernanceInsights): string {
   const lines = [
     "# AI Software Factory — Governance Insights",
+    "",
+    `Policy profile: ${insights.policyProfile.name}`,
+    `Operator mode: ${insights.policyProfile.operatorMode}`,
+    `Risk tolerance: ${insights.policyProfile.riskTolerance}`,
     "",
     `Total runs: ${insights.totalRuns}`,
     "",
@@ -337,7 +384,10 @@ export function exportGovernanceInsights(
   };
 }
 
-export function loadGovernanceInsights(projectRoot: string): GovernanceInsights {
+export function loadGovernanceInsights(
+  projectRoot: string,
+  options: BuildGovernanceInsightsOptions = {}
+): GovernanceInsights {
   const indexPath = getRunsIndexPath(projectRoot);
   if (!fs.pathExistsSync(indexPath)) {
     return buildGovernanceInsights({
@@ -345,7 +395,7 @@ export function loadGovernanceInsights(projectRoot: string): GovernanceInsights 
       updatedAt: new Date(0).toISOString(),
       totalRuns: 0,
       runs: []
-    });
+    }, options);
   }
-  return buildGovernanceInsights(loadRunsIndex(projectRoot));
+  return buildGovernanceInsights(loadRunsIndex(projectRoot), options);
 }

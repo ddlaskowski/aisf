@@ -20,6 +20,11 @@ import {
   loadGovernanceInsights,
   renderGovernanceInsightsMarkdown
 } from "./repair/governanceInsights.js";
+import {
+  isGovernancePolicyProfileName,
+  listGovernancePolicyProfiles,
+  type GovernancePolicyProfileName
+} from "./repair/governancePolicyProfile.js";
 
 const runInputSchema = z.object({
   repo: z.string().min(1),
@@ -92,6 +97,19 @@ function printInsightsExportResult(result: ReturnType<typeof exportGovernanceIns
   console.log("Exported governance insights:");
   for (const file of result.files) {
     console.log(`- ${file}`);
+  }
+}
+
+function printGovernancePolicyProfiles(asJson: boolean): void {
+  const profiles = listGovernancePolicyProfiles();
+  if (asJson) {
+    console.log(JSON.stringify(profiles, null, 2));
+    return;
+  }
+
+  console.log("Available governance policy profiles:");
+  for (const profile of profiles) {
+    console.log(`- ${profile.name}: ${profile.description}`);
   }
 }
 
@@ -239,10 +257,29 @@ program
   .option("--repo <path>", "Path to target repository", process.cwd())
   .option("--json", "Print machine-readable JSON")
   .option("--export", "Export governance insights JSON and Markdown")
+  .option("--profile <name>", "Governance policy profile: conservative, balanced, or experimental")
+  .option("--profiles", "List available governance policy profiles")
   .action(async (options) => {
     const repoPath = path.resolve(options.repo);
-    const insights = loadGovernanceInsights(repoPath);
     const asJson = !!options.json;
+
+    if (options.profiles) {
+      printGovernancePolicyProfiles(asJson);
+      return;
+    }
+
+    let profile: GovernancePolicyProfileName = "balanced";
+    if (options.profile !== undefined) {
+      if (!isGovernancePolicyProfileName(options.profile)) {
+        console.error(`Invalid governance policy profile: ${options.profile}`);
+        console.error("Allowed profiles: conservative, balanced, experimental");
+        process.exitCode = 1;
+        return;
+      }
+      profile = options.profile;
+    }
+
+    const insights = loadGovernanceInsights(repoPath, { profile });
 
     if (options.export) {
       printInsightsExportResult(exportGovernanceInsights(repoPath, insights), asJson);

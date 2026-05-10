@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.4 — Governance Insights Layer**
+**v3.5 — Governance Policy Profile Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -52,6 +52,8 @@ v3.2 adds a read-only Governance Dashboard CLI. It summarizes `.factory/runs-ind
 v3.3 adds deterministic dashboard exports for JSON, Markdown, and CSV. It reads `.factory/runs-index.json`, respects the same dashboard filters, and writes only under `.factory/exports` without modifying repair behavior or the run index.
 
 v3.4 adds deterministic governance insights over run history. It reads `.factory/runs-index.json`, computes operational health summaries, rates, trust trends, and fixed insight codes, and can export insights under `.factory/exports`.
+
+v3.5 adds deterministic governance policy profiles for interpreting insights with different strictness levels. Profiles change only the thresholds used by the insights layer; they do not change repair behavior, governance statuses, release decisions, trust scores, or `.factory/runs-index.json`.
 
 ---
 
@@ -1174,6 +1176,72 @@ v3.4 deterministic checks:
 * governance-insights-export-unit
 * governance-insights-cli-unit
 * governance-insights-missing-index-unit
+
+---
+
+## 🧭 Governance Policy Profile Layer (v3.5)
+
+v3.5 introduces static operator policy profiles for interpreting governance history. Profiles are deterministic, hardcoded, and interpretation-only.
+
+Available profiles:
+
+| Profile | Operator mode | Risk tolerance | Purpose |
+|---|---|---|---|
+| conservative | Conservative governance | low | Warn earlier and expect stronger validation/trust signals |
+| balanced | Balanced governance | medium | Default v3.4-compatible thresholds |
+| experimental | Experimental governance | high | Relaxed interpretation for prototype or exploratory workflows |
+
+Thresholds:
+
+| Threshold | conservative | balanced | experimental |
+|---|---:|---:|---:|
+| high blocked rate | 15% | 25% | 40% |
+| high human review rate | 20% | 30% | 50% |
+| low validation success rate | 90% | 80% | 65% |
+| low average trust score | 75 | 65 | 50 |
+| degrading trust delta | 10 | 15 | 25 |
+| healthy ready rate | 90% | 80% | 60% |
+| healthy max blocked rate | 5% | 10% | 20% |
+
+Commands:
+
+```bash
+node dist/cli.js insights --profile conservative
+node dist/cli.js insights --profile balanced
+node dist/cli.js insights --profile experimental
+node dist/cli.js insights --profile conservative --json
+node dist/cli.js insights --profile experimental --export
+node dist/cli.js insights --profiles
+node dist/cli.js insights --profiles --json
+```
+
+Default profile:
+
+```text
+balanced
+```
+
+Interpretation-only guarantee:
+
+* profiles only change governance insights thresholds
+* profiles do not update `.factory/runs-index.json`
+* profiles do not generate patches
+* profiles do not retry repairs
+* profiles do not mutate source files
+* profiles do not change repair outcomes, trust scores, release decisions, or governance statuses
+* profiles do not bypass any safety gate
+
+v3.5 deterministic checks:
+
+* governance-policy-profile-unit
+* governance-policy-profile-default-unit
+* governance-policy-profile-invalid-unit
+* governance-insights-profile-threshold-unit
+* governance-insights-profile-render-unit
+* governance-insights-profile-json-unit
+* governance-insights-profile-export-unit
+* governance-insights-profile-cli-unit
+* governance-insights-profiles-list-cli-unit
 
 ---
 

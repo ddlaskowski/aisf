@@ -7755,6 +7755,281 @@ function runGovernanceInsightsMissingIndexUnit() {
   }
 }
 
+function runGovernancePolicyProfileUnit() {
+  const {
+    listGovernancePolicyProfiles,
+    getGovernancePolicyProfile,
+    isGovernancePolicyProfileName
+  } = require(path.join(projectRoot, "dist", "repair", "governancePolicyProfile.js"));
+
+  try {
+    const profiles = listGovernancePolicyProfiles();
+    const names = profiles.map((profile) => profile.name);
+    if (JSON.stringify(names) !== JSON.stringify(["conservative", "balanced", "experimental"])) {
+      throw new Error(`profile list mismatch: ${JSON.stringify(names)}`);
+    }
+    if (
+      getGovernancePolicyProfile("conservative").thresholds.highBlockedRatePercent !== 15 ||
+      getGovernancePolicyProfile("balanced").thresholds.highBlockedRatePercent !== 25 ||
+      getGovernancePolicyProfile("experimental").thresholds.highBlockedRatePercent !== 40
+    ) {
+      throw new Error(`profile thresholds mismatch: ${JSON.stringify(profiles)}`);
+    }
+    if (!isGovernancePolicyProfileName("balanced") || isGovernancePolicyProfileName("strict")) {
+      throw new Error("profile name guard mismatch");
+    }
+
+    console.log("PASS governance-policy-profile-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-profile-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyProfileDefaultUnit() {
+  const { getGovernancePolicyProfile } = require(path.join(projectRoot, "dist", "repair", "governancePolicyProfile.js"));
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const fallback = getGovernancePolicyProfile();
+    const insights = buildGovernanceInsights(sampleRunsIndexForInsights());
+    if (fallback.name !== "balanced" || insights.policyProfile.name !== "balanced") {
+      throw new Error(`balanced should be default: profile=${JSON.stringify(fallback)} insights=${JSON.stringify(insights.policyProfile)}`);
+    }
+
+    console.log("PASS governance-policy-profile-default-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-profile-default-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyProfileInvalidUnit() {
+  const { getGovernancePolicyProfile, isGovernancePolicyProfileName } = require(path.join(projectRoot, "dist", "repair", "governancePolicyProfile.js"));
+
+  try {
+    const fallback = getGovernancePolicyProfile("strict");
+    if (fallback.name !== "balanced" || isGovernancePolicyProfileName("strict")) {
+      throw new Error(`invalid profile should fall back to balanced and fail guard: ${JSON.stringify(fallback)}`);
+    }
+
+    console.log("PASS governance-policy-profile-invalid-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-profile-invalid-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function profileThresholdIndex() {
+  return {
+    version: 1,
+    updatedAt: "2026-05-10T00:00:00.000Z",
+    totalRuns: 5,
+    runs: [
+      { runId: "p1", timestamp: "2026-05-10T01:00:00.000Z", governanceStatus: "ready", trustScore: 70, validationPassed: true, artifactPaths: {} },
+      { runId: "p2", timestamp: "2026-05-10T02:00:00.000Z", governanceStatus: "ready", trustScore: 70, validationPassed: true, artifactPaths: {} },
+      { runId: "p3", timestamp: "2026-05-10T03:00:00.000Z", governanceStatus: "ready", trustScore: 70, validationPassed: true, artifactPaths: {} },
+      { runId: "p4", timestamp: "2026-05-10T04:00:00.000Z", governanceStatus: "ready-with-caution", trustScore: 70, validationPassed: true, artifactPaths: {} },
+      { runId: "p5", timestamp: "2026-05-10T05:00:00.000Z", governanceStatus: "blocked", trustScore: 70, validationPassed: false, artifactPaths: {} }
+    ]
+  };
+}
+
+function runGovernanceInsightsProfileThresholdUnit() {
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const conservative = buildGovernanceInsights(profileThresholdIndex(), { profile: "conservative" });
+    const balanced = buildGovernanceInsights(profileThresholdIndex(), { profile: "balanced" });
+    const experimental = buildGovernanceInsights(profileThresholdIndex(), { profile: "experimental" });
+    const conservativeCodes = conservative.insights.map((insight) => insight.code);
+    const balancedCodes = balanced.insights.map((insight) => insight.code);
+    const experimentalCodes = experimental.insights.map((insight) => insight.code);
+    if (!conservativeCodes.includes("HIGH_BLOCKED_RATE") || !conservativeCodes.includes("LOW_AVERAGE_TRUST")) {
+      throw new Error(`conservative should warn sooner: ${JSON.stringify(conservative.insights)}`);
+    }
+    if (balancedCodes.includes("HIGH_BLOCKED_RATE") || balancedCodes.includes("LOW_AVERAGE_TRUST")) {
+      throw new Error(`balanced should preserve v3.4 thresholds: ${JSON.stringify(balanced.insights)}`);
+    }
+    if (experimental.insights.some((insight) => insight.severity !== "info")) {
+      throw new Error(`experimental should be more relaxed for this fixture: ${JSON.stringify(experimental.insights)}`);
+    }
+
+    console.log("PASS governance-insights-profile-threshold-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-profile-threshold-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsProfileRenderUnit() {
+  const { buildGovernanceInsights, renderGovernanceInsightsMarkdown } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const markdown = renderGovernanceInsightsMarkdown(buildGovernanceInsights(sampleRunsIndexForInsights(), { profile: "conservative" }));
+    for (const needle of ["Policy profile: conservative", "Operator mode: Conservative governance", "Risk tolerance: low"]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`profile markdown missing ${needle}: ${markdown}`);
+      }
+    }
+
+    console.log("PASS governance-insights-profile-render-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-profile-render-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsProfileJsonUnit() {
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const json = JSON.stringify(buildGovernanceInsights(sampleRunsIndexForInsights(), { profile: "experimental" }), null, 2);
+    const parsed = JSON.parse(json);
+    if (
+      parsed.policyProfile.name !== "experimental" ||
+      parsed.policyProfile.operatorMode !== "Experimental governance" ||
+      parsed.policyProfile.riskTolerance !== "high"
+    ) {
+      throw new Error(`profile JSON mismatch: ${json}`);
+    }
+
+    console.log("PASS governance-insights-profile-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-profile-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsProfileExportUnit() {
+  const { buildGovernanceInsights, exportGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const repo = createInsightsTestRepo("governance-insights-profile-export");
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const result = exportGovernanceInsights(repo, buildGovernanceInsights(sampleRunsIndexForInsights(), { profile: "conservative" }));
+    const parsed = JSON.parse(fs.readFileSync(path.join(repo, result.files[0]), "utf8"));
+    const markdown = fs.readFileSync(path.join(repo, result.files[1]), "utf8");
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (parsed.policyProfile.name !== "conservative" || !markdown.includes("Policy profile: conservative")) {
+      throw new Error(`profile export mismatch: parsed=${JSON.stringify(parsed.policyProfile)} markdown=${markdown}`);
+    }
+    if (beforeIndex !== afterIndex) {
+      throw new Error("profile export must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS governance-insights-profile-export-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-profile-export-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsProfileCliUnit() {
+  try {
+    const repo = createInsightsTestRepo("governance-insights-profile-cli");
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const textResult = spawnSync(process.execPath, [cliPath, "insights", "--repo", repo, "--profile", "conservative"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (textResult.status !== 0 || !textResult.stdout.includes("Policy profile: conservative")) {
+      throw new Error(`profile CLI text mismatch: status=${textResult.status} stdout=${textResult.stdout} stderr=${textResult.stderr}`);
+    }
+
+    const jsonResult = spawnSync(process.execPath, [cliPath, "insights", "--repo", repo, "--profile", "experimental", "--json"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(jsonResult.stdout);
+    if (jsonResult.status !== 0 || parsed.policyProfile.name !== "experimental") {
+      throw new Error(`profile CLI JSON mismatch: status=${jsonResult.status} stdout=${jsonResult.stdout} stderr=${jsonResult.stderr}`);
+    }
+
+    const exportResult = spawnSync(process.execPath, [cliPath, "insights", "--repo", repo, "--profile", "conservative", "--export"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (exportResult.status !== 0 || !exportResult.stdout.includes("Exported governance insights:")) {
+      throw new Error(`profile CLI export mismatch: status=${exportResult.status} stdout=${exportResult.stdout} stderr=${exportResult.stderr}`);
+    }
+    const exported = JSON.parse(fs.readFileSync(path.join(repo, ".factory", "exports", "governance-insights.json"), "utf8"));
+    if (exported.policyProfile.name !== "conservative") {
+      throw new Error(`exported CLI profile mismatch: ${JSON.stringify(exported.policyProfile)}`);
+    }
+
+    const invalidResult = spawnSync(process.execPath, [cliPath, "insights", "--repo", repo, "--profile", "strict"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (invalidResult.status === 0 || !invalidResult.stderr.includes("Invalid governance policy profile: strict")) {
+      throw new Error(`invalid profile CLI mismatch: status=${invalidResult.status} stdout=${invalidResult.stdout} stderr=${invalidResult.stderr}`);
+    }
+
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (beforeIndex !== afterIndex) {
+      throw new Error("profile CLI must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS governance-insights-profile-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-profile-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsProfilesListCliUnit() {
+  try {
+    const textResult = spawnSync(process.execPath, [cliPath, "insights", "--profiles"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (
+      textResult.status !== 0 ||
+      !textResult.stdout.includes("Available governance policy profiles:") ||
+      !textResult.stdout.includes("- conservative: strict governance, low risk tolerance") ||
+      !textResult.stdout.includes("- balanced: default governance, medium risk tolerance") ||
+      !textResult.stdout.includes("- experimental: relaxed governance, high risk tolerance")
+    ) {
+      throw new Error(`profiles CLI text mismatch: status=${textResult.status} stdout=${textResult.stdout} stderr=${textResult.stderr}`);
+    }
+
+    const jsonResult = spawnSync(process.execPath, [cliPath, "insights", "--profiles", "--json"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(jsonResult.stdout);
+    if (jsonResult.status !== 0 || parsed.length !== 3 || parsed[0].name !== "conservative" || parsed[2].name !== "experimental") {
+      throw new Error(`profiles CLI JSON mismatch: status=${jsonResult.status} stdout=${jsonResult.stdout} stderr=${jsonResult.stderr}`);
+    }
+
+    console.log("PASS governance-insights-profiles-list-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-profiles-list-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -8154,6 +8429,33 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceInsightsMissingIndexUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyProfileUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyProfileDefaultUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyProfileInvalidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsProfileThresholdUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsProfileRenderUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsProfileJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsProfileExportUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsProfileCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsProfilesListCliUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {
