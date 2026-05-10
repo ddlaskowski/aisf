@@ -6137,6 +6137,243 @@ function runRepairTrustIndexArtifactUnit() {
   }
 }
 
+function sampleReleaseGateInput(overrides = {}) {
+  const { buildRepairTrustIndex } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+  const base = sampleTrustInput();
+  return {
+    repairTrustIndex: buildRepairTrustIndex(base),
+    repairReview: base.repairReview,
+    validation: base.validation,
+    repairOutcome: base.repairOutcome,
+    repairPatchPolicy: base.repairPatchPolicy,
+    repairRegressionRisk: base.repairRegressionRisk,
+    repairReviewAnalytics: base.repairReviewAnalytics,
+    repairAnalytics: base.repairAnalytics,
+    repairDecisionAudit: base.repairDecisionAudit,
+    ...overrides
+  };
+}
+
+function runRepairReleaseGateUnit() {
+  const { buildRepairReleaseGate } = require(path.join(projectRoot, "dist", "repair", "repairReleaseGate.js"));
+
+  try {
+    const gate = buildRepairReleaseGate(sampleReleaseGateInput());
+    if (gate.version !== 1 || gate.releaseDecision !== "allow" || gate.releaseScore !== 100) {
+      throw new Error(`trusted successful repair should be allowed, got ${JSON.stringify(gate)}`);
+    }
+    if (gate.summary !== "The repair passed all required validation and safety checks.") {
+      throw new Error(`unexpected allow summary: ${JSON.stringify(gate)}`);
+    }
+
+    console.log("PASS repair-release-gate-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-release-gate-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReleaseGateScoreUnit() {
+  const { buildRepairTrustIndex } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+  const { buildRepairReleaseGate } = require(path.join(projectRoot, "dist", "repair", "repairReleaseGate.js"));
+
+  try {
+    const trustInput = sampleTrustInput({
+      repairReview: sampleRepairReview({ verdict: "approved-with-warnings" }),
+      repairPatchPolicy: { ok: true, mode: "conservative", recommendedAction: "proceed" }
+    });
+    buildRepairTrustIndex(trustInput);
+    const gate = buildRepairReleaseGate(sampleReleaseGateInput({
+      repairTrustIndex: { trustLevel: "high", trustScore: 95, blockingConcerns: [], warnings: [] },
+      repairReview: trustInput.repairReview,
+      repairPatchPolicy: trustInput.repairPatchPolicy
+    }));
+    const clampGate = buildRepairReleaseGate(sampleReleaseGateInput({
+      repairTrustIndex: { trustLevel: "unsafe", trustScore: 1, blockingConcerns: ["A", "B", "C", "D"], warnings: [] },
+      repairReview: sampleRepairReview({ verdict: "rejected" }),
+      validation: { verdict: "fail", status: "fail" },
+      repairOutcome: { outcome: "failed-worse" },
+      repairPatchPolicy: { ok: false, mode: "manual-review", recommendedAction: "block-mutation" },
+      repairRegressionRisk: { riskLevel: "critical" },
+      repairReviewAnalytics: { warnings: ["one", "two", "three", "four", "five"] },
+      repairAnalytics: { warnings: ["six", "seven", "eight", "nine", "ten"] }
+    }));
+
+    if (gate.releaseScore !== 75 || gate.releaseDecision !== "allow-with-warnings") {
+      throw new Error(`expected deterministic warning score 75/allow-with-warnings, got ${JSON.stringify(gate)}`);
+    }
+    if (clampGate.releaseScore < 0 || clampGate.releaseScore > 100 || clampGate.releaseDecision !== "block") {
+      throw new Error(`score should clamp and block risky release, got ${JSON.stringify(clampGate)}`);
+    }
+
+    console.log("PASS repair-release-gate-score-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-release-gate-score-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReleaseGateDecisionUnit() {
+  const { buildRepairReleaseGate } = require(path.join(projectRoot, "dist", "repair", "repairReleaseGate.js"));
+
+  try {
+    const allowWarnings = buildRepairReleaseGate(sampleReleaseGateInput({
+      repairTrustIndex: { trustLevel: "medium", trustScore: 80, blockingConcerns: [], warnings: [] },
+      repairReview: sampleRepairReview(),
+      repairPatchPolicy: { ok: true, mode: "normal", recommendedAction: "proceed" }
+    }));
+    const humanReview = buildRepairReleaseGate(sampleReleaseGateInput({
+      repairTrustIndex: { trustLevel: "medium", trustScore: 70, blockingConcerns: [], warnings: [] },
+      repairReview: sampleRepairReview()
+    }));
+    const block = buildRepairReleaseGate(sampleReleaseGateInput({
+      repairTrustIndex: { trustLevel: "unsafe", trustScore: 30, blockingConcerns: [], warnings: [] },
+      repairReview: sampleRepairReview()
+    }));
+
+    if (allowWarnings.releaseDecision !== "allow-with-warnings") {
+      throw new Error(`expected allow-with-warnings, got ${JSON.stringify(allowWarnings)}`);
+    }
+    if (humanReview.releaseDecision !== "require-human-review") {
+      throw new Error(`expected require-human-review, got ${JSON.stringify(humanReview)}`);
+    }
+    if (block.releaseDecision !== "block") {
+      throw new Error(`expected block, got ${JSON.stringify(block)}`);
+    }
+
+    console.log("PASS repair-release-gate-decision-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-release-gate-decision-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReleaseGateOverrideUnit() {
+  const { buildRepairReleaseGate } = require(path.join(projectRoot, "dist", "repair", "repairReleaseGate.js"));
+
+  try {
+    const validationFail = buildRepairReleaseGate(sampleReleaseGateInput({ validation: { verdict: "fail", status: "fail" } }));
+    const rejectedReview = buildRepairReleaseGate(sampleReleaseGateInput({ repairReview: sampleRepairReview({ verdict: "rejected" }) }));
+    const manualOutcome = buildRepairReleaseGate(sampleReleaseGateInput({ repairOutcome: { outcome: "manual-review-required" } }));
+    const failedWorse = buildRepairReleaseGate(sampleReleaseGateInput({ repairOutcome: { outcome: "failed-worse" } }));
+    const missing = buildRepairReleaseGate({});
+    const criticalRisk = buildRepairReleaseGate(sampleReleaseGateInput({ repairRegressionRisk: { riskLevel: "critical" } }));
+
+    if (validationFail.releaseDecision !== "block") {
+      throw new Error(`validation failure must block: ${JSON.stringify(validationFail)}`);
+    }
+    if (rejectedReview.releaseDecision !== "block") {
+      throw new Error(`rejected review must block: ${JSON.stringify(rejectedReview)}`);
+    }
+    if (manualOutcome.releaseDecision !== "require-human-review") {
+      throw new Error(`manual-review-required must require review: ${JSON.stringify(manualOutcome)}`);
+    }
+    if (failedWorse.releaseDecision !== "block") {
+      throw new Error(`failed-worse must block: ${JSON.stringify(failedWorse)}`);
+    }
+    if (missing.releaseDecision !== "require-human-review") {
+      throw new Error(`missing trust/review artifacts must require review: ${JSON.stringify(missing)}`);
+    }
+    if (criticalRisk.releaseDecision !== "require-human-review") {
+      throw new Error(`critical risk must require review: ${JSON.stringify(criticalRisk)}`);
+    }
+
+    console.log("PASS repair-release-gate-override-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-release-gate-override-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReleaseGateReportUnit() {
+  const { renderRepairReleaseGateMarkdown } = require(path.join(projectRoot, "dist", "repair", "repairReleaseGate.js"));
+
+  try {
+    const markdown = renderRepairReleaseGateMarkdown({
+      version: 1,
+      releaseDecision: "allow-with-warnings",
+      releaseScore: 76,
+      summary: "The repair may proceed, but warnings or moderate risks were detected.",
+      releaseWarnings: ["Conservative patch policy was required"],
+      blockingReasons: [],
+      requiredActions: ["Verify conservative patch behavior manually"],
+      evaluatedSignals: {}
+    });
+    for (const needle of [
+      "# Repair Release Gate",
+      "Release decision: allow-with-warnings",
+      "Release score: 76",
+      "Summary:",
+      "Warnings:",
+      "Blocking reasons:",
+      "Required actions:"
+    ]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`release gate markdown missing ${needle}: ${markdown}`);
+      }
+    }
+
+    const finalReport = [
+      "## Repair Release Gate",
+      "Release decision: allow-with-warnings",
+      "Release score: 76",
+      "Summary:",
+      "The repair may proceed, but warnings or moderate risks were detected.",
+      "Artifacts:",
+      "- repair-release-gate.json",
+      "- repair-release-gate.md"
+    ].join("\n");
+    for (const needle of ["Repair Release Gate", "Release decision:", "Release score:", "repair-release-gate.json", "repair-release-gate.md"]) {
+      if (!finalReport.includes(needle)) {
+        throw new Error(`final report release gate section missing ${needle}: ${finalReport}`);
+      }
+    }
+
+    console.log("PASS repair-release-gate-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-release-gate-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReleaseGateArtifactUnit() {
+  const { buildRepairReleaseGate, renderRepairReleaseGateMarkdown } = require(path.join(projectRoot, "dist", "repair", "repairReleaseGate.js"));
+  const tmpDir = path.join(projectRoot, ".scenario-unit", "repair-release-gate-artifact");
+
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    ensureDir(tmpDir);
+    const gate = buildRepairReleaseGate(sampleReleaseGateInput());
+    const jsonPath = path.join(tmpDir, "repair-release-gate.json");
+    const mdPath = path.join(tmpDir, "repair-release-gate.md");
+    fs.writeFileSync(jsonPath, `${JSON.stringify(gate, null, 2)}\n`, "utf8");
+    fs.writeFileSync(mdPath, renderRepairReleaseGateMarkdown(gate), "utf8");
+
+    const fromDisk = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const markdown = fs.readFileSync(mdPath, "utf8");
+    if (fromDisk.version !== 1 || fromDisk.releaseDecision !== "allow" || !markdown.includes("Release decision: allow")) {
+      throw new Error(`release gate artifacts invalid: json=${JSON.stringify(fromDisk)} md=${markdown}`);
+    }
+
+    console.log("PASS repair-release-gate-artifact-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-release-gate-artifact-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -6407,6 +6644,24 @@ async function main() {
     failed += 1;
   }
   if (!runRepairTrustIndexArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReleaseGateUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReleaseGateScoreUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReleaseGateDecisionUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReleaseGateOverrideUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReleaseGateReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReleaseGateArtifactUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

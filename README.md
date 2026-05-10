@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v2.8 — Repair Trust Index Layer**
+**v2.9 — Repair Release Gate Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -40,6 +40,8 @@ v2.6 adds a deterministic repair review and recommendation layer. It evaluates t
 v2.7 adds deterministic repair review analytics. It aggregates historical review verdicts, scores, warnings, recommendations, and trends without changing repair behavior or review verdicts.
 
 v2.8 adds a deterministic Repair Trust Index. It combines completed-run signals into one final trust score and trust level without changing repair behavior, review verdicts, patch policy, or orchestration decisions.
+
+v2.9 adds a deterministic Repair Release Gate. It converts completed-run trust, review, validation, policy, regression, and analytics signals into one final release recommendation without changing repair behavior or orchestration.
 
 ---
 
@@ -807,6 +809,67 @@ v2.8 deterministic checks:
 * repair-trust-index-override-unit
 * repair-trust-index-report-unit
 * repair-trust-index-artifact-unit
+
+---
+
+## 🚦 Repair Release Gate Layer (v2.9)
+
+v2.9 produces one final deterministic release recommendation after the repair lifecycle has completed. It answers:
+
+* should this repaired result be allowed to proceed?
+* should it proceed only with warnings?
+* is human review required before release?
+* must release be blocked?
+* which signals affected the decision?
+* what actions are recommended before release?
+
+Artifacts written per run:
+
+```text
+.factory/runs/<runId>/repair-release-gate.json
+.factory/runs/<runId>/repair-release-gate.md
+```
+
+Release decisions:
+
+* allow
+* allow-with-warnings
+* require-human-review
+* block
+
+The release gate evaluates deterministic signals from:
+
+* Repair Trust Index
+* repair review verdict
+* validation result
+* repair outcome
+* regression risk
+* patch policy mode
+* repair analytics warnings
+* repair review analytics warnings
+* trust blocking concerns
+
+Safety guarantees:
+
+* decision-only behavior
+* no patch generation
+* no retry behavior changes
+* no trust score changes
+* no review verdict changes
+* no repair outcome changes
+* no patch policy changes
+* no safety gate bypasses
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+
+v2.9 deterministic checks:
+
+* repair-release-gate-unit
+* repair-release-gate-score-unit
+* repair-release-gate-decision-unit
+* repair-release-gate-override-unit
+* repair-release-gate-report-unit
+* repair-release-gate-artifact-unit
 
 ---
 

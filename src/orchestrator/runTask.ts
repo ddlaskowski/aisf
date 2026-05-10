@@ -82,6 +82,7 @@ import { buildRepairSummary } from "../repair/repairSummary.js";
 import { buildRepairReview, renderRepairReviewMarkdown } from "../repair/buildRepairReview.js";
 import { updateRepairReviewAnalytics } from "../repair/repairReviewAnalytics.js";
 import { buildRepairTrustIndex, renderRepairTrustIndexMarkdown } from "../repair/repairTrustIndex.js";
+import { buildRepairReleaseGate, renderRepairReleaseGateMarkdown } from "../repair/repairReleaseGate.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -2189,6 +2190,23 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   });
   await saveStateFile(state.runDir, "repair-trust-index.json", repairTrustIndex);
   await fs.writeFile(path.join(state.runDir, "repair-trust-index.md"), renderRepairTrustIndexMarkdown(repairTrustIndex), "utf8");
+  const repairReleaseGate = buildRepairReleaseGate({
+    repairTrustIndex,
+    repairReview,
+    validation: review,
+    repairOutcome,
+    repairPatchPolicy,
+    repairRegressionRisk,
+    repairReviewAnalytics,
+    repairAnalytics,
+    repairDecisionAudit
+  });
+  await saveStateFile(state.runDir, "repair-release-gate.json", repairReleaseGate);
+  await fs.writeFile(
+    path.join(state.runDir, "repair-release-gate.md"),
+    renderRepairReleaseGateMarkdown(repairReleaseGate),
+    "utf8"
+  );
 
   const finalReport = [
     `# Final Report`,
@@ -2256,6 +2274,17 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     "Artifacts:",
     "- repair-trust-index.json",
     "- repair-trust-index.md",
+    "",
+    "## Repair Release Gate",
+    `Release decision: ${repairReleaseGate.releaseDecision}`,
+    `Release score: ${repairReleaseGate.releaseScore}`,
+    "",
+    "Summary:",
+    repairReleaseGate.summary,
+    "",
+    "Artifacts:",
+    "- repair-release-gate.json",
+    "- repair-release-gate.md",
     "",
     "## Repair strategy",
     `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,
