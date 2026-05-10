@@ -25,6 +25,11 @@ import {
   listGovernancePolicyProfiles,
   type GovernancePolicyProfileName
 } from "./repair/governancePolicyProfile.js";
+import {
+  buildGovernanceCiSummary,
+  exportGovernanceCiSummary,
+  renderGovernanceCiSummaryMarkdown
+} from "./repair/governanceCiSummary.js";
 
 const runInputSchema = z.object({
   repo: z.string().min(1),
@@ -100,6 +105,18 @@ function printInsightsExportResult(result: ReturnType<typeof exportGovernanceIns
   }
 }
 
+function printCiSummaryExportResult(result: ReturnType<typeof exportGovernanceCiSummary>, asJson: boolean): void {
+  if (asJson) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log("Exported governance CI summary:");
+  for (const file of result.files) {
+    console.log(`- ${file}`);
+  }
+}
+
 function printGovernancePolicyProfiles(asJson: boolean): void {
   const profiles = listGovernancePolicyProfiles();
   if (asJson) {
@@ -111,6 +128,13 @@ function printGovernancePolicyProfiles(asJson: boolean): void {
   for (const profile of profiles) {
     console.log(`- ${profile.name}: ${profile.description}`);
   }
+}
+
+function parseGovernancePolicyProfileOption(value: unknown): GovernancePolicyProfileName | null {
+  if (value === undefined) {
+    return "balanced";
+  }
+  return typeof value === "string" && isGovernancePolicyProfileName(value) ? value : null;
 }
 
 program
@@ -292,6 +316,39 @@ program
     }
 
     console.log(renderGovernanceInsightsMarkdown(insights));
+  });
+
+program
+  .command("ci-summary")
+  .description("Show CI-friendly governance summary for historical repair runs")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--profile <name>", "Governance policy profile: conservative, balanced, or experimental")
+  .option("--json", "Print machine-readable JSON")
+  .option("--export", "Export governance CI summary JSON and Markdown")
+  .action(async (options) => {
+    const profile = parseGovernancePolicyProfileOption(options.profile);
+    if (profile === null) {
+      console.error(`Invalid governance policy profile: ${options.profile}`);
+      console.error("Allowed profiles: conservative, balanced, experimental");
+      process.exitCode = 1;
+      return;
+    }
+
+    const repoPath = path.resolve(options.repo);
+    const summary = buildGovernanceCiSummary(loadGovernanceInsights(repoPath, { profile }));
+    const asJson = !!options.json;
+
+    if (options.export) {
+      printCiSummaryExportResult(exportGovernanceCiSummary(repoPath, summary), asJson);
+    } else if (asJson) {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(renderGovernanceCiSummaryMarkdown(summary));
+    }
+
+    if (summary.status === "fail") {
+      process.exitCode = 1;
+    }
   });
 
 program.parseAsync(process.argv);

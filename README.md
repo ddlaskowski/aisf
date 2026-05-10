@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.5 — Governance Policy Profile Layer**
+**v3.6 — Governance CI Summary Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -54,6 +54,8 @@ v3.3 adds deterministic dashboard exports for JSON, Markdown, and CSV. It reads 
 v3.4 adds deterministic governance insights over run history. It reads `.factory/runs-index.json`, computes operational health summaries, rates, trust trends, and fixed insight codes, and can export insights under `.factory/exports`.
 
 v3.5 adds deterministic governance policy profiles for interpreting insights with different strictness levels. Profiles change only the thresholds used by the insights layer; they do not change repair behavior, governance statuses, release decisions, trust scores, or `.factory/runs-index.json`.
+
+v3.6 adds a deterministic CI-friendly governance summary. It converts profile-aware insights into `pass`, `warn`, or `fail`, supports CI exit codes, and can export JSON/Markdown summaries without changing repair behavior or `.factory/runs-index.json`.
 
 ---
 
@@ -1242,6 +1244,74 @@ v3.5 deterministic checks:
 * governance-insights-profile-export-unit
 * governance-insights-profile-cli-unit
 * governance-insights-profiles-list-cli-unit
+
+---
+
+## 🧪 Governance CI Summary Layer (v3.6)
+
+v3.6 provides one compact CI/CD-oriented governance result over profile-aware governance insights.
+
+Statuses:
+
+| Status | Meaning | Exit code |
+|---|---|---:|
+| pass | Governance health is within acceptable thresholds | 0 |
+| warn | Warnings or elevated operational risks were detected | 0 |
+| fail | Acceptable operational risk thresholds were exceeded | 1 |
+
+Commands:
+
+```bash
+node dist/cli.js ci-summary
+node dist/cli.js ci-summary --profile conservative
+node dist/cli.js ci-summary --profile experimental --json
+node dist/cli.js ci-summary --export
+node dist/cli.js ci-summary --profile balanced --json --export
+```
+
+Export files:
+
+```text
+.factory/exports/governance-ci-summary.json
+.factory/exports/governance-ci-summary.md
+```
+
+CI summary rules:
+
+* `fail` if any critical governance insight exists
+* `fail` if blocked rate reaches the selected profile threshold
+* `fail` if validation success is more than 15 points below the selected profile threshold
+* `fail` if average trust is more than 15 points below the selected profile threshold
+* `warn` if any warning insight exists
+* `warn` if human-review rate reaches the selected profile threshold
+* `warn` if trust trend is degrading
+* `warn` if no runs index exists
+* `pass` otherwise
+
+Read-only CI guarantee:
+
+* reads `.factory/runs-index.json`
+* optionally writes only `.factory/exports/governance-ci-summary.json`
+* optionally writes only `.factory/exports/governance-ci-summary.md`
+* does not update `.factory/runs-index.json`
+* does not generate patches
+* does not retry repairs
+* does not mutate source files
+* does not change governance, release, trust, review, or repair outcomes
+* does not bypass any safety gate
+
+v3.6 deterministic checks:
+
+* governance-ci-summary-unit
+* governance-ci-summary-pass-unit
+* governance-ci-summary-warn-unit
+* governance-ci-summary-fail-unit
+* governance-ci-summary-threshold-unit
+* governance-ci-summary-render-unit
+* governance-ci-summary-export-unit
+* governance-ci-summary-cli-unit
+* governance-ci-summary-exit-code-unit
+* governance-ci-summary-missing-index-unit
 
 ---
 

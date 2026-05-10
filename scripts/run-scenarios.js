@@ -8030,6 +8030,337 @@ function runGovernanceInsightsProfilesListCliUnit() {
   }
 }
 
+function ciIndex(status, count, extra = {}) {
+  return Array.from({ length: count }, (_, index) => ({
+    runId: `${status}-${index}`,
+    timestamp: `2026-05-10T${String(index).padStart(2, "0")}:00:00.000Z`,
+    governanceStatus: status,
+    trustLevel: status === "blocked" ? "unsafe" : "high",
+    trustScore: status === "blocked" ? 30 : 90,
+    releaseDecision: status === "blocked" ? "block" : "allow",
+    repairOutcome: status === "blocked" ? "failed-worse" : "success",
+    validationPassed: status !== "blocked",
+    requiresHumanReview: status === "manual-review-required",
+    isBlocked: status === "blocked",
+    artifactPaths: {},
+    ...extra
+  }));
+}
+
+function governanceCiInsightsFor(index, profile = "balanced") {
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+  return buildGovernanceInsights(index, { profile });
+}
+
+function governanceCiSummaryFor(index, profile = "balanced") {
+  const { buildGovernanceCiSummary } = require(path.join(projectRoot, "dist", "repair", "governanceCiSummary.js"));
+  return buildGovernanceCiSummary(governanceCiInsightsFor(index, profile));
+}
+
+function passCiIndex() {
+  return {
+    version: 1,
+    updatedAt: "2026-05-10T00:00:00.000Z",
+    totalRuns: 5,
+    runs: ciIndex("ready", 5)
+  };
+}
+
+function warnCiIndex() {
+  return {
+    version: 1,
+    updatedAt: "2026-05-10T00:00:00.000Z",
+    totalRuns: 5,
+    runs: [...ciIndex("ready", 3), ...ciIndex("manual-review-required", 2, { validationPassed: true, trustScore: 85 })]
+  };
+}
+
+function failCiIndex() {
+  return {
+    version: 1,
+    updatedAt: "2026-05-10T00:00:00.000Z",
+    totalRuns: 4,
+    runs: [...ciIndex("ready", 2), ...ciIndex("blocked", 2)]
+  };
+}
+
+function createCiSummaryRepo(name, index) {
+  const repo = path.join(projectRoot, ".scenario-unit", name);
+  fs.rmSync(repo, { recursive: true, force: true });
+  ensureDir(repo);
+  if (index) {
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    ensureDir(path.dirname(indexPath));
+    writeJson(indexPath, index);
+  }
+  return repo;
+}
+
+function runGovernanceCiSummaryUnit() {
+  try {
+    const summary = governanceCiSummaryFor(warnCiIndex());
+    if (
+      summary.version !== 1 ||
+      summary.evaluatedProfile.name !== "balanced" ||
+      summary.metrics.totalRuns !== 5 ||
+      summary.insightCounts.warning < 1 ||
+      !summary.triggeringInsights.some((insight) => insight.code === "HIGH_HUMAN_REVIEW_RATE")
+    ) {
+      throw new Error(`CI summary shape mismatch: ${JSON.stringify(summary)}`);
+    }
+
+    console.log("PASS governance-ci-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryPassUnit() {
+  try {
+    const summary = governanceCiSummaryFor(passCiIndex());
+    if (summary.status !== "pass" || summary.summary !== "Governance health is within acceptable thresholds.") {
+      throw new Error(`expected pass summary: ${JSON.stringify(summary)}`);
+    }
+    if (!summary.recommendations.includes("No immediate governance action required.")) {
+      throw new Error(`pass recommendation mismatch: ${JSON.stringify(summary.recommendations)}`);
+    }
+
+    console.log("PASS governance-ci-summary-pass-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-pass-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryWarnUnit() {
+  try {
+    const summary = governanceCiSummaryFor(warnCiIndex());
+    if (summary.status !== "warn" || summary.summary !== "Governance health contains warnings or elevated operational risks.") {
+      throw new Error(`expected warn summary: ${JSON.stringify(summary)}`);
+    }
+    if (!summary.recommendations.includes("Review recurring manual-review-required runs.")) {
+      throw new Error(`warn recommendation mismatch: ${JSON.stringify(summary.recommendations)}`);
+    }
+
+    console.log("PASS governance-ci-summary-warn-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-warn-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryFailUnit() {
+  try {
+    const summary = governanceCiSummaryFor(failCiIndex());
+    if (summary.status !== "fail" || summary.insightCounts.critical < 1) {
+      throw new Error(`expected fail summary: ${JSON.stringify(summary)}`);
+    }
+    if (!summary.recommendations.includes("Investigate critical governance insights before release.")) {
+      throw new Error(`fail recommendation mismatch: ${JSON.stringify(summary.recommendations)}`);
+    }
+
+    console.log("PASS governance-ci-summary-fail-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-fail-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryThresholdUnit() {
+  try {
+    const lowValidationIndex = {
+      version: 1,
+      updatedAt: "2026-05-10T00:00:00.000Z",
+      totalRuns: 4,
+      runs: [
+        ...ciIndex("ready", 2),
+        ...ciIndex("ready", 2, { validationPassed: false, trustScore: 90 })
+      ]
+    };
+    const lowValidationSummary = governanceCiSummaryFor(lowValidationIndex);
+    if (lowValidationSummary.status !== "fail" || lowValidationSummary.metrics.validationSuccessRate !== 50) {
+      throw new Error(`low validation should fail: ${JSON.stringify(lowValidationSummary)}`);
+    }
+
+    const lowTrustIndex = {
+      version: 1,
+      updatedAt: "2026-05-10T00:00:00.000Z",
+      totalRuns: 3,
+      runs: ciIndex("ready", 3, { trustScore: 45, validationPassed: true })
+    };
+    const lowTrustSummary = governanceCiSummaryFor(lowTrustIndex);
+    if (lowTrustSummary.status !== "fail" || lowTrustSummary.metrics.averageTrustScore !== 45) {
+      throw new Error(`low trust should fail: ${JSON.stringify(lowTrustSummary)}`);
+    }
+
+    console.log("PASS governance-ci-summary-threshold-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-threshold-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryRenderUnit() {
+  const { renderGovernanceCiSummaryMarkdown } = require(path.join(projectRoot, "dist", "repair", "governanceCiSummary.js"));
+
+  try {
+    const markdown = renderGovernanceCiSummaryMarkdown(governanceCiSummaryFor(warnCiIndex()));
+    for (const needle of [
+      "Governance CI Summary",
+      "Status: warn",
+      "Governance health contains warnings or elevated operational risks.",
+      "## Metrics",
+      "- human review rate: 40%",
+      "## Triggering Insights",
+      "HIGH_HUMAN_REVIEW_RATE"
+    ]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`CI summary markdown missing ${needle}: ${markdown}`);
+      }
+    }
+
+    console.log("PASS governance-ci-summary-render-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-render-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryExportUnit() {
+  const { exportGovernanceCiSummary } = require(path.join(projectRoot, "dist", "repair", "governanceCiSummary.js"));
+
+  try {
+    const repo = createCiSummaryRepo("governance-ci-summary-export", warnCiIndex());
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const result = exportGovernanceCiSummary(repo, governanceCiSummaryFor(warnCiIndex()));
+    const parsed = JSON.parse(fs.readFileSync(path.join(repo, result.files[0]), "utf8"));
+    const markdown = fs.readFileSync(path.join(repo, result.files[1]), "utf8");
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (parsed.status !== "warn" || !markdown.includes("Status: warn") || result.files.length !== 2) {
+      throw new Error(`CI summary export mismatch: result=${JSON.stringify(result)} parsed=${JSON.stringify(parsed)}`);
+    }
+    if (beforeIndex !== afterIndex) {
+      throw new Error("CI summary export must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS governance-ci-summary-export-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-export-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryCliUnit() {
+  try {
+    const repo = createCiSummaryRepo("governance-ci-summary-cli", warnCiIndex());
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const textResult = spawnSync(process.execPath, [cliPath, "ci-summary", "--repo", repo], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (textResult.status !== 0 || !textResult.stdout.includes("Status: warn")) {
+      throw new Error(`CI summary CLI text mismatch: status=${textResult.status} stdout=${textResult.stdout} stderr=${textResult.stderr}`);
+    }
+
+    const jsonResult = spawnSync(process.execPath, [cliPath, "ci-summary", "--repo", repo, "--profile", "experimental", "--json"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(jsonResult.stdout);
+    if (jsonResult.status !== 0 || parsed.evaluatedProfile.name !== "experimental" || parsed.status !== "pass") {
+      throw new Error(`CI summary CLI JSON mismatch: status=${jsonResult.status} stdout=${jsonResult.stdout} stderr=${jsonResult.stderr}`);
+    }
+
+    const exportResult = spawnSync(process.execPath, [cliPath, "ci-summary", "--repo", repo, "--export"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (exportResult.status !== 0 || !exportResult.stdout.includes("Exported governance CI summary:")) {
+      throw new Error(`CI summary CLI export mismatch: status=${exportResult.status} stdout=${exportResult.stdout} stderr=${exportResult.stderr}`);
+    }
+
+    const exportJsonResult = spawnSync(process.execPath, [cliPath, "ci-summary", "--repo", repo, "--json", "--export"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const exportParsed = JSON.parse(exportJsonResult.stdout);
+    if (exportJsonResult.status !== 0 || exportParsed.exported !== true || exportParsed.files.length !== 2) {
+      throw new Error(`CI summary CLI export JSON mismatch: status=${exportJsonResult.status} stdout=${exportJsonResult.stdout} stderr=${exportJsonResult.stderr}`);
+    }
+
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (beforeIndex !== afterIndex) {
+      throw new Error("CI summary CLI must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS governance-ci-summary-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryExitCodeUnit() {
+  try {
+    const passRepo = createCiSummaryRepo("governance-ci-summary-pass-exit", passCiIndex());
+    const warnRepo = createCiSummaryRepo("governance-ci-summary-warn-exit", warnCiIndex());
+    const failRepo = createCiSummaryRepo("governance-ci-summary-fail-exit", failCiIndex());
+    const passResult = spawnSync(process.execPath, [cliPath, "ci-summary", "--repo", passRepo], { cwd: projectRoot, encoding: "utf8" });
+    const warnResult = spawnSync(process.execPath, [cliPath, "ci-summary", "--repo", warnRepo], { cwd: projectRoot, encoding: "utf8" });
+    const failResult = spawnSync(process.execPath, [cliPath, "ci-summary", "--repo", failRepo], { cwd: projectRoot, encoding: "utf8" });
+    if (passResult.status !== 0 || warnResult.status !== 0 || failResult.status !== 1) {
+      throw new Error(`exit code mismatch: pass=${passResult.status} warn=${warnResult.status} fail=${failResult.status}`);
+    }
+
+    console.log("PASS governance-ci-summary-exit-code-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-exit-code-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiSummaryMissingIndexUnit() {
+  try {
+    const repo = createCiSummaryRepo("governance-ci-summary-missing", null);
+    const result = spawnSync(process.execPath, [cliPath, "ci-summary", "--repo", repo, "--json"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.status !== "warn" || parsed.triggeringInsights[0]?.code !== "NO_RUNS") {
+      throw new Error(`missing index CI summary mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-ci-summary-missing-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-summary-missing-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -8456,6 +8787,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceInsightsProfilesListCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryPassUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryWarnUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryFailUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryThresholdUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryRenderUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryExportUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryExitCodeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiSummaryMissingIndexUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

@@ -21,6 +21,7 @@ export type GovernanceInsights = {
     name: string;
     operatorMode: string;
     riskTolerance: string;
+    thresholds: GovernancePolicyProfile["thresholds"];
   };
   totalRuns: number;
   summary: {
@@ -246,7 +247,8 @@ export function buildGovernanceInsights(
     policyProfile: {
       name: profile.name,
       operatorMode: profile.labels.operatorMode,
-      riskTolerance: profile.labels.riskTolerance
+      riskTolerance: profile.labels.riskTolerance,
+      thresholds: profile.thresholds
     },
     totalRuns,
     summary: {
