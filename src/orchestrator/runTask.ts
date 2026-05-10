@@ -79,6 +79,7 @@ import {
 import { buildRepairObservabilityReport } from "../repair/repairObservability.js";
 import { buildRepairDecisionTrace, renderRepairDecisionTraceMarkdown } from "../repair/repairDecisionTrace.js";
 import { buildRepairSummary } from "../repair/repairSummary.js";
+import { buildRepairReview, renderRepairReviewMarkdown } from "../repair/buildRepairReview.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -2157,6 +2158,13 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   await fs.writeFile(path.join(state.runDir, "decision-trace.md"), decisionTraceMarkdown, "utf8");
   const repairSummary = buildRepairSummary(observabilityReport);
   await saveStateFile(state.runDir, "repair-summary.json", repairSummary);
+  const repairReview = buildRepairReview({
+    observabilityReport,
+    repairSummary,
+    decisionTraceSteps
+  });
+  await saveStateFile(state.runDir, "repair-review.json", repairReview);
+  await fs.writeFile(path.join(state.runDir, "repair-review.md"), renderRepairReviewMarkdown(repairReview), "utf8");
 
   const finalReport = [
     `# Final Report`,
@@ -2185,6 +2193,16 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     "- repair-observability.json",
     "- decision-trace.md",
     "- repair-summary.json",
+    "",
+    "## Repair review",
+    `Verdict: ${repairReview.verdict}`,
+    `Quality score: ${repairReview.qualityScore}`,
+    `Safety score: ${repairReview.safetyScore}`,
+    `Completeness score: ${repairReview.completenessScore}`,
+    "",
+    "## Review artifacts",
+    "- repair-review.md",
+    "- repair-review.json",
     "",
     "## Repair strategy",
     `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,

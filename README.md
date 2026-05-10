@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v2.1 — Failure Memory Layer**
+**v2.6 — Repair Review & Recommendation Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -34,6 +34,8 @@ v2.1 adds deterministic repository-local failure memory. It records stable failu
 v2.4 adds a deterministic Repair Regression Guard Layer. It asks whether a repair path appears historically risky and can only warn, downgrade to conservative mode, require manual review, or block before patch policy and Safe Patch Engine are reached.
 
 v2.5 adds deterministic repair observability and decision trace artifacts. It does not change repair behavior; it records what happened, which layer decided it, and why.
+
+v2.6 adds a deterministic repair review and recommendation layer. It evaluates the completed repair lifecycle for quality, safety, completeness, warnings, and human-review recommendations without changing repair behavior.
 
 ---
 
@@ -621,6 +623,62 @@ v2.5 deterministic checks:
 * repair-summary-unit
 * repair-observability-report-unit
 * repair-final-decision-unit
+
+---
+
+## 🧾 Repair Review & Recommendation Layer (v2.6)
+
+v2.6 reviews the completed repair lifecycle without changing the repair pipeline. It consumes the observability report, decision trace, repair summary, outcome, evidence confidence, regression risk, and patch policy metadata to answer:
+
+* was this repair process safe?
+* was the orchestration path healthy?
+* was evidence strong enough?
+* did history or regression risk introduce concerns?
+* should a human review this repair?
+
+Artifacts written per run:
+
+```text
+.factory/runs/<runId>/repair-review.md
+.factory/runs/<runId>/repair-review.json
+```
+
+Review verdicts:
+
+* approved
+* approved-with-warnings
+* needs-human-review
+* rejected
+
+The review includes deterministic rule-based scores:
+
+* qualityScore
+* safetyScore
+* completenessScore
+
+Final reports now include:
+
+* repair review verdict
+* quality, safety, and completeness scores
+* names of review artifacts
+
+Safety guarantees:
+
+* review-only behavior
+* no patch generation
+* no retry behavior changes
+* no mutation behavior changes
+* no safety gate bypasses
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+
+v2.6 deterministic checks:
+
+* repair-review-unit
+* repair-review-score-unit
+* repair-review-verdict-unit
+* repair-review-report-unit
+* repair-review-artifact-unit
 
 ---
 

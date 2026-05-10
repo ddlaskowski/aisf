@@ -5394,6 +5394,250 @@ function runRepairFinalDecisionUnit() {
   }
 }
 
+function runRepairReviewUnit() {
+  const { buildRepairObservabilityReport } = require(path.join(projectRoot, "dist", "repair", "repairObservability.js"));
+  const { buildRepairDecisionTrace } = require(path.join(projectRoot, "dist", "repair", "repairDecisionTrace.js"));
+  const { buildRepairSummary } = require(path.join(projectRoot, "dist", "repair", "repairSummary.js"));
+  const { buildRepairReview } = require(path.join(projectRoot, "dist", "repair", "buildRepairReview.js"));
+
+  try {
+    const report = buildRepairObservabilityReport(sampleObservabilityInput());
+    const review = buildRepairReview({
+      observabilityReport: report,
+      repairSummary: buildRepairSummary(report),
+      decisionTraceSteps: buildRepairDecisionTrace(report)
+    });
+
+    if (review.verdict !== "approved") {
+      throw new Error(`expected approved clean run, got ${JSON.stringify(review)}`);
+    }
+    for (const field of ["qualityScore", "safetyScore", "completenessScore"]) {
+      if (typeof review[field] !== "number" || review[field] < 0 || review[field] > 100) {
+        throw new Error(`score ${field} should be 0..100, got ${JSON.stringify(review)}`);
+      }
+    }
+    if (!Array.isArray(review.findings) || review.findings.length === 0) {
+      throw new Error(`expected findings, got ${JSON.stringify(review)}`);
+    }
+    if (!Array.isArray(review.recommendations) || review.recommendations.length === 0) {
+      throw new Error(`expected recommendations, got ${JSON.stringify(review)}`);
+    }
+
+    console.log("PASS repair-review-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewScoreUnit() {
+  const { buildRepairObservabilityReport } = require(path.join(projectRoot, "dist", "repair", "repairObservability.js"));
+  const { buildRepairDecisionTrace } = require(path.join(projectRoot, "dist", "repair", "repairDecisionTrace.js"));
+  const { buildRepairSummary } = require(path.join(projectRoot, "dist", "repair", "repairSummary.js"));
+  const { buildRepairReview } = require(path.join(projectRoot, "dist", "repair", "buildRepairReview.js"));
+
+  function reviewFor(overrides) {
+    const report = buildRepairObservabilityReport(sampleObservabilityInput(overrides));
+    return buildRepairReview({
+      observabilityReport: report,
+      repairSummary: buildRepairSummary(report),
+      decisionTraceSteps: buildRepairDecisionTrace(report)
+    });
+  }
+
+  try {
+    const clean = reviewFor({});
+    const risky = reviewFor({
+      repairEvidenceValidation: { ok: true, confidence: "medium", allowedRepairMode: "conservative", warnings: ["limited evidence"] },
+      repairRegressionRisk: {
+        riskLevel: "medium",
+        blocked: false,
+        recommendedAction: "proceed-with-warning",
+        riskReasons: ["historical warning"],
+        warnings: ["medium risk"]
+      },
+      repairPatchPolicy: { ok: true, mode: "conservative", recommendedAction: "proceed", warnings: ["conservative mode"] }
+    });
+    const repeat = reviewFor({
+      repairEvidenceValidation: { ok: true, confidence: "medium", allowedRepairMode: "conservative", warnings: ["limited evidence"] },
+      repairRegressionRisk: {
+        riskLevel: "medium",
+        blocked: false,
+        recommendedAction: "proceed-with-warning",
+        riskReasons: ["historical warning"],
+        warnings: ["medium risk"]
+      },
+      repairPatchPolicy: { ok: true, mode: "conservative", recommendedAction: "proceed", warnings: ["conservative mode"] }
+    });
+
+    if (risky.verdict !== "approved-with-warnings") {
+      throw new Error(`expected approved-with-warnings, got ${JSON.stringify(risky)}`);
+    }
+    if (risky.safetyScore >= clean.safetyScore || risky.qualityScore >= clean.qualityScore) {
+      throw new Error(`risky review should score lower than clean review: clean=${JSON.stringify(clean)} risky=${JSON.stringify(risky)}`);
+    }
+    if (JSON.stringify(risky) !== JSON.stringify(repeat)) {
+      throw new Error("Equivalent review inputs should produce stable equivalent scores.");
+    }
+
+    console.log("PASS repair-review-score-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-score-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewVerdictUnit() {
+  const { buildRepairObservabilityReport } = require(path.join(projectRoot, "dist", "repair", "repairObservability.js"));
+  const { buildRepairDecisionTrace } = require(path.join(projectRoot, "dist", "repair", "repairDecisionTrace.js"));
+  const { buildRepairSummary } = require(path.join(projectRoot, "dist", "repair", "repairSummary.js"));
+  const { buildRepairReview } = require(path.join(projectRoot, "dist", "repair", "buildRepairReview.js"));
+
+  function assertVerdict(name, overrides, expected) {
+    const report = buildRepairObservabilityReport(sampleObservabilityInput(overrides));
+    const review = buildRepairReview({
+      observabilityReport: report,
+      repairSummary: buildRepairSummary(report),
+      decisionTraceSteps: buildRepairDecisionTrace(report)
+    });
+    if (review.verdict !== expected) {
+      throw new Error(`${name}: expected ${expected}, got ${JSON.stringify(review)}`);
+    }
+  }
+
+  try {
+    assertVerdict("clean success", {}, "approved");
+    assertVerdict(
+      "warning success",
+      {
+        repairEvidenceValidation: { ok: true, confidence: "medium", allowedRepairMode: "conservative", warnings: ["limited evidence"] }
+      },
+      "approved-with-warnings"
+    );
+    assertVerdict(
+      "manual review",
+      { repairEvidenceValidation: { ok: false, confidence: "low", allowedRepairMode: "manual-review", warnings: ["weak"] } },
+      "needs-human-review"
+    );
+    assertVerdict(
+      "blocked policy",
+      { repairPatchPolicy: { ok: false, mode: "manual-review", recommendedAction: "block-mutation", warnings: ["blocked"] } },
+      "needs-human-review"
+    );
+    assertVerdict(
+      "failed validation",
+      { repairOutcome: { outcome: "failed-same-error" }, validation: { verdict: "fail", status: "fail" } },
+      "rejected"
+    );
+    const missing = buildRepairReview({});
+    if (missing.verdict !== "rejected" || !missing.blockingConcerns.includes("Missing observability artifacts.")) {
+      throw new Error(`missing observability should be rejected, got ${JSON.stringify(missing)}`);
+    }
+
+    console.log("PASS repair-review-verdict-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-verdict-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewReportUnit() {
+  const { renderRepairReviewMarkdown } = require(path.join(projectRoot, "dist", "repair", "buildRepairReview.js"));
+
+  try {
+    const markdown = renderRepairReviewMarkdown({
+      verdict: "approved-with-warnings",
+      qualityScore: 82,
+      safetyScore: 91,
+      completenessScore: 88,
+      findings: ["Validation passed."],
+      warnings: ["Conservative patch policy was required."],
+      recommendations: ["Add regression scenario."],
+      blockingConcerns: []
+    });
+    for (const needle of [
+      "# Repair Review",
+      "Verdict: approved-with-warnings",
+      "Quality score: 82",
+      "Safety score: 91",
+      "Completeness score: 88",
+      "Findings:",
+      "Warnings:",
+      "Recommendations:",
+      "Blocking concerns:"
+    ]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`repair review markdown missing ${needle}: ${markdown}`);
+      }
+    }
+
+    const finalReport = [
+      "## Repair review",
+      "Verdict: approved-with-warnings",
+      "Quality score: 82",
+      "Safety score: 91",
+      "Completeness score: 88",
+      "## Review artifacts",
+      "- repair-review.md",
+      "- repair-review.json"
+    ].join("\n");
+    for (const needle of ["Repair review", "Verdict:", "Quality score:", "repair-review.md", "repair-review.json"]) {
+      if (!finalReport.includes(needle)) {
+        throw new Error(`final report repair review section missing ${needle}: ${finalReport}`);
+      }
+    }
+
+    console.log("PASS repair-review-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewArtifactUnit() {
+  const { buildRepairObservabilityReport } = require(path.join(projectRoot, "dist", "repair", "repairObservability.js"));
+  const { buildRepairDecisionTrace } = require(path.join(projectRoot, "dist", "repair", "repairDecisionTrace.js"));
+  const { buildRepairSummary } = require(path.join(projectRoot, "dist", "repair", "repairSummary.js"));
+  const { buildRepairReview, renderRepairReviewMarkdown } = require(path.join(projectRoot, "dist", "repair", "buildRepairReview.js"));
+  const tmpDir = path.join(projectRoot, ".scenario-unit", "repair-review-artifact");
+
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    ensureDir(tmpDir);
+    const report = buildRepairObservabilityReport(sampleObservabilityInput());
+    const review = buildRepairReview({
+      observabilityReport: report,
+      repairSummary: buildRepairSummary(report),
+      decisionTraceSteps: buildRepairDecisionTrace(report)
+    });
+    const jsonPath = path.join(tmpDir, "repair-review.json");
+    const mdPath = path.join(tmpDir, "repair-review.md");
+    fs.writeFileSync(jsonPath, `${JSON.stringify(review, null, 2)}\n`, "utf8");
+    fs.writeFileSync(mdPath, renderRepairReviewMarkdown(review), "utf8");
+
+    const readBack = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const markdown = fs.readFileSync(mdPath, "utf8");
+    if (readBack.verdict !== "approved" || !markdown.includes("Verdict: approved")) {
+      throw new Error(`repair review artifacts invalid: json=${JSON.stringify(readBack)} md=${markdown}`);
+    }
+
+    console.log("PASS repair-review-artifact-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-artifact-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -5613,6 +5857,21 @@ async function main() {
     failed += 1;
   }
   if (!runRepairFinalDecisionUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewScoreUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewVerdictUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewArtifactUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {
