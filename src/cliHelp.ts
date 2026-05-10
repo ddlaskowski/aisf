@@ -10,6 +10,7 @@
     "  runs        Show historical governance run dashboard",
     "  insights    Show governance insights over indexed runs",
     "  ci-summary  Show CI-friendly governance summary",
+    "  archive     Show governance archive snapshot history",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -19,6 +20,7 @@
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
     "  node dist/cli.js runs --export all",
+    "  node dist/cli.js archive --latest",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -126,6 +128,38 @@ export function renderCiSummaryHelp(): string {
     "Read-only guarantee:",
     "  This command reads .factory/runs-index.json and does not modify repair behavior.",
     "  The --archive option only works with --export and writes under .factory/archive."
+  ].join("\n") + "\n";
+}
+
+export function renderArchiveHelp(): string {
+  return [
+    "# AI Software Factory CLI - archive",
+    "",
+    "Usage:",
+    "  node dist/cli.js archive [options]",
+    "",
+    "Options:",
+    "  --repo <path>   Path to target repository",
+    "  --latest        Show latest archive snapshot only",
+    "  --kind <kind>   Filter by archive kind",
+    "  --limit <n>     Show latest n archive snapshots",
+    "  --json          Print JSON output",
+    "  --help, -h      Show help",
+    "",
+    "Kinds:",
+    "  runs-dashboard",
+    "  governance-insights",
+    "  governance-ci-summary",
+    "",
+    "Examples:",
+    "  node dist/cli.js archive",
+    "  node dist/cli.js archive --latest",
+    "  node dist/cli.js archive --kind governance-insights",
+    "  node dist/cli.js archive --kind governance-ci-summary --limit 5",
+    "  node dist/cli.js archive --json",
+    "",
+    "Read-only guarantee:",
+    "  This command reads .factory/archive-index.json and does not modify repair behavior."
   ].join("\n") + "\n";
 }
 

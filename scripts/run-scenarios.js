@@ -8583,6 +8583,421 @@ function runGovernanceArchiveCiExitCodeUnit() {
     return false;
   }
 }
+
+function sampleArchiveResult(kind = "governance-insights", archiveId = "2026-05-10T19-45-22-123Z") {
+  return {
+    archived: true,
+    archiveId,
+    archiveDir: `.factory/archive/${archiveId}/${kind}`,
+    files: [`.factory/archive/${archiveId}/${kind}/${kind}.json`],
+    warnings: []
+  };
+}
+
+function sampleArchiveIndex() {
+  return {
+    version: 1,
+    updatedAt: "2026-05-10T20:00:00.000Z",
+    totalArchives: 3,
+    archives: [
+      {
+        archiveId: "2026-05-10T19-45-22-123Z",
+        createdAt: "2026-05-10T19:45:22.123Z",
+        kind: "governance-insights",
+        archiveDir: ".factory/archive/2026-05-10T19-45-22-123Z/governance-insights",
+        files: [
+          ".factory/archive/2026-05-10T19-45-22-123Z/governance-insights/governance-insights.json",
+          ".factory/archive/2026-05-10T19-45-22-123Z/governance-insights/governance-insights.md"
+        ],
+        metadata: { profile: "conservative", runCount: 4 }
+      },
+      {
+        archiveId: "2026-05-10T19-40-01-901Z",
+        createdAt: "2026-05-10T19:40:01.901Z",
+        kind: "governance-ci-summary",
+        archiveDir: ".factory/archive/2026-05-10T19-40-01-901Z/governance-ci-summary",
+        files: [
+          ".factory/archive/2026-05-10T19-40-01-901Z/governance-ci-summary/governance-ci-summary.json",
+          ".factory/archive/2026-05-10T19-40-01-901Z/governance-ci-summary/governance-ci-summary.md"
+        ],
+        metadata: { profile: "balanced", ciStatus: "warn", runCount: 4 }
+      },
+      {
+        archiveId: "2026-05-10T19-35-12-010Z",
+        createdAt: "2026-05-10T19:35:12.010Z",
+        kind: "runs-dashboard",
+        archiveDir: ".factory/archive/2026-05-10T19-35-12-010Z/runs-dashboard",
+        files: [
+          ".factory/archive/2026-05-10T19-35-12-010Z/runs-dashboard/runs-dashboard.json",
+          ".factory/archive/2026-05-10T19-35-12-010Z/runs-dashboard/runs-dashboard.md",
+          ".factory/archive/2026-05-10T19-35-12-010Z/runs-dashboard/runs-dashboard.csv"
+        ],
+        metadata: { exportFormat: "all", displayedRuns: 4 }
+      }
+    ]
+  };
+}
+
+function writeArchiveIndex(repo, index = sampleArchiveIndex()) {
+  const indexPath = path.join(repo, ".factory", "archive-index.json");
+  ensureDir(path.dirname(indexPath));
+  fs.writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+  return indexPath;
+}
+
+function runGovernanceArchiveIndexUnit() {
+  const {
+    buildGovernanceArchiveIndexEntry,
+    loadGovernanceArchiveIndex
+  } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveIndex.js"));
+  try {
+    const repo = createArchiveRepo("governance-archive-index-unit", null);
+    const empty = loadGovernanceArchiveIndex(repo);
+    if (empty.version !== 1 || empty.totalArchives !== 0 || empty.archives.length !== 0) {
+      throw new Error(`empty archive index mismatch: ${JSON.stringify(empty)}`);
+    }
+
+    const entry = buildGovernanceArchiveIndexEntry({
+      archiveResult: sampleArchiveResult("governance-insights"),
+      kind: "governance-insights",
+      sourceCommand: "insights --export --archive",
+      metadata: { profile: "conservative", runCount: 3 }
+    });
+    if (
+      entry.createdAt !== "2026-05-10T19:45:22.123Z" ||
+      entry.kind !== "governance-insights" ||
+      entry.metadata.profile !== "conservative" ||
+      entry.files[0] !== ".factory/archive/2026-05-10T19-45-22-123Z/governance-insights/governance-insights.json"
+    ) {
+      throw new Error(`archive entry mismatch: ${JSON.stringify(entry)}`);
+    }
+
+    console.log("PASS governance-archive-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveIndexUpdateUnit() {
+  const {
+    buildGovernanceArchiveIndexEntry,
+    updateGovernanceArchiveIndex
+  } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveIndex.js"));
+  try {
+    const empty = { version: 1, updatedAt: "1970-01-01T00:00:00.000Z", totalArchives: 0, archives: [] };
+    const entry = buildGovernanceArchiveIndexEntry({
+      archiveResult: sampleArchiveResult("runs-dashboard", "2026-05-10T19-35-12-010Z"),
+      kind: "runs-dashboard",
+      metadata: { exportFormat: "json", displayedRuns: 2 }
+    });
+    const updated = updateGovernanceArchiveIndex(empty, entry);
+    if (updated.totalArchives !== 1 || updated.archives.length !== 1 || updated.archives[0].metadata.displayedRuns !== 2) {
+      throw new Error(`archive index update mismatch: ${JSON.stringify(updated)}`);
+    }
+
+    console.log("PASS governance-archive-index-update-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-index-update-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveIndexReplaceUnit() {
+  const {
+    buildGovernanceArchiveIndexEntry,
+    updateGovernanceArchiveIndex
+  } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveIndex.js"));
+  try {
+    const first = buildGovernanceArchiveIndexEntry({
+      archiveResult: sampleArchiveResult("governance-ci-summary"),
+      kind: "governance-ci-summary",
+      metadata: { profile: "balanced", ciStatus: "warn" }
+    });
+    const second = buildGovernanceArchiveIndexEntry({
+      archiveResult: sampleArchiveResult("governance-ci-summary"),
+      kind: "governance-ci-summary",
+      metadata: { profile: "balanced", ciStatus: "pass" }
+    });
+    const once = updateGovernanceArchiveIndex({ version: 1, updatedAt: "x", totalArchives: 0, archives: [] }, first);
+    const twice = updateGovernanceArchiveIndex(once, second);
+    if (twice.totalArchives !== 1 || twice.archives[0].metadata.ciStatus !== "pass") {
+      throw new Error(`archive index replace mismatch: ${JSON.stringify(twice)}`);
+    }
+
+    console.log("PASS governance-archive-index-replace-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-index-replace-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveIndexSortUnit() {
+  const {
+    buildGovernanceArchiveIndexEntry,
+    updateGovernanceArchiveIndex
+  } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveIndex.js"));
+  try {
+    const older = buildGovernanceArchiveIndexEntry({
+      archiveResult: sampleArchiveResult("runs-dashboard", "2026-05-10T19-35-12-010Z"),
+      kind: "runs-dashboard"
+    });
+    const newer = buildGovernanceArchiveIndexEntry({
+      archiveResult: sampleArchiveResult("governance-insights", "2026-05-10T19-45-22-123Z"),
+      kind: "governance-insights"
+    });
+    const sameTime = buildGovernanceArchiveIndexEntry({
+      archiveResult: sampleArchiveResult("governance-ci-summary", "2026-05-10T19-45-22-123Z"),
+      kind: "governance-ci-summary"
+    });
+    const index = [older, newer, sameTime].reduce(
+      (current, entry) => updateGovernanceArchiveIndex(current, entry),
+      { version: 1, updatedAt: "x", totalArchives: 0, archives: [] }
+    );
+    if (
+      index.archives[0].kind !== "governance-ci-summary" ||
+      index.archives[1].kind !== "governance-insights" ||
+      index.archives[2].kind !== "runs-dashboard"
+    ) {
+      throw new Error(`archive index sort mismatch: ${JSON.stringify(index.archives.map((entry) => entry.kind))}`);
+    }
+
+    console.log("PASS governance-archive-index-sort-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-index-sort-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveIndexArtifactUnit() {
+  const {
+    buildGovernanceArchiveIndexEntry,
+    loadGovernanceArchiveIndex,
+    saveGovernanceArchiveIndex,
+    updateGovernanceArchiveIndex
+  } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveIndex.js"));
+  try {
+    const repo = createArchiveRepo("governance-archive-index-artifact", null);
+    const entry = buildGovernanceArchiveIndexEntry({
+      archiveResult: sampleArchiveResult("governance-insights"),
+      kind: "governance-insights",
+      metadata: { profile: "experimental" }
+    });
+    saveGovernanceArchiveIndex(repo, updateGovernanceArchiveIndex(loadGovernanceArchiveIndex(repo), entry));
+    const indexPath = path.join(repo, ".factory", "archive-index.json");
+    const fromDisk = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+    if (fromDisk.totalArchives !== 1 || fromDisk.archives[0].metadata.profile !== "experimental") {
+      throw new Error(`archive index artifact mismatch: ${JSON.stringify(fromDisk)}`);
+    }
+
+    console.log("PASS governance-archive-index-artifact-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-index-artifact-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDashboardUnit() {
+  const {
+    buildGovernanceArchiveDashboard,
+    renderGovernanceArchiveDashboardText
+  } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveDashboard.js"));
+  try {
+    const dashboard = buildGovernanceArchiveDashboard(sampleArchiveIndex(), { limit: 2 });
+    const text = renderGovernanceArchiveDashboardText(dashboard);
+    if (
+      dashboard.totalArchives !== 3 ||
+      dashboard.displayedArchives !== 2 ||
+      dashboard.summary.runsDashboard !== 1 ||
+      dashboard.summary.governanceInsights !== 1 ||
+      dashboard.summary.governanceCiSummary !== 1 ||
+      !text.includes("Total archived snapshots: 3") ||
+      !text.includes("governance-insights")
+    ) {
+      throw new Error(`archive dashboard mismatch: ${JSON.stringify(dashboard)} text=${text}`);
+    }
+
+    console.log("PASS governance-archive-dashboard-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-dashboard-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDashboardFilterUnit() {
+  const { buildGovernanceArchiveDashboard } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveDashboard.js"));
+  try {
+    const dashboard = buildGovernanceArchiveDashboard(sampleArchiveIndex(), { kind: "governance-ci-summary", limit: 10 });
+    if (dashboard.displayedArchives !== 1 || dashboard.rows[0].kind !== "governance-ci-summary" || dashboard.rows[0].ciStatus !== "warn") {
+      throw new Error(`archive dashboard filter mismatch: ${JSON.stringify(dashboard)}`);
+    }
+
+    console.log("PASS governance-archive-dashboard-filter-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-dashboard-filter-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDashboardLatestUnit() {
+  const { buildGovernanceArchiveDashboard } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveDashboard.js"));
+  try {
+    const dashboard = buildGovernanceArchiveDashboard(sampleArchiveIndex(), { latestOnly: true, limit: 3 });
+    if (dashboard.displayedArchives !== 1 || dashboard.rows[0].archiveId !== "2026-05-10T19-45-22-123Z") {
+      throw new Error(`archive dashboard latest mismatch: ${JSON.stringify(dashboard)}`);
+    }
+
+    console.log("PASS governance-archive-dashboard-latest-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-dashboard-latest-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDashboardJsonUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-dashboard-json", warnCiIndex());
+    writeArchiveIndex(repo);
+    const result = runCliHelpCommand(["archive", "--repo", repo, "--kind", "governance-insights", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.displayedArchives !== 1 || parsed.rows[0].kind !== "governance-insights") {
+      throw new Error(`archive dashboard JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-archive-dashboard-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-dashboard-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveCliUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-cli", warnCiIndex());
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const exportResult = runCliHelpCommand(["runs", "--repo", repo, "--export", "json", "--archive"]);
+    if (exportResult.status !== 0 || !exportResult.stdout.includes("Archived run dashboard:")) {
+      throw new Error(`archive index export CLI mismatch: status=${exportResult.status} stdout=${exportResult.stdout} stderr=${exportResult.stderr}`);
+    }
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const archiveIndex = JSON.parse(fs.readFileSync(archiveIndexPath, "utf8"));
+    if (
+      archiveIndex.totalArchives !== 1 ||
+      archiveIndex.archives[0].kind !== "runs-dashboard" ||
+      archiveIndex.archives[0].metadata.exportFormat !== "json"
+    ) {
+      throw new Error(`archive index CLI artifact mismatch: ${JSON.stringify(archiveIndex)}`);
+    }
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const listResult = runCliHelpCommand(["archive", "--repo", repo]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (listResult.status !== 0 || !listResult.stdout.includes("Governance Archive Dashboard") || beforeArchiveIndex !== afterArchiveIndex) {
+      throw new Error(`archive CLI read mismatch: status=${listResult.status} stdout=${listResult.stdout} stderr=${listResult.stderr}`);
+    }
+    if (beforeRunsIndex !== afterRunsIndex) {
+      throw new Error("archive CLI must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS governance-archive-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveCliMissingIndexUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-cli-missing", null);
+    const textResult = runCliHelpCommand(["archive", "--repo", repo]);
+    const jsonResult = runCliHelpCommand(["archive", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(jsonResult.stdout);
+    if (
+      textResult.status !== 0 ||
+      !textResult.stdout.includes("No archive index found.") ||
+      jsonResult.status !== 0 ||
+      parsed.warnings[0] !== "No archive index found"
+    ) {
+      throw new Error(`missing archive index CLI mismatch: text=${textResult.stdout} json=${jsonResult.stdout}`);
+    }
+
+    console.log("PASS governance-archive-cli-missing-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-cli-missing-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveCliInvalidKindUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-cli-invalid-kind", null);
+    const result = runCliHelpCommand(["archive", "--repo", repo, "--kind", "bad-kind"]);
+    if (
+      result.status !== 1 ||
+      !result.stderr.includes("Invalid archive kind: bad-kind") ||
+      !result.stderr.includes("Allowed kinds: runs-dashboard, governance-insights, governance-ci-summary")
+    ) {
+      throw new Error(`invalid archive kind mismatch: status=${result.status} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-archive-cli-invalid-kind-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-cli-invalid-kind-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveCliHelpUnit() {
+  const { renderArchiveHelp, renderMainHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const archiveHelp = renderArchiveHelp();
+    const cliHelp = runCliHelpCommand(["archive", "--help"]);
+    const shortHelp = runCliHelpCommand(["archive", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== archiveHelp || shortHelp.stdout !== archiveHelp) {
+      throw new Error(`archive help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["archive     Show governance archive snapshot history"]);
+    assertHelpIncludes(archiveHelp, [
+      "Usage:\n  node dist/cli.js archive [options]",
+      "--kind <kind>   Filter by archive kind",
+      "governance-ci-summary",
+      "Read-only guarantee:"
+    ]);
+
+    console.log("PASS governance-archive-cli-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-cli-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -8738,7 +9153,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -9267,7 +9682,47 @@ async function main() {
   }
   if (!runGovernanceArchiveCiExitCodeUnit()) {
     failed += 1;
-  }  if (!runCliHelpMainUnit()) {
+  }
+  if (!runGovernanceArchiveIndexUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveIndexUpdateUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveIndexReplaceUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveIndexSortUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveIndexArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDashboardUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDashboardFilterUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDashboardLatestUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDashboardJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveCliMissingIndexUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveCliInvalidKindUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveCliHelpUnit()) {
+    failed += 1;
+  }
+  if (!runCliHelpMainUnit()) {
     failed += 1;
   }
   if (!runCliHelpRunsUnit()) {

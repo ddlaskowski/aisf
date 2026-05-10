@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.8 - Governance Snapshot Archive Layer**
+**v3.9 - Governance Archive Index Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -60,6 +60,8 @@ v3.6 adds a deterministic CI-friendly governance summary. It converts profile-aw
 v3.7 hardens governance CLI help and operator UX. It adds stable help text, deterministic invalid command and invalid flag errors, CI exit-code documentation, and read-only guarantees without changing repair behavior.
 
 v3.8 adds optional governance snapshot archiving for export outputs. It preserves timestamped copies under `.factory/archive` for audit and CI history without changing repair behavior or `.factory/runs-index.json`.
+
+v3.9 adds a deterministic Governance Archive Index Layer. It records compact metadata for archived governance snapshots in `.factory/archive-index.json` and adds a read-only `archive` CLI dashboard for browsing archive history.
 
 ---
 
@@ -1460,6 +1462,87 @@ v3.8 deterministic checks:
 * governance-archive-requires-export-unit
 * governance-archive-help-unit
 * governance-archive-ci-exit-code-unit
+---
+
+## Governance Archive Index Layer (v3.9)
+
+v3.9 maintains a compact index of governance archive snapshots so operators can inspect archive history without scanning `.factory/archive` folders.
+
+Archive index artifact:
+
+```text
+.factory/archive-index.json
+```
+
+The archive index is updated only when an export command uses `--archive`:
+
+```bash
+node dist/cli.js runs --export all --archive
+node dist/cli.js insights --export --archive
+node dist/cli.js ci-summary --export --archive
+```
+
+Each index entry records:
+
+* archive ID
+* created timestamp
+* archive kind
+* archive directory
+* archived files
+* optional source command
+* optional metadata such as profile, export format, CI status, run count, and displayed run count
+
+Archive kinds:
+
+* `runs-dashboard`
+* `governance-insights`
+* `governance-ci-summary`
+
+Read-only archive dashboard:
+
+```bash
+node dist/cli.js archive
+node dist/cli.js archive --latest
+node dist/cli.js archive --kind governance-insights
+node dist/cli.js archive --kind governance-ci-summary --limit 5
+node dist/cli.js archive --json
+```
+
+Dashboard behavior:
+
+* default output shows the latest 20 archive entries
+* `--latest` shows exactly one newest entry after other filters
+* `--kind <kind>` filters by archive kind
+* `--limit <n>` shows the latest `n` entries
+* `--json` prints deterministic machine-readable output
+
+Read-only/index-only guarantee:
+
+* export archive operations may update `.factory/archive-index.json`
+* the `archive` listing command only reads `.factory/archive-index.json`
+* the `archive` listing command does not update `.factory/archive-index.json`
+* v3.9 does not update `.factory/runs-index.json`
+* v3.9 does not generate patches
+* v3.9 does not retry repairs
+* v3.9 does not mutate source files
+* v3.9 does not change governance, release, trust, review, insight, CI summary, or repair behavior
+* v3.9 does not bypass any safety gate
+
+v3.9 deterministic checks:
+
+* governance-archive-index-unit
+* governance-archive-index-update-unit
+* governance-archive-index-replace-unit
+* governance-archive-index-sort-unit
+* governance-archive-index-artifact-unit
+* governance-archive-dashboard-unit
+* governance-archive-dashboard-filter-unit
+* governance-archive-dashboard-latest-unit
+* governance-archive-dashboard-json-unit
+* governance-archive-cli-unit
+* governance-archive-cli-missing-index-unit
+* governance-archive-cli-invalid-kind-unit
+* governance-archive-cli-help-unit
 ---
 
 ## 🚀 Usage

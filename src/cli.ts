@@ -32,7 +32,23 @@ import {
 } from "./repair/governanceCiSummary.js";
 import { archiveGovernanceFiles, type GovernanceArchiveInputFile, type GovernanceArchiveKind, type GovernanceArchiveResult } from "./repair/governanceArchive.js";
 import {
+  buildGovernanceArchiveIndexEntry,
+  getGovernanceArchiveIndexPath,
+  loadGovernanceArchiveIndex,
+  saveGovernanceArchiveIndex,
+  updateGovernanceArchiveIndex,
+  type GovernanceArchiveIndexEntry
+} from "./repair/governanceArchiveIndex.js";
+import {
+  buildGovernanceArchiveDashboard,
+  buildMissingGovernanceArchiveDashboard,
+  isGovernanceArchiveKind,
+  renderGovernanceArchiveDashboardText,
+  type GovernanceArchiveDashboardOptions
+} from "./repair/governanceArchiveDashboard.js";
+import {
   renderArchiveRequiresExportError,
+  renderArchiveHelp,
   renderCiSummaryHelp,
   renderInsightsHelp,
   renderInvalidFlagError,
@@ -172,9 +188,22 @@ function printExportAndArchiveResult<T extends { files: string[] }>(
 function archiveExportResult(
   repoPath: string,
   kind: GovernanceArchiveKind,
-  files: string[]
+  files: string[],
+  sourceCommand: string,
+  metadata?: GovernanceArchiveIndexEntry["metadata"]
 ): GovernanceArchiveResult {
-  return archiveGovernanceFiles(repoPath, kind, archiveInputFiles(files));
+  const archiveResult = archiveGovernanceFiles(repoPath, kind, archiveInputFiles(files));
+  if (archiveResult.archived) {
+    const entry = buildGovernanceArchiveIndexEntry({
+      archiveResult,
+      kind,
+      sourceCommand,
+      metadata
+    });
+    const updatedIndex = updateGovernanceArchiveIndex(loadGovernanceArchiveIndex(repoPath), entry);
+    saveGovernanceArchiveIndex(repoPath, updatedIndex);
+  }
+  return archiveResult;
 }
 function printGovernancePolicyProfiles(asJson: boolean): void {
   const profiles = listGovernancePolicyProfiles();
@@ -197,12 +226,13 @@ function parseGovernancePolicyProfileOption(value: unknown): GovernancePolicyPro
 }
 
 
-const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary"] as const;
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
   insights: new Set(["--repo", "--profile", "--profiles", "--json", "--export", "--archive", "--help", "-h"]),
-  "ci-summary": new Set(["--repo", "--profile", "--json", "--export", "--archive", "--help", "-h"])
+  "ci-summary": new Set(["--repo", "--profile", "--json", "--export", "--archive", "--help", "-h"]),
+  archive: new Set(["--repo", "--latest", "--kind", "--limit", "--json", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -220,6 +250,9 @@ function renderCommandHelp(command: string): string | null {
   }
   if (command === "ci-summary") {
     return renderCiSummaryHelp();
+  }
+  if (command === "archive") {
+    return renderArchiveHelp();
   }
   return null;
 }
@@ -396,7 +429,12 @@ program
         humanReviewOnly: dashboardOptions.humanReviewOnly,
         latestOnly: dashboardOptions.latestOnly
       });
-      const archiveResult = options.archive ? archiveExportResult(repoPath, "runs-dashboard", exportResult.files) : null;
+      const archiveResult = options.archive
+        ? archiveExportResult(repoPath, "runs-dashboard", exportResult.files, `runs --export ${exportFormat} --archive`, {
+            exportFormat,
+            displayedRuns: exportResult.displayedRuns
+          })
+        : null;
       printExportAndArchiveResult(exportResult, archiveResult, asJson, printExportResult, "Archived run dashboard:");
       return;
     }
@@ -460,7 +498,12 @@ program
 
     if (options.export) {
       const exportResult = exportGovernanceInsights(repoPath, insights);
-      const archiveResult = options.archive ? archiveExportResult(repoPath, "governance-insights", exportResult.files) : null;
+      const archiveResult = options.archive
+        ? archiveExportResult(repoPath, "governance-insights", exportResult.files, "insights --export --archive", {
+            profile: insights.policyProfile.name,
+            runCount: insights.totalRuns
+          })
+        : null;
       printExportAndArchiveResult(exportResult, archiveResult, asJson, printInsightsExportResult, "Archived governance insights:");
       return;
     }
@@ -503,7 +546,13 @@ program
 
     if (options.export) {
       const exportResult = exportGovernanceCiSummary(repoPath, summary);
-      const archiveResult = options.archive ? archiveExportResult(repoPath, "governance-ci-summary", exportResult.files) : null;
+      const archiveResult = options.archive
+        ? archiveExportResult(repoPath, "governance-ci-summary", exportResult.files, "ci-summary --export --archive", {
+            profile: summary.evaluatedProfile.name,
+            ciStatus: summary.status,
+            runCount: summary.metrics.totalRuns
+          })
+        : null;
       printExportAndArchiveResult(exportResult, archiveResult, asJson, printCiSummaryExportResult, "Archived governance CI summary:");
     } else if (asJson) {
       console.log(JSON.stringify(summary, null, 2));
@@ -514,6 +563,59 @@ program
     if (summary.status === "fail") {
       process.exitCode = 1;
     }
+  });
+
+program
+  .command("archive")
+  .description("Show governance archive snapshot history")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--latest", "Show latest archive snapshot only")
+  .option("--kind <kind>", "Filter by archive kind")
+  .option("--limit <n>", "Show latest n archive snapshots")
+  .option("--json", "Print machine-readable JSON")
+  .action(async (options) => {
+    const asJson = !!options.json;
+    const dashboardOptions: GovernanceArchiveDashboardOptions = {
+      latestOnly: !!options.latest
+    };
+
+    if (options.limit !== undefined) {
+      const limit = parsePositiveInteger(options.limit);
+      if (limit === null) {
+        console.error(`Invalid limit value: ${options.limit}`);
+        console.error("Limit must be a positive integer.");
+        console.error("Run:\n  node dist/cli.js archive --help\n\nfor usage.");
+        process.exitCode = 1;
+        return;
+      }
+      dashboardOptions.limit = limit;
+    } else if (!dashboardOptions.latestOnly) {
+      dashboardOptions.limit = 20;
+    }
+
+    if (options.kind !== undefined) {
+      if (!isGovernanceArchiveKind(options.kind)) {
+        console.error(`Invalid archive kind: ${options.kind}`);
+        console.error("Allowed kinds: runs-dashboard, governance-insights, governance-ci-summary");
+        console.error("Run:\n  node dist/cli.js archive --help\n\nfor usage.");
+        process.exitCode = 1;
+        return;
+      }
+      dashboardOptions.kind = options.kind;
+    }
+
+    const repoPath = path.resolve(options.repo);
+    const indexPath = getGovernanceArchiveIndexPath(repoPath);
+    const result = (await fs.pathExists(indexPath))
+      ? buildGovernanceArchiveDashboard(loadGovernanceArchiveIndex(repoPath), dashboardOptions)
+      : buildMissingGovernanceArchiveDashboard(dashboardOptions);
+
+    if (asJson) {
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
+    console.log(renderGovernanceArchiveDashboardText(result));
   });
 
 program.parseAsync(process.argv);
