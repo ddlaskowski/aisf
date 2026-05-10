@@ -6791,6 +6791,295 @@ function runRunIndexReportUnit() {
   }
 }
 
+function sampleRunsIndexForDashboard() {
+  return {
+    version: 1,
+    updatedAt: "2026-05-10T12:00:00.000Z",
+    totalRuns: 4,
+    runs: [
+      {
+        runId: "2026-05-10-a-ready",
+        timestamp: "2026-05-10T09:00:00.000Z",
+        governanceStatus: "ready",
+        trustLevel: "high",
+        trustScore: 94,
+        releaseDecision: "allow",
+        repairOutcome: "success",
+        validationPassed: true,
+        canProceed: true,
+        requiresHumanReview: false,
+        isBlocked: false,
+        artifactPaths: {}
+      },
+      {
+        runId: "2026-05-10-b-caution",
+        timestamp: "2026-05-10T10:00:00.000Z",
+        governanceStatus: "ready-with-caution",
+        trustLevel: "medium",
+        trustScore: 72,
+        releaseDecision: "allow-with-warnings",
+        repairOutcome: "success",
+        validationPassed: true,
+        canProceed: true,
+        requiresHumanReview: false,
+        isBlocked: false,
+        artifactPaths: {}
+      },
+      {
+        runId: "2026-05-10-c-review",
+        timestamp: "2026-05-10T11:00:00.000Z",
+        governanceStatus: "manual-review-required",
+        trustLevel: "low",
+        trustScore: 51,
+        releaseDecision: "require-human-review",
+        repairOutcome: "manual-review-required",
+        validationPassed: false,
+        canProceed: false,
+        requiresHumanReview: true,
+        isBlocked: false,
+        artifactPaths: {}
+      },
+      {
+        runId: "2026-05-10-d-blocked",
+        timestamp: "2026-05-10T12:00:00.000Z",
+        governanceStatus: "blocked",
+        trustLevel: "unsafe",
+        trustScore: 18,
+        releaseDecision: "block",
+        repairOutcome: "failed-worse",
+        validationPassed: false,
+        canProceed: false,
+        requiresHumanReview: false,
+        isBlocked: true,
+        artifactPaths: {}
+      }
+    ]
+  };
+}
+
+function runRunIndexDashboardUnit() {
+  const { buildRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexDashboard.js"));
+
+  try {
+    const result = buildRunIndexDashboard(sampleRunsIndexForDashboard());
+    if (result.totalRuns !== 4 || result.displayedRuns !== 4) {
+      throw new Error(`dashboard totals mismatch: ${JSON.stringify(result)}`);
+    }
+    if (
+      result.summary.ready !== 1 ||
+      result.summary.readyWithCaution !== 1 ||
+      result.summary.manualReviewRequired !== 1 ||
+      result.summary.blocked !== 1
+    ) {
+      throw new Error(`dashboard summary mismatch: ${JSON.stringify(result.summary)}`);
+    }
+    if (result.rows[0].runId !== "2026-05-10-d-blocked") {
+      throw new Error(`dashboard should sort newest first: ${JSON.stringify(result.rows.map((row) => row.runId))}`);
+    }
+
+    console.log("PASS run-index-dashboard-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-dashboard-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexDashboardFilterUnit() {
+  const { buildRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexDashboard.js"));
+
+  try {
+    const statusResult = buildRunIndexDashboard(sampleRunsIndexForDashboard(), { status: "blocked" });
+    const blockedResult = buildRunIndexDashboard(sampleRunsIndexForDashboard(), { blockedOnly: true });
+    const humanReviewResult = buildRunIndexDashboard(sampleRunsIndexForDashboard(), { humanReviewOnly: true });
+    if (statusResult.displayedRuns !== 1 || statusResult.rows[0].governanceStatus !== "blocked") {
+      throw new Error(`status filter mismatch: ${JSON.stringify(statusResult)}`);
+    }
+    if (blockedResult.displayedRuns !== 1 || blockedResult.rows[0].isBlocked !== true) {
+      throw new Error(`blocked filter mismatch: ${JSON.stringify(blockedResult)}`);
+    }
+    if (humanReviewResult.displayedRuns !== 1 || humanReviewResult.rows[0].requiresHumanReview !== true) {
+      throw new Error(`human-review filter mismatch: ${JSON.stringify(humanReviewResult)}`);
+    }
+
+    console.log("PASS run-index-dashboard-filter-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-dashboard-filter-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexDashboardLimitUnit() {
+  const { buildRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexDashboard.js"));
+
+  try {
+    const result = buildRunIndexDashboard(sampleRunsIndexForDashboard(), { limit: 2 });
+    if (result.displayedRuns !== 2 || result.rows[0].runId !== "2026-05-10-d-blocked" || result.rows[1].runId !== "2026-05-10-c-review") {
+      throw new Error(`limit filter mismatch: ${JSON.stringify(result.rows.map((row) => row.runId))}`);
+    }
+
+    console.log("PASS run-index-dashboard-limit-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-dashboard-limit-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexDashboardLatestUnit() {
+  const { buildRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexDashboard.js"));
+
+  try {
+    const result = buildRunIndexDashboard(sampleRunsIndexForDashboard(), { latestOnly: true });
+    if (result.displayedRuns !== 1 || result.rows[0].runId !== "2026-05-10-d-blocked") {
+      throw new Error(`latest filter mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS run-index-dashboard-latest-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-dashboard-latest-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexDashboardJsonUnit() {
+  const { buildRunIndexDashboard } = require(path.join(projectRoot, "dist", "repair", "runIndexDashboard.js"));
+
+  try {
+    const first = JSON.stringify(buildRunIndexDashboard(sampleRunsIndexForDashboard(), { status: "ready" }), null, 2);
+    const second = JSON.stringify(buildRunIndexDashboard(sampleRunsIndexForDashboard(), { status: "ready" }), null, 2);
+    if (first !== second || !first.includes('"displayedRuns": 1') || !first.includes('"governanceStatus": "ready"')) {
+      throw new Error(`dashboard JSON output should be deterministic: ${first}`);
+    }
+
+    console.log("PASS run-index-dashboard-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-dashboard-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexDashboardRenderUnit() {
+  const { buildRunIndexDashboard, renderRunIndexDashboardText } = require(path.join(projectRoot, "dist", "repair", "runIndexDashboard.js"));
+
+  try {
+    const text = renderRunIndexDashboardText(buildRunIndexDashboard(sampleRunsIndexForDashboard(), { limit: 2 }));
+    for (const needle of [
+      "AI Software Factory",
+      "Total indexed runs: 4",
+      "Displayed runs: 2",
+      "- ready-with-caution: 1",
+      "runId",
+      "2026-05-10-d-blocked",
+      "unsafe/18",
+      "failed"
+    ]) {
+      if (!text.includes(needle)) {
+        throw new Error(`dashboard text missing ${needle}: ${text}`);
+      }
+    }
+
+    console.log("PASS run-index-dashboard-render-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-dashboard-render-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexDashboardMissingIndexUnit() {
+  const { buildMissingRunIndexDashboard, renderRunIndexDashboardText } = require(path.join(projectRoot, "dist", "repair", "runIndexDashboard.js"));
+
+  try {
+    const result = buildMissingRunIndexDashboard();
+    const json = JSON.stringify(result, null, 2);
+    const text = renderRunIndexDashboardText(result);
+    if (result.displayedRuns !== 0 || result.warnings[0] !== "No runs index found") {
+      throw new Error(`missing index result mismatch: ${JSON.stringify(result)}`);
+    }
+    if (!json.includes('"warnings": [') || !text.includes("No runs index found.") || !text.includes(".factory/runs-index.json")) {
+      throw new Error(`missing index output mismatch: ${text}`);
+    }
+
+    console.log("PASS run-index-dashboard-missing-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-dashboard-missing-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRunIndexDashboardCliUnit() {
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "run-index-dashboard-cli");
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    fs.rmSync(repo, { recursive: true, force: true });
+    ensureDir(path.dirname(indexPath));
+    writeJson(indexPath, sampleRunsIndexForDashboard());
+
+    const textResult = spawnSync(process.execPath, [cliPath, "runs", "--repo", repo, "--limit", "2"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (textResult.status !== 0 || !textResult.stdout.includes("Displayed runs: 2") || !textResult.stdout.includes("2026-05-10-d-blocked")) {
+      throw new Error(`dashboard CLI text mismatch: status=${textResult.status} stdout=${textResult.stdout} stderr=${textResult.stderr}`);
+    }
+
+    const jsonResult = spawnSync(process.execPath, [cliPath, "runs", "--repo", repo, "--status", "blocked", "--json"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(jsonResult.stdout);
+    if (jsonResult.status !== 0 || parsed.displayedRuns !== 1 || parsed.rows[0].governanceStatus !== "blocked") {
+      throw new Error(`dashboard CLI JSON mismatch: status=${jsonResult.status} stdout=${jsonResult.stdout} stderr=${jsonResult.stderr}`);
+    }
+
+    const missingRepo = path.join(projectRoot, ".scenario-unit", "run-index-dashboard-missing");
+    fs.rmSync(missingRepo, { recursive: true, force: true });
+    ensureDir(missingRepo);
+    const missingResult = spawnSync(process.execPath, [cliPath, "runs", "--repo", missingRepo], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (missingResult.status !== 0 || !missingResult.stdout.includes("No runs index found.")) {
+      throw new Error(`dashboard CLI missing-index mismatch: status=${missingResult.status} stdout=${missingResult.stdout} stderr=${missingResult.stderr}`);
+    }
+
+    const invalidStatusResult = spawnSync(process.execPath, [cliPath, "runs", "--repo", repo, "--status", "unknown"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (invalidStatusResult.status === 0 || !invalidStatusResult.stderr.includes("Invalid status filter: unknown")) {
+      throw new Error(`dashboard CLI invalid status mismatch: status=${invalidStatusResult.status} stdout=${invalidStatusResult.stdout} stderr=${invalidStatusResult.stderr}`);
+    }
+
+    const invalidLimitResult = spawnSync(process.execPath, [cliPath, "runs", "--repo", repo, "--limit", "0"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (invalidLimitResult.status === 0 || !invalidLimitResult.stderr.includes("Invalid limit value: 0")) {
+      throw new Error(`dashboard CLI invalid limit mismatch: status=${invalidLimitResult.status} stdout=${invalidLimitResult.stdout} stderr=${invalidLimitResult.stderr}`);
+    }
+
+    console.log("PASS run-index-dashboard-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL run-index-dashboard-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -7115,6 +7404,30 @@ async function main() {
     failed += 1;
   }
   if (!runRunIndexReportUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexDashboardUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexDashboardFilterUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexDashboardLimitUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexDashboardLatestUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexDashboardJsonUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexDashboardRenderUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexDashboardMissingIndexUnit()) {
+    failed += 1;
+  }
+  if (!runRunIndexDashboardCliUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

@@ -6,6 +6,14 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { z } from "zod";
 import { runTask } from "./orchestrator/runTask.js";
+import { getRunsIndexPath, type RunsIndex } from "./repair/runIndex.js";
+import {
+  buildMissingRunIndexDashboard,
+  buildRunIndexDashboard,
+  renderRunIndexDashboardText,
+  RUN_INDEX_DASHBOARD_STATUSES,
+  type RunIndexDashboardOptions
+} from "./repair/runIndexDashboard.js";
 
 const runInputSchema = z.object({
   repo: z.string().min(1),
@@ -16,6 +24,30 @@ const runInputSchema = z.object({
 });
 
 const program = new Command();
+
+function parsePositiveInteger(value: unknown): number | null {
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function isValidRunsIndex(value: unknown): value is RunsIndex {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as { runs?: unknown }).runs)
+  );
+}
+
+function printDashboardResult(result: ReturnType<typeof buildRunIndexDashboard>, asJson: boolean): void {
+  if (asJson) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  console.log(renderRunIndexDashboardText(result));
+}
 
 program
   .name("factory")
@@ -69,6 +101,66 @@ program
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       console.error(chalk.red(`Error: ${message}`));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("runs")
+  .description("Show a read-only dashboard for historical repair runs")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--limit <n>", "Show the latest n runs")
+  .option("--status <status>", "Filter by governance status")
+  .option("--blocked", "Show only blocked runs")
+  .option("--human-review", "Show only runs requiring human review")
+  .option("--latest", "Show only the latest run")
+  .option("--json", "Print machine-readable JSON")
+  .action(async (options) => {
+    const asJson = !!options.json;
+    const dashboardOptions: RunIndexDashboardOptions = {
+      blockedOnly: !!options.blocked,
+      humanReviewOnly: !!options.humanReview,
+      latestOnly: !!options.latest,
+      json: asJson
+    };
+
+    if (options.limit !== undefined) {
+      const limit = parsePositiveInteger(options.limit);
+      if (limit === null) {
+        console.error(`Invalid limit value: ${options.limit}`);
+        console.error("Limit must be a positive integer.");
+        process.exitCode = 1;
+        return;
+      }
+      dashboardOptions.limit = limit;
+    }
+
+    if (options.status !== undefined) {
+      if (!RUN_INDEX_DASHBOARD_STATUSES.includes(options.status)) {
+        console.error(`Invalid status filter: ${options.status}`);
+        console.error(`Allowed statuses: ${RUN_INDEX_DASHBOARD_STATUSES.join(", ")}`);
+        process.exitCode = 1;
+        return;
+      }
+      dashboardOptions.status = options.status;
+    }
+
+    const repoPath = path.resolve(options.repo);
+    const indexPath = getRunsIndexPath(repoPath);
+    if (!(await fs.pathExists(indexPath))) {
+      printDashboardResult(buildMissingRunIndexDashboard(dashboardOptions), asJson);
+      return;
+    }
+
+    try {
+      const index = await fs.readJson(indexPath);
+      if (!isValidRunsIndex(index)) {
+        throw new Error("invalid index shape");
+      }
+      printDashboardResult(buildRunIndexDashboard(index, dashboardOptions), asJson);
+    } catch {
+      console.error("Could not read .factory/runs-index.json.");
+      console.error("Reason: malformed JSON or invalid index shape.");
       process.exitCode = 1;
     }
   });

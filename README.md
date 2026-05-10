@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.1 — Governance Snapshot & Run Index Layer**
+**v3.2 — Governance Dashboard CLI Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -46,6 +46,8 @@ v2.9 adds a deterministic Repair Release Gate. It converts completed-run trust, 
 v3.0 adds a deterministic Autonomous Repair Governance Layer. It summarizes the completed repair lifecycle into one final governance status without changing repair behavior, release gate decisions, trust scores, or any safety gate.
 
 v3.1 adds a deterministic Governance Snapshot & Run Index Layer. It maintains a compact `.factory/runs-index.json` history of completed runs without scanning every run directory or changing repair behavior.
+
+v3.2 adds a read-only Governance Dashboard CLI. It summarizes `.factory/runs-index.json` with stable text or JSON output and does not modify repair behavior, artifacts, or the run index.
 
 ---
 
@@ -983,6 +985,73 @@ v3.1 deterministic checks:
 * run-index-replace-existing-unit
 * run-index-artifact-unit
 * run-index-report-unit
+
+---
+
+## 📟 Governance Dashboard CLI Layer (v3.2)
+
+v3.2 adds a compact, deterministic CLI dashboard for completed repair runs. The command reads only `.factory/runs-index.json` and prints a stable operator-friendly view of historical governance status, trust, release, outcome, and validation results.
+
+Command examples:
+
+```bash
+node dist/cli.js runs
+node dist/cli.js runs --limit 10
+node dist/cli.js runs --status blocked
+node dist/cli.js runs --blocked
+node dist/cli.js runs --human-review
+node dist/cli.js runs --latest
+node dist/cli.js runs --json
+```
+
+Supported filters:
+
+* `--limit <n>` shows the latest `n` runs, defaulting to 20
+* `--status <status>` filters by `ready`, `ready-with-caution`, `manual-review-required`, or `blocked`
+* `--blocked` shows only blocked runs
+* `--human-review` shows only runs requiring human review
+* `--latest` shows only the newest indexed run
+* `--json` prints machine-readable JSON for future tooling
+
+Example output:
+
+```text
+# AI Software Factory — Run Governance Dashboard
+
+Total indexed runs: 12
+Displayed runs: 5
+
+Summary:
+- ready: 7
+- ready-with-caution: 3
+- manual-review-required: 1
+- blocked: 1
+
+Runs:
+runId                status                 trust        release              outcome      validation
+2026-05-10-abc123    ready                  high/94      allow                success      passed
+```
+
+Read-only guarantee:
+
+* reads `.factory/runs-index.json`
+* does not update `.factory/runs-index.json`
+* does not generate patches
+* does not retry repairs
+* does not mutate source files
+* does not change governance, release, trust, review, or repair outcomes
+* does not bypass any safety gate
+
+v3.2 deterministic checks:
+
+* run-index-dashboard-unit
+* run-index-dashboard-filter-unit
+* run-index-dashboard-limit-unit
+* run-index-dashboard-latest-unit
+* run-index-dashboard-json-unit
+* run-index-dashboard-render-unit
+* run-index-dashboard-missing-index-unit
+* run-index-dashboard-cli-unit
 
 ---
 
