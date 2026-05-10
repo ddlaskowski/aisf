@@ -8361,6 +8361,203 @@ function runGovernanceCiSummaryMissingIndexUnit() {
   }
 }
 
+function runCliHelpCommand(args, cwd = projectRoot) {
+  return spawnSync(process.execPath, [cliPath, ...args], {
+    cwd,
+    encoding: "utf8"
+  });
+}
+
+function assertHelpIncludes(output, needles) {
+  for (const needle of needles) {
+    if (!output.includes(needle)) {
+      throw new Error(`help output missing ${needle}: ${output}`);
+    }
+  }
+}
+
+function runCliHelpMainUnit() {
+  const { renderMainHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const direct = renderMainHelp();
+    const cliResult = runCliHelpCommand(["--help"]);
+    const helpCommand = runCliHelpCommand(["help"]);
+    if (cliResult.status !== 0 || helpCommand.status !== 0 || cliResult.stdout !== direct || helpCommand.stdout !== direct) {
+      throw new Error(`main help mismatch: direct=${direct} stdout=${cliResult.stdout} help=${helpCommand.stdout}`);
+    }
+    assertHelpIncludes(direct, [
+      "# AI Software Factory CLI",
+      "node dist/cli.js <command> [options]",
+      "runs        Show historical governance run dashboard",
+      "Governance commands are read-only and do not modify repair behavior."
+    ]);
+
+    console.log("PASS cli-help-main-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-help-main-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliHelpRunsUnit() {
+  const { renderRunsHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const direct = renderRunsHelp();
+    const cliResult = runCliHelpCommand(["runs", "--help"]);
+    const shortResult = runCliHelpCommand(["runs", "-h"]);
+    if (cliResult.status !== 0 || shortResult.status !== 0 || cliResult.stdout !== direct || shortResult.stdout !== direct) {
+      throw new Error(`runs help mismatch: stdout=${cliResult.stdout} short=${shortResult.stdout}`);
+    }
+    assertHelpIncludes(direct, [
+      "Usage:\n  node dist/cli.js runs [options]",
+      "--export [format]    Export dashboard: json, markdown, csv, all",
+      "ready-with-caution",
+      "Read-only guarantee:"
+    ]);
+
+    console.log("PASS cli-help-runs-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-help-runs-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliHelpInsightsUnit() {
+  const { renderInsightsHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const direct = renderInsightsHelp();
+    const cliResult = runCliHelpCommand(["insights", "--help"]);
+    if (cliResult.status !== 0 || cliResult.stdout !== direct) {
+      throw new Error(`insights help mismatch: stdout=${cliResult.stdout}`);
+    }
+    assertHelpIncludes(direct, [
+      "Usage:\n  node dist/cli.js insights [options]",
+      "--profile <name>   Use governance policy profile",
+      "conservative",
+      "experimental",
+      "Read-only guarantee:"
+    ]);
+
+    console.log("PASS cli-help-insights-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-help-insights-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliHelpCiSummaryUnit() {
+  const { renderCiSummaryHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const direct = renderCiSummaryHelp();
+    const cliResult = runCliHelpCommand(["ci-summary", "--help"]);
+    if (cliResult.status !== 0 || cliResult.stdout !== direct) {
+      throw new Error(`ci-summary help mismatch: stdout=${cliResult.stdout}`);
+    }
+    assertHelpIncludes(direct, [
+      "Usage:\n  node dist/cli.js ci-summary [options]",
+      "Exit codes:",
+      "fail  -> 1",
+      "Read-only guarantee:"
+    ]);
+
+    console.log("PASS cli-help-ci-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-help-ci-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliHelpUnknownCommandUnit() {
+  const { renderUnknownCommandError } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const result = runCliHelpCommand(["unknown"]);
+    const expected = renderUnknownCommandError("unknown");
+    if (result.status !== 1 || result.stderr !== expected) {
+      throw new Error(`unknown command mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS cli-help-unknown-command-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-help-unknown-command-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliHelpInvalidGovernanceFlagUnit(command, checkName) {
+  const { renderInvalidFlagError } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const result = runCliHelpCommand([command, "--bad"]);
+    const expected = renderInvalidFlagError(command, "--bad");
+    if (result.status !== 1 || result.stderr !== expected || !result.stderr.includes(`node dist/cli.js ${command} --help`)) {
+      throw new Error(`${command} invalid flag mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log(`PASS ${checkName}`);
+    return true;
+  } catch (error) {
+    console.log(`FAIL ${checkName}`);
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliHelpReadonlyGuaranteeUnit() {
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
+    fs.rmSync(repo, { recursive: true, force: true });
+    ensureDir(repo);
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"]];
+    for (const args of commands) {
+      const result = runCliHelpCommand(args);
+      const hasReadonly = /read.?only/i.test(result.stdout);
+      const hasRepairGuarantee = /modify repair behavior/i.test(result.stdout);
+      if (result.status !== 0 || !hasReadonly || !hasRepairGuarantee) {
+        throw new Error(`readonly help mismatch for ${args.join(" ")}: status=${result.status} stdout=${result.stdout}`);
+      }
+    }
+    if (fs.existsSync(path.join(repo, ".factory"))) {
+      throw new Error("help commands must not create .factory artifacts");
+    }
+
+    console.log("PASS cli-help-readonly-guarantee-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-help-readonly-guarantee-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliHelpExistingBehaviorUnit() {
+  try {
+    const runHelp = runCliHelpCommand(["run", "--help"]);
+    if (runHelp.status !== 0 || !runHelp.stdout.includes("--repo <path>") || !runHelp.stdout.includes("--task <task>")) {
+      throw new Error(`run command help changed unexpectedly: status=${runHelp.status} stdout=${runHelp.stdout} stderr=${runHelp.stderr}`);
+    }
+
+    const missingRequired = runCliHelpCommand(["run"]);
+    if (missingRequired.status === 0 || !missingRequired.stderr.includes("required option")) {
+      throw new Error(`run command required-option behavior changed: status=${missingRequired.status} stdout=${missingRequired.stdout} stderr=${missingRequired.stderr}`);
+    }
+
+    console.log("PASS cli-help-existing-behavior-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-help-existing-behavior-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -8819,7 +9016,36 @@ async function main() {
   if (!runGovernanceCiSummaryMissingIndexUnit()) {
     failed += 1;
   }
-  if (!(await runGuardedLegacyAppendUnit())) {
+  if (!runCliHelpMainUnit()) {
+    failed += 1;
+  }
+  if (!runCliHelpRunsUnit()) {
+    failed += 1;
+  }
+  if (!runCliHelpInsightsUnit()) {
+    failed += 1;
+  }
+  if (!runCliHelpCiSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runCliHelpUnknownCommandUnit()) {
+    failed += 1;
+  }
+  if (!runCliHelpInvalidGovernanceFlagUnit("runs", "cli-help-invalid-runs-flag-unit")) {
+    failed += 1;
+  }
+  if (!runCliHelpInvalidGovernanceFlagUnit("insights", "cli-help-invalid-insights-flag-unit")) {
+    failed += 1;
+  }
+  if (!runCliHelpInvalidGovernanceFlagUnit("ci-summary", "cli-help-invalid-ci-summary-flag-unit")) {
+    failed += 1;
+  }
+  if (!runCliHelpReadonlyGuaranteeUnit()) {
+    failed += 1;
+  }
+  if (!runCliHelpExistingBehaviorUnit()) {
+    failed += 1;
+  }  if (!(await runGuardedLegacyAppendUnit())) {
     failed += 1;
   }
 

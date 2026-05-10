@@ -30,6 +30,14 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
+import {
+  renderCiSummaryHelp,
+  renderInsightsHelp,
+  renderInvalidFlagError,
+  renderMainHelp,
+  renderRunsHelp,
+  renderUnknownCommandError
+} from "./cliHelp.js";
 
 const runInputSchema = z.object({
   repo: z.string().min(1),
@@ -137,6 +145,82 @@ function parseGovernancePolicyProfileOption(value: unknown): GovernancePolicyPro
   return typeof value === "string" && isGovernancePolicyProfileName(value) ? value : null;
 }
 
+
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary"] as const;
+const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
+const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
+  runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--help", "-h"]),
+  insights: new Set(["--repo", "--profile", "--profiles", "--json", "--export", "--help", "-h"]),
+  "ci-summary": new Set(["--repo", "--profile", "--json", "--export", "--help", "-h"])
+};
+
+function printAndExit(message: string, exitCode: number): void {
+  const writer = exitCode === 0 ? console.log : console.error;
+  writer(message.trimEnd());
+  process.exit(exitCode);
+}
+
+function renderCommandHelp(command: string): string | null {
+  if (command === "runs") {
+    return renderRunsHelp();
+  }
+  if (command === "insights") {
+    return renderInsightsHelp();
+  }
+  if (command === "ci-summary") {
+    return renderCiSummaryHelp();
+  }
+  return null;
+}
+
+function findInvalidGovernanceFlag(command: string, args: string[]): string | null {
+  const allowed = GOVERNANCE_COMMAND_FLAGS[command];
+  if (!allowed) {
+    return null;
+  }
+  for (const arg of args) {
+    if (!arg.startsWith("-")) {
+      continue;
+    }
+    const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+    if (!allowed.has(flag)) {
+      return flag;
+    }
+  }
+  return null;
+}
+
+function handleCliHelpAndGovernanceUx(argv: string[]): void {
+  const args = argv.slice(2);
+  const command = args[0];
+
+  if (args.length === 0 || command === "--help" || command === "-h" || command === "help") {
+    printAndExit(renderMainHelp(), 0);
+  }
+
+  if (command === undefined) {
+    return;
+  }
+
+  const commandHelp = renderCommandHelp(command);
+  if (commandHelp !== null && (args.includes("--help") || args.includes("-h"))) {
+    printAndExit(commandHelp, 0);
+  }
+
+  if (!command.startsWith("-") && !KNOWN_COMMANDS.has(command)) {
+    printAndExit(renderUnknownCommandError(command), 1);
+  }
+
+  if (commandHelp !== null) {
+    const invalidFlag = findInvalidGovernanceFlag(command, args.slice(1));
+    if (invalidFlag !== null) {
+      printAndExit(renderInvalidFlagError(command, invalidFlag), 1);
+    }
+  }
+}
+
+handleCliHelpAndGovernanceUx(process.argv);
+
 program
   .name("factory")
   .description("software-factory CLI v0.1")
@@ -218,6 +302,7 @@ program
       if (limit === null) {
         console.error(`Invalid limit value: ${options.limit}`);
         console.error("Limit must be a positive integer.");
+        console.error("Run:\n  node dist/cli.js runs --help\n\nfor usage.");
         process.exitCode = 1;
         return;
       }
@@ -228,6 +313,7 @@ program
       if (!RUN_INDEX_DASHBOARD_STATUSES.includes(options.status)) {
         console.error(`Invalid status filter: ${options.status}`);
         console.error(`Allowed statuses: ${RUN_INDEX_DASHBOARD_STATUSES.join(", ")}`);
+        console.error("Run:\n  node dist/cli.js runs --help\n\nfor usage.");
         process.exitCode = 1;
         return;
       }
@@ -240,6 +326,7 @@ program
       if (exportFormat === null) {
         console.error(`Invalid export format: ${options.export}`);
         console.error("Allowed formats: json, markdown, csv, all");
+        console.error("Run:\n  node dist/cli.js runs --help\n\nfor usage.");
         process.exitCode = 1;
         return;
       }
@@ -297,6 +384,7 @@ program
       if (!isGovernancePolicyProfileName(options.profile)) {
         console.error(`Invalid governance policy profile: ${options.profile}`);
         console.error("Allowed profiles: conservative, balanced, experimental");
+        console.error("Run:\n  node dist/cli.js insights --help\n\nfor usage.");
         process.exitCode = 1;
         return;
       }
@@ -330,6 +418,7 @@ program
     if (profile === null) {
       console.error(`Invalid governance policy profile: ${options.profile}`);
       console.error("Allowed profiles: conservative, balanced, experimental");
+      console.error("Run:\n  node dist/cli.js ci-summary --help\n\nfor usage.");
       process.exitCode = 1;
       return;
     }

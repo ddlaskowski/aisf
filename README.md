@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.6 — Governance CI Summary Layer**
+**v3.7 - Governance CLI Help & UX Hardening Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -56,6 +56,8 @@ v3.4 adds deterministic governance insights over run history. It reads `.factory
 v3.5 adds deterministic governance policy profiles for interpreting insights with different strictness levels. Profiles change only the thresholds used by the insights layer; they do not change repair behavior, governance statuses, release decisions, trust scores, or `.factory/runs-index.json`.
 
 v3.6 adds a deterministic CI-friendly governance summary. It converts profile-aware insights into `pass`, `warn`, or `fail`, supports CI exit codes, and can export JSON/Markdown summaries without changing repair behavior or `.factory/runs-index.json`.
+
+v3.7 hardens governance CLI help and operator UX. It adds stable help text, deterministic invalid command and invalid flag errors, CI exit-code documentation, and read-only guarantees without changing repair behavior.
 
 ---
 
@@ -1312,6 +1314,83 @@ v3.6 deterministic checks:
 * governance-ci-summary-cli-unit
 * governance-ci-summary-exit-code-unit
 * governance-ci-summary-missing-index-unit
+
+---
+
+## Governance CLI Help & UX Hardening Layer (v3.7)
+
+v3.7 makes the governance CLI self-documenting and deterministic for operators.
+
+Help commands:
+
+```bash
+node dist/cli.js --help
+node dist/cli.js help
+node dist/cli.js runs --help
+node dist/cli.js insights --help
+node dist/cli.js ci-summary --help
+```
+
+Governance command help now documents:
+
+* usage
+* supported flags
+* examples
+* read-only guarantees
+* governance statuses
+* policy profiles
+* CI summary exit codes
+
+Invalid command behavior:
+
+```text
+Unknown command: unknown
+
+Run:
+  node dist/cli.js --help
+
+for available commands.
+```
+
+Invalid governance flag behavior:
+
+```text
+Invalid option for runs: --bad
+
+Run:
+  node dist/cli.js runs --help
+
+for usage.
+```
+
+CI exit codes remain deterministic:
+
+| CI status | Exit code |
+|---|---:|
+| pass | 0 |
+| warn | 0 |
+| fail | 1 |
+
+Read-only UX guarantee:
+
+* help commands do not create `.factory` artifacts
+* governance help does not update `.factory/runs-index.json`
+* invalid governance flags fail before dashboard, insights, or CI summary execution
+* existing `run` command behavior is preserved
+* no repair behavior, validation behavior, patch policy, or Safe Patch Engine behavior changes
+
+v3.7 deterministic checks:
+
+* cli-help-main-unit
+* cli-help-runs-unit
+* cli-help-insights-unit
+* cli-help-ci-summary-unit
+* cli-help-unknown-command-unit
+* cli-help-invalid-runs-flag-unit
+* cli-help-invalid-insights-flag-unit
+* cli-help-invalid-ci-summary-flag-unit
+* cli-help-readonly-guarantee-unit
+* cli-help-existing-behavior-unit
 
 ---
 
