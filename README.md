@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v2.6 — Repair Review & Recommendation Layer**
+**v2.7 — Repair Review Analytics Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -36,6 +36,8 @@ v2.4 adds a deterministic Repair Regression Guard Layer. It asks whether a repai
 v2.5 adds deterministic repair observability and decision trace artifacts. It does not change repair behavior; it records what happened, which layer decided it, and why.
 
 v2.6 adds a deterministic repair review and recommendation layer. It evaluates the completed repair lifecycle for quality, safety, completeness, warnings, and human-review recommendations without changing repair behavior.
+
+v2.7 adds deterministic repair review analytics. It aggregates historical review verdicts, scores, warnings, recommendations, and trends without changing repair behavior or review verdicts.
 
 ---
 
@@ -679,6 +681,70 @@ v2.6 deterministic checks:
 * repair-review-verdict-unit
 * repair-review-report-unit
 * repair-review-artifact-unit
+
+---
+
+## 📈 Repair Review Analytics Layer (v2.7)
+
+v2.7 aggregates completed repair reviews over time. It answers long-term quality questions without influencing patching, retrying, review verdicts, or any safety gate:
+
+* which review verdicts are most common?
+* are quality, safety, or completeness scores trending down?
+* which warnings and recommendations recur?
+* which strategies often lead to human review or rejection?
+* are recent review outcomes degrading?
+
+Analytics are stored locally:
+
+```text
+.factory/analytics/repair-review-analytics.json
+```
+
+Each run also writes a snapshot:
+
+```text
+.factory/runs/<runId>/repair-review-analytics-snapshot.json
+```
+
+Tracked aggregates:
+
+* total repair reviews
+* verdict distribution
+* average quality, safety, and completeness scores
+* warning counts
+* recommendation counts
+* blocking concern counts
+* verdicts by repair outcome
+* verdicts by repair strategy
+* recent 10-review trend window
+
+Deterministic analytics warnings include:
+
+* high human-review rate
+* high rejected-review rate
+* low average safety score
+* degrading recent safety score trend
+* recurring review warnings
+
+Safety guarantees:
+
+* analytics-only behavior
+* no patch generation
+* no retry behavior changes
+* no review verdict changes
+* no repair outcome changes
+* no safety gate bypasses
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+
+v2.7 deterministic checks:
+
+* repair-review-analytics-unit
+* repair-review-analytics-update-unit
+* repair-review-analytics-warning-unit
+* repair-review-analytics-trend-unit
+* repair-review-analytics-report-unit
+* repair-review-analytics-artifact-unit
 
 ---
 

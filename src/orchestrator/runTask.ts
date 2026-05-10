@@ -80,6 +80,7 @@ import { buildRepairObservabilityReport } from "../repair/repairObservability.js
 import { buildRepairDecisionTrace, renderRepairDecisionTraceMarkdown } from "../repair/repairDecisionTrace.js";
 import { buildRepairSummary } from "../repair/repairSummary.js";
 import { buildRepairReview, renderRepairReviewMarkdown } from "../repair/buildRepairReview.js";
+import { updateRepairReviewAnalytics } from "../repair/repairReviewAnalytics.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -2165,6 +2166,15 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
   });
   await saveStateFile(state.runDir, "repair-review.json", repairReview);
   await fs.writeFile(path.join(state.runDir, "repair-review.md"), renderRepairReviewMarkdown(repairReview), "utf8");
+  const repairReviewAnalytics = updateRepairReviewAnalytics({
+    projectRoot: repoPath,
+    repairReview,
+    outcome: repairOutcome?.outcome,
+    strategy: repairStrategy?.strategy,
+    regressionRisk: repairRegressionRisk?.riskLevel,
+    patchPolicyMode: repairPatchPolicy?.mode
+  });
+  await saveStateFile(state.runDir, "repair-review-analytics-snapshot.json", repairReviewAnalytics);
 
   const finalReport = [
     `# Final Report`,
@@ -2203,6 +2213,24 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     "## Review artifacts",
     "- repair-review.md",
     "- repair-review.json",
+    "",
+    "## Repair Review Analytics",
+    `Total reviews: ${repairReviewAnalytics.totalReviews}`,
+    "Verdict distribution:",
+    `- approved: ${repairReviewAnalytics.verdictCounts.approved}`,
+    `- approved-with-warnings: ${repairReviewAnalytics.verdictCounts["approved-with-warnings"]}`,
+    `- needs-human-review: ${repairReviewAnalytics.verdictCounts["needs-human-review"]}`,
+    `- rejected: ${repairReviewAnalytics.verdictCounts.rejected}`,
+    "",
+    "Average scores:",
+    `- Quality: ${repairReviewAnalytics.averageScores.qualityScore}`,
+    `- Safety: ${repairReviewAnalytics.averageScores.safetyScore}`,
+    `- Completeness: ${repairReviewAnalytics.averageScores.completenessScore}`,
+    "",
+    "Analytics warnings:",
+    repairReviewAnalytics.warnings.length
+      ? repairReviewAnalytics.warnings.map((warning) => `- ${warning}`).join("\n")
+      : "- None",
     "",
     "## Repair strategy",
     `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,

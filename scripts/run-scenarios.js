@@ -5638,6 +5638,264 @@ function runRepairReviewArtifactUnit() {
   }
 }
 
+function sampleRepairReview(overrides = {}) {
+  return {
+    verdict: "approved",
+    qualityScore: 90,
+    safetyScore: 95,
+    completenessScore: 92,
+    findings: ["Validation passed."],
+    recommendations: ["Repair path is suitable to accept with the existing safety gates."],
+    blockingConcerns: [],
+    warnings: [],
+    ...overrides
+  };
+}
+
+function runRepairReviewAnalyticsUnit() {
+  const { loadRepairReviewAnalytics } = require(path.join(projectRoot, "dist", "repair", "repairReviewAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-review-analytics-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    const analytics = loadRepairReviewAnalytics(repo);
+    if (analytics.version !== 1 || analytics.totalReviews !== 0) {
+      throw new Error(`analytics should initialize empty, got ${JSON.stringify(analytics)}`);
+    }
+    for (const verdict of ["approved", "approved-with-warnings", "needs-human-review", "rejected"]) {
+      if (analytics.verdictCounts[verdict] !== 0) {
+        throw new Error(`verdict ${verdict} should initialize to zero: ${JSON.stringify(analytics.verdictCounts)}`);
+      }
+    }
+    if (analytics.trends.recentReviewCount !== 0 || analytics.warnings.length !== 0) {
+      throw new Error(`empty analytics trend/warnings mismatch: ${JSON.stringify(analytics)}`);
+    }
+
+    console.log("PASS repair-review-analytics-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-analytics-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewAnalyticsUpdateUnit() {
+  const { updateRepairReviewAnalytics, loadRepairReviewAnalytics } = require(path.join(projectRoot, "dist", "repair", "repairReviewAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-review-analytics-update-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    updateRepairReviewAnalytics({
+      projectRoot: repo,
+      repairReview: sampleRepairReview({ qualityScore: 80, safetyScore: 90, completenessScore: 100 }),
+      outcome: "success",
+      strategy: "undefined-symbol"
+    });
+    updateRepairReviewAnalytics({
+      projectRoot: repo,
+      repairReview: sampleRepairReview({
+        verdict: "approved-with-warnings",
+        qualityScore: 60,
+        safetyScore: 70,
+        completenessScore: 80,
+        warnings: ["Conservative patch policy was required."],
+        recommendations: ["Add regression scenario."]
+      }),
+      outcome: "validation-improved",
+      strategy: "undefined-symbol"
+    });
+    const analytics = loadRepairReviewAnalytics(repo);
+    if (analytics.totalReviews !== 2 || analytics.verdictCounts.approved !== 1 || analytics.verdictCounts["approved-with-warnings"] !== 1) {
+      throw new Error(`verdict counts mismatch: ${JSON.stringify(analytics)}`);
+    }
+    if (
+      analytics.averageScores.qualityScore !== 70 ||
+      analytics.averageScores.safetyScore !== 80 ||
+      analytics.averageScores.completenessScore !== 90
+    ) {
+      throw new Error(`average scores mismatch: ${JSON.stringify(analytics.averageScores)}`);
+    }
+    if (analytics.warningCounts["Conservative patch policy was required."] !== 1 || analytics.recommendationCounts["Add regression scenario."] !== 1) {
+      throw new Error(`warning/recommendation counts mismatch: ${JSON.stringify(analytics)}`);
+    }
+    if (analytics.outcomeVerdictCounts.success.approved !== 1 || analytics.strategyVerdictCounts["undefined-symbol"]["approved-with-warnings"] !== 1) {
+      throw new Error(`outcome/strategy verdict counts mismatch: ${JSON.stringify(analytics)}`);
+    }
+
+    console.log("PASS repair-review-analytics-update-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-analytics-update-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewAnalyticsWarningUnit() {
+  const { updateRepairReviewAnalytics, loadRepairReviewAnalytics } = require(path.join(projectRoot, "dist", "repair", "repairReviewAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-review-analytics-warning-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    for (let i = 0; i < 3; i += 1) {
+      updateRepairReviewAnalytics({
+        projectRoot: repo,
+        repairReview: sampleRepairReview({
+          verdict: "needs-human-review",
+          qualityScore: 50,
+          safetyScore: 60,
+          completenessScore: 70,
+          warnings: ["Repeated weak evidence."]
+        }),
+        outcome: "manual-review-required",
+        strategy: "runtime-targeted-fix"
+      });
+    }
+    const analytics = loadRepairReviewAnalytics(repo);
+    for (const needle of [
+      "High human-review rate detected",
+      "Average safety score is below recommended threshold",
+      "Recurring repair review warning detected: Repeated weak evidence."
+    ]) {
+      if (!analytics.warnings.includes(needle)) {
+        throw new Error(`analytics warning missing ${needle}: ${JSON.stringify(analytics.warnings)}`);
+      }
+    }
+
+    console.log("PASS repair-review-analytics-warning-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-analytics-warning-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewAnalyticsTrendUnit() {
+  const { updateRepairReviewAnalytics, loadRepairReviewAnalytics } = require(path.join(projectRoot, "dist", "repair", "repairReviewAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-review-analytics-trend-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    for (let i = 0; i < 5; i += 1) {
+      updateRepairReviewAnalytics({
+        projectRoot: repo,
+        repairReview: sampleRepairReview({ safetyScore: 100 }),
+        outcome: "success",
+        strategy: "safe"
+      });
+    }
+    for (let i = 0; i < 10; i += 1) {
+      updateRepairReviewAnalytics({
+        projectRoot: repo,
+        repairReview: sampleRepairReview({
+          verdict: i % 2 === 0 ? "needs-human-review" : "approved-with-warnings",
+          qualityScore: 50,
+          safetyScore: 50,
+          completenessScore: 50,
+          warnings: ["Recent safety dip."]
+        }),
+        outcome: "manual-review-required",
+        strategy: "risky"
+      });
+    }
+    const analytics = loadRepairReviewAnalytics(repo);
+    if (analytics.totalReviews !== 15 || analytics.recentReviews.length !== 10 || analytics.trends.recentReviewCount !== 10) {
+      throw new Error(`recent window mismatch: ${JSON.stringify(analytics.trends)} recent=${analytics.recentReviews.length}`);
+    }
+    if (analytics.trends.recentAverageSafetyScore !== 50 || !analytics.warnings.includes("Recent safety score trend is degrading")) {
+      throw new Error(`recent degrading trend missing: ${JSON.stringify(analytics)}`);
+    }
+
+    console.log("PASS repair-review-analytics-trend-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-analytics-trend-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewAnalyticsReportUnit() {
+  try {
+    const analytics = {
+      totalReviews: 12,
+      verdictCounts: {
+        approved: 7,
+        "approved-with-warnings": 3,
+        "needs-human-review": 1,
+        rejected: 1
+      },
+      averageScores: {
+        qualityScore: 84,
+        safetyScore: 89,
+        completenessScore: 87
+      },
+      warnings: ["Recurring repair review warning detected: Conservative patch policy was required"]
+    };
+    const report = [
+      "## Repair Review Analytics",
+      `Total reviews: ${analytics.totalReviews}`,
+      "Verdict distribution:",
+      `- approved: ${analytics.verdictCounts.approved}`,
+      `- approved-with-warnings: ${analytics.verdictCounts["approved-with-warnings"]}`,
+      `- needs-human-review: ${analytics.verdictCounts["needs-human-review"]}`,
+      `- rejected: ${analytics.verdictCounts.rejected}`,
+      "Average scores:",
+      `- Quality: ${analytics.averageScores.qualityScore}`,
+      `- Safety: ${analytics.averageScores.safetyScore}`,
+      `- Completeness: ${analytics.averageScores.completenessScore}`,
+      "Analytics warnings:",
+      ...analytics.warnings.map((warning) => `- ${warning}`)
+    ].join("\n");
+    for (const needle of ["Repair Review Analytics", "Total reviews:", "Verdict distribution:", "Average scores:", "Analytics warnings:"]) {
+      if (!report.includes(needle)) {
+        throw new Error(`repair review analytics report missing ${needle}: ${report}`);
+      }
+    }
+
+    console.log("PASS repair-review-analytics-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-analytics-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairReviewAnalyticsArtifactUnit() {
+  const { updateRepairReviewAnalytics, getRepairReviewAnalyticsPath } = require(path.join(projectRoot, "dist", "repair", "repairReviewAnalytics.js"));
+
+  try {
+    const repo = path.join(projectRoot, ".scenario-unit", "repair-review-analytics-artifact-unit");
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    const analytics = updateRepairReviewAnalytics({
+      projectRoot: repo,
+      repairReview: sampleRepairReview(),
+      outcome: "success",
+      strategy: "undefined-symbol"
+    });
+    const analyticsPath = getRepairReviewAnalyticsPath(repo);
+    const fromDisk = JSON.parse(fs.readFileSync(analyticsPath, "utf8"));
+    if (!fs.existsSync(analyticsPath) || fromDisk.totalReviews !== 1 || analytics.totalReviews !== 1) {
+      throw new Error(`analytics artifact mismatch: path=${analyticsPath} disk=${JSON.stringify(fromDisk)}`);
+    }
+
+    console.log("PASS repair-review-analytics-artifact-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-review-analytics-artifact-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -5872,6 +6130,24 @@ async function main() {
     failed += 1;
   }
   if (!runRepairReviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewAnalyticsUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewAnalyticsUpdateUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewAnalyticsWarningUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewAnalyticsTrendUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewAnalyticsReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairReviewAnalyticsArtifactUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {
