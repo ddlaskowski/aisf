@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.3 — Governance Export Layer**
+**v3.4 — Governance Insights Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -50,6 +50,8 @@ v3.1 adds a deterministic Governance Snapshot & Run Index Layer. It maintains a 
 v3.2 adds a read-only Governance Dashboard CLI. It summarizes `.factory/runs-index.json` with stable text or JSON output and does not modify repair behavior, artifacts, or the run index.
 
 v3.3 adds deterministic dashboard exports for JSON, Markdown, and CSV. It reads `.factory/runs-index.json`, respects the same dashboard filters, and writes only under `.factory/exports` without modifying repair behavior or the run index.
+
+v3.4 adds deterministic governance insights over run history. It reads `.factory/runs-index.json`, computes operational health summaries, rates, trust trends, and fixed insight codes, and can export insights under `.factory/exports`.
 
 ---
 
@@ -1116,6 +1118,62 @@ v3.3 deterministic checks:
 * run-index-export-filter-unit
 * run-index-export-missing-index-unit
 * run-index-export-cli-unit
+
+---
+
+## 🔎 Governance Insights Layer (v3.4)
+
+v3.4 analyzes `.factory/runs-index.json` and produces deterministic operational insights about repair governance history. It answers whether recent repair runs look healthy, how often runs are ready or blocked, how often human review is required, whether validation success is low, and whether recent trust scores are degrading.
+
+Commands:
+
+```bash
+node dist/cli.js insights
+node dist/cli.js insights --json
+node dist/cli.js insights --export
+node dist/cli.js insights --json --export
+```
+
+Generated export files:
+
+```text
+.factory/exports/governance-insights.json
+.factory/exports/governance-insights.md
+```
+
+Deterministic insight rules include:
+
+* `NO_RUNS` when no indexed repair runs are available
+* `HIGH_BLOCKED_RATE` when blocked rate is above 25%
+* `HIGH_HUMAN_REVIEW_RATE` when human review rate is above 30%
+* `LOW_VALIDATION_SUCCESS_RATE` when validation success is below 80% with at least 3 known validations
+* `LOW_AVERAGE_TRUST` when average trust score is below 65
+* `TRUST_TREND_DEGRADING` when recent trust is 15+ points below overall trust
+* `HEALTHY_GOVERNANCE_RATE` when ready rate is at least 80% and blocked rate is at most 10%
+
+Insights-only guarantee:
+
+* reads `.factory/runs-index.json`
+* optionally writes only `.factory/exports/governance-insights.json`
+* optionally writes only `.factory/exports/governance-insights.md`
+* does not update `.factory/runs-index.json`
+* does not generate patches
+* does not retry repairs
+* does not mutate source files
+* does not change governance, release, trust, review, or repair outcomes
+* does not bypass any safety gate
+
+v3.4 deterministic checks:
+
+* governance-insights-unit
+* governance-insights-rates-unit
+* governance-insights-most-common-unit
+* governance-insights-trend-unit
+* governance-insights-rules-unit
+* governance-insights-render-unit
+* governance-insights-export-unit
+* governance-insights-cli-unit
+* governance-insights-missing-index-unit
 
 ---
 

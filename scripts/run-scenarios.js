@@ -7337,6 +7337,424 @@ function runRunIndexExportCliUnit() {
   }
 }
 
+function sampleRunsIndexForInsights(overrides = {}) {
+  return {
+    version: 1,
+    updatedAt: "2026-05-10T12:00:00.000Z",
+    totalRuns: 5,
+    runs: [
+      {
+        runId: "insight-1",
+        timestamp: "2026-05-10T08:00:00.000Z",
+        governanceStatus: "ready",
+        trustLevel: "high",
+        trustScore: 95,
+        releaseDecision: "allow",
+        releaseScore: 98,
+        repairOutcome: "success",
+        validationPassed: true,
+        canProceed: true,
+        requiresHumanReview: false,
+        isBlocked: false,
+        artifactPaths: {}
+      },
+      {
+        runId: "insight-2",
+        timestamp: "2026-05-10T09:00:00.000Z",
+        governanceStatus: "ready",
+        trustLevel: "high",
+        trustScore: 85,
+        releaseDecision: "allow",
+        releaseScore: 90,
+        repairOutcome: "success",
+        validationPassed: true,
+        canProceed: true,
+        requiresHumanReview: false,
+        isBlocked: false,
+        artifactPaths: {}
+      },
+      {
+        runId: "insight-3",
+        timestamp: "2026-05-10T10:00:00.000Z",
+        governanceStatus: "ready-with-caution",
+        trustLevel: "medium",
+        trustScore: 75,
+        releaseDecision: "allow-with-warnings",
+        releaseScore: 80,
+        repairOutcome: "success",
+        validationPassed: true,
+        canProceed: true,
+        requiresHumanReview: false,
+        isBlocked: false,
+        artifactPaths: {}
+      },
+      {
+        runId: "insight-4",
+        timestamp: "2026-05-10T11:00:00.000Z",
+        governanceStatus: "manual-review-required",
+        trustLevel: "low",
+        releaseDecision: "require-human-review",
+        releaseScore: 50,
+        repairOutcome: "manual-review-required",
+        validationPassed: false,
+        canProceed: false,
+        requiresHumanReview: true,
+        isBlocked: false,
+        artifactPaths: {}
+      },
+      {
+        runId: "insight-5",
+        timestamp: "2026-05-10T12:00:00.000Z",
+        governanceStatus: "blocked",
+        trustLevel: "unsafe",
+        trustScore: 25,
+        releaseDecision: "block",
+        releaseScore: 10,
+        repairOutcome: "failed-worse",
+        validationPassed: false,
+        canProceed: false,
+        requiresHumanReview: false,
+        isBlocked: true,
+        artifactPaths: {}
+      }
+    ],
+    ...overrides
+  };
+}
+
+function createInsightsTestRepo(name, index = sampleRunsIndexForInsights()) {
+  const repo = path.join(projectRoot, ".scenario-unit", name);
+  fs.rmSync(repo, { recursive: true, force: true });
+  ensureDir(repo);
+  if (index) {
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    ensureDir(path.dirname(indexPath));
+    writeJson(indexPath, index);
+  }
+  return repo;
+}
+
+function runGovernanceInsightsUnit() {
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const insights = buildGovernanceInsights(sampleRunsIndexForInsights());
+    if (
+      insights.totalRuns !== 5 ||
+      insights.summary.ready !== 2 ||
+      insights.summary.readyWithCaution !== 1 ||
+      insights.summary.manualReviewRequired !== 1 ||
+      insights.summary.blocked !== 1 ||
+      insights.summary.validationPassed !== 3 ||
+      insights.summary.validationFailed !== 2
+    ) {
+      throw new Error(`summary counts mismatch: ${JSON.stringify(insights.summary)}`);
+    }
+    if (insights.generatedAt !== "2026-05-10T12:00:00.000Z") {
+      throw new Error(`generatedAt should use index timestamp: ${insights.generatedAt}`);
+    }
+
+    console.log("PASS governance-insights-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsRatesUnit() {
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const insights = buildGovernanceInsights(sampleRunsIndexForInsights());
+    if (
+      insights.rates.readyRate !== 40 ||
+      insights.rates.cautionRate !== 20 ||
+      insights.rates.humanReviewRate !== 20 ||
+      insights.rates.blockedRate !== 20 ||
+      insights.rates.validationSuccessRate !== 60
+    ) {
+      throw new Error(`rate mismatch: ${JSON.stringify(insights.rates)}`);
+    }
+    if (insights.trust.averageTrustScore !== 70 || insights.trust.minTrustScore !== 25 || insights.trust.maxTrustScore !== 95) {
+      throw new Error(`trust aggregate mismatch: ${JSON.stringify(insights.trust)}`);
+    }
+
+    console.log("PASS governance-insights-rates-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-rates-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsMostCommonUnit() {
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const index = sampleRunsIndexForInsights({
+      totalRuns: 4,
+      runs: [
+        { runId: "a", timestamp: "2026-05-10T08:00:00.000Z", governanceStatus: "ready", repairOutcome: "zeta", releaseDecision: "allow", trustLevel: "medium", artifactPaths: {} },
+        { runId: "b", timestamp: "2026-05-10T09:00:00.000Z", governanceStatus: "blocked", repairOutcome: "alpha", releaseDecision: "block", trustLevel: "high", artifactPaths: {} },
+        { runId: "c", timestamp: "2026-05-10T10:00:00.000Z", governanceStatus: "ready", repairOutcome: "zeta", releaseDecision: "allow", trustLevel: "medium", artifactPaths: {} },
+        { runId: "d", timestamp: "2026-05-10T11:00:00.000Z", governanceStatus: "blocked", repairOutcome: "alpha", releaseDecision: "block", trustLevel: "high", artifactPaths: {} }
+      ]
+    });
+    const insights = buildGovernanceInsights(index);
+    if (
+      insights.mostCommon.governanceStatus !== "blocked" ||
+      insights.mostCommon.repairOutcome !== "alpha" ||
+      insights.mostCommon.releaseDecision !== "allow" ||
+      insights.mostCommon.trustLevel !== "high"
+    ) {
+      throw new Error(`most common tie-breaking mismatch: ${JSON.stringify(insights.mostCommon)}`);
+    }
+
+    console.log("PASS governance-insights-most-common-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-most-common-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsTrendUnit() {
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const runs = [];
+    for (let i = 1; i <= 20; i += 1) {
+      runs.push({
+        runId: `trend-${String(i).padStart(2, "0")}`,
+        timestamp: `2026-05-${String(i).padStart(2, "0")}T00:00:00.000Z`,
+        governanceStatus: i > 18 ? "blocked" : "ready",
+        trustLevel: i <= 10 ? "high" : "low",
+        trustScore: i <= 10 ? 100 : 40,
+        releaseDecision: i > 18 ? "block" : "allow",
+        repairOutcome: i > 18 ? "failed-worse" : "success",
+        validationPassed: i <= 18,
+        requiresHumanReview: false,
+        isBlocked: i > 18,
+        artifactPaths: {}
+      });
+    }
+    const insights = buildGovernanceInsights({ version: 1, updatedAt: "2026-05-20T00:00:00.000Z", totalRuns: 20, runs });
+    if (insights.trends.recentRunCount !== 10 || insights.trends.recentBlockedCount !== 2 || insights.trends.trustTrend !== "degrading") {
+      throw new Error(`trend mismatch: ${JSON.stringify(insights.trends)}`);
+    }
+    if (!insights.insights.some((insight) => insight.code === "TRUST_TREND_DEGRADING")) {
+      throw new Error(`expected degrading trust insight: ${JSON.stringify(insights.insights)}`);
+    }
+
+    console.log("PASS governance-insights-trend-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-trend-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsRulesUnit() {
+  const { buildGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const highRisk = buildGovernanceInsights({
+      version: 1,
+      updatedAt: "2026-05-10T00:00:00.000Z",
+      totalRuns: 4,
+      runs: [
+        { runId: "a", timestamp: "2026-05-10T08:00:00.000Z", governanceStatus: "blocked", trustScore: 40, validationPassed: false, artifactPaths: {} },
+        { runId: "b", timestamp: "2026-05-10T09:00:00.000Z", governanceStatus: "blocked", trustScore: 40, validationPassed: false, artifactPaths: {} },
+        { runId: "c", timestamp: "2026-05-10T10:00:00.000Z", governanceStatus: "manual-review-required", trustScore: 60, validationPassed: false, artifactPaths: {} },
+        { runId: "d", timestamp: "2026-05-10T11:00:00.000Z", governanceStatus: "ready", trustScore: 80, validationPassed: true, artifactPaths: {} }
+      ]
+    });
+    const codes = highRisk.insights.map((insight) => insight.code);
+    for (const expected of ["HIGH_BLOCKED_RATE", "LOW_VALIDATION_SUCCESS_RATE", "LOW_AVERAGE_TRUST"]) {
+      if (!codes.includes(expected)) {
+        throw new Error(`expected insight ${expected}, got ${JSON.stringify(highRisk.insights)}`);
+      }
+    }
+
+    const humanReview = buildGovernanceInsights({
+      version: 1,
+      updatedAt: "2026-05-10T00:00:00.000Z",
+      totalRuns: 3,
+      runs: [
+        { runId: "a", timestamp: "2026-05-10T08:00:00.000Z", governanceStatus: "manual-review-required", validationPassed: true, artifactPaths: {} },
+        { runId: "b", timestamp: "2026-05-10T09:00:00.000Z", governanceStatus: "manual-review-required", validationPassed: true, artifactPaths: {} },
+        { runId: "c", timestamp: "2026-05-10T10:00:00.000Z", governanceStatus: "ready", validationPassed: true, artifactPaths: {} }
+      ]
+    });
+    if (!humanReview.insights.some((insight) => insight.code === "HIGH_HUMAN_REVIEW_RATE")) {
+      throw new Error(`expected high human-review insight: ${JSON.stringify(humanReview.insights)}`);
+    }
+
+    const healthy = buildGovernanceInsights({
+      version: 1,
+      updatedAt: "2026-05-10T00:00:00.000Z",
+      totalRuns: 5,
+      runs: Array.from({ length: 5 }, (_, index) => ({
+        runId: `healthy-${index}`,
+        timestamp: `2026-05-10T0${index}:00:00.000Z`,
+        governanceStatus: "ready",
+        validationPassed: true,
+        trustScore: 90,
+        artifactPaths: {}
+      }))
+    });
+    if (!healthy.insights.some((insight) => insight.code === "HEALTHY_GOVERNANCE_RATE")) {
+      throw new Error(`expected healthy governance insight: ${JSON.stringify(healthy.insights)}`);
+    }
+
+    console.log("PASS governance-insights-rules-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-rules-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsRenderUnit() {
+  const { buildGovernanceInsights, renderGovernanceInsightsMarkdown } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const markdown = renderGovernanceInsightsMarkdown(buildGovernanceInsights(sampleRunsIndexForInsights()));
+    for (const needle of [
+      "AI Software Factory",
+      "Governance Insights",
+      "Total runs: 5",
+      "- ready rate: 40%",
+      "- validation success rate: 60%",
+      "- average trust score: 70",
+      "- [warning] LOW_VALIDATION_SUCCESS_RATE"
+    ]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`markdown insights missing ${needle}: ${markdown}`);
+      }
+    }
+
+    console.log("PASS governance-insights-render-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-render-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsExportUnit() {
+  const { buildGovernanceInsights, exportGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const repo = createInsightsTestRepo("governance-insights-export");
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const result = exportGovernanceInsights(repo, buildGovernanceInsights(sampleRunsIndexForInsights()));
+    const jsonPath = path.join(repo, ".factory", "exports", "governance-insights.json");
+    const mdPath = path.join(repo, ".factory", "exports", "governance-insights.md");
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    const parsed = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const markdown = fs.readFileSync(mdPath, "utf8");
+    if (!result.exported || result.files.length !== 2 || parsed.totalRuns !== 5 || !markdown.includes("Governance Insights")) {
+      throw new Error(`insights export mismatch: ${JSON.stringify(result)}`);
+    }
+    if (beforeIndex !== afterIndex) {
+      throw new Error("insights export must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS governance-insights-export-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-export-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsCliUnit() {
+  try {
+    const repo = createInsightsTestRepo("governance-insights-cli");
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const textResult = spawnSync(process.execPath, [cliPath, "insights", "--repo", repo], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (textResult.status !== 0 || !textResult.stdout.includes("Governance Insights") || !textResult.stdout.includes("Total runs: 5")) {
+      throw new Error(`insights CLI text mismatch: status=${textResult.status} stdout=${textResult.stdout} stderr=${textResult.stderr}`);
+    }
+
+    const jsonResult = spawnSync(process.execPath, [cliPath, "insights", "--repo", repo, "--json"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(jsonResult.stdout);
+    if (jsonResult.status !== 0 || parsed.totalRuns !== 5 || parsed.summary.blocked !== 1) {
+      throw new Error(`insights CLI JSON mismatch: status=${jsonResult.status} stdout=${jsonResult.stdout} stderr=${jsonResult.stderr}`);
+    }
+
+    const exportResult = spawnSync(process.execPath, [cliPath, "insights", "--repo", repo, "--export"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    if (exportResult.status !== 0 || !exportResult.stdout.includes("Exported governance insights:") || !exportResult.stdout.includes(".factory/exports/governance-insights.md")) {
+      throw new Error(`insights CLI export mismatch: status=${exportResult.status} stdout=${exportResult.stdout} stderr=${exportResult.stderr}`);
+    }
+
+    const exportJsonResult = spawnSync(process.execPath, [cliPath, "insights", "--repo", repo, "--json", "--export"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    const exportParsed = JSON.parse(exportJsonResult.stdout);
+    if (exportJsonResult.status !== 0 || exportParsed.exported !== true || exportParsed.files.length !== 2) {
+      throw new Error(`insights CLI export JSON mismatch: status=${exportJsonResult.status} stdout=${exportJsonResult.stdout} stderr=${exportJsonResult.stderr}`);
+    }
+
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (beforeIndex !== afterIndex) {
+      throw new Error("insights CLI must not modify .factory/runs-index.json");
+    }
+
+    console.log("PASS governance-insights-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceInsightsMissingIndexUnit() {
+  const { loadGovernanceInsights, renderGovernanceInsightsMarkdown, exportGovernanceInsights } = require(path.join(projectRoot, "dist", "repair", "governanceInsights.js"));
+
+  try {
+    const repo = createInsightsTestRepo("governance-insights-missing", null);
+    const insights = loadGovernanceInsights(repo);
+    const markdown = renderGovernanceInsightsMarkdown(insights);
+    const result = exportGovernanceInsights(repo, insights);
+    if (insights.totalRuns !== 0 || insights.insights[0]?.code !== "NO_RUNS" || !markdown.includes("NO_RUNS")) {
+      throw new Error(`missing index insights mismatch: ${JSON.stringify(insights)} markdown=${markdown}`);
+    }
+    if (!fs.existsSync(path.join(repo, result.files[0])) || !fs.existsSync(path.join(repo, result.files[1]))) {
+      throw new Error(`missing index insights export files missing: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-insights-missing-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-insights-missing-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -7709,6 +8127,33 @@ async function main() {
     failed += 1;
   }
   if (!runRunIndexExportCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsRatesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsMostCommonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsTrendUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsRulesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsRenderUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsExportUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceInsightsMissingIndexUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

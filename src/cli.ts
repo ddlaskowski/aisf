@@ -15,6 +15,11 @@ import {
   type RunIndexDashboardOptions
 } from "./repair/runIndexDashboard.js";
 import { exportRunIndexDashboard, type RunIndexExportFormat } from "./repair/runIndexExport.js";
+import {
+  exportGovernanceInsights,
+  loadGovernanceInsights,
+  renderGovernanceInsightsMarkdown
+} from "./repair/governanceInsights.js";
 
 const runInputSchema = z.object({
   repo: z.string().min(1),
@@ -75,6 +80,18 @@ function printExportResult(result: ReturnType<typeof exportRunIndexDashboard>, a
     for (const warning of result.warnings) {
       console.log(`- ${warning}`);
     }
+  }
+}
+
+function printInsightsExportResult(result: ReturnType<typeof exportGovernanceInsights>, asJson: boolean): void {
+  if (asJson) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log("Exported governance insights:");
+  for (const file of result.files) {
+    console.log(`- ${file}`);
   }
 }
 
@@ -214,6 +231,30 @@ program
       console.error("Reason: malformed JSON or invalid index shape.");
       process.exitCode = 1;
     }
+  });
+
+program
+  .command("insights")
+  .description("Show read-only governance insights for historical repair runs")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--json", "Print machine-readable JSON")
+  .option("--export", "Export governance insights JSON and Markdown")
+  .action(async (options) => {
+    const repoPath = path.resolve(options.repo);
+    const insights = loadGovernanceInsights(repoPath);
+    const asJson = !!options.json;
+
+    if (options.export) {
+      printInsightsExportResult(exportGovernanceInsights(repoPath, insights), asJson);
+      return;
+    }
+
+    if (asJson) {
+      console.log(JSON.stringify(insights, null, 2));
+      return;
+    }
+
+    console.log(renderGovernanceInsightsMarkdown(insights));
   });
 
 program.parseAsync(process.argv);
