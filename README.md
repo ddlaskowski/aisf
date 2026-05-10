@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.7 - Governance CLI Help & UX Hardening Layer**
+**v3.8 - Governance Snapshot Archive Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -58,6 +58,8 @@ v3.5 adds deterministic governance policy profiles for interpreting insights wit
 v3.6 adds a deterministic CI-friendly governance summary. It converts profile-aware insights into `pass`, `warn`, or `fail`, supports CI exit codes, and can export JSON/Markdown summaries without changing repair behavior or `.factory/runs-index.json`.
 
 v3.7 hardens governance CLI help and operator UX. It adds stable help text, deterministic invalid command and invalid flag errors, CI exit-code documentation, and read-only guarantees without changing repair behavior.
+
+v3.8 adds optional governance snapshot archiving for export outputs. It preserves timestamped copies under `.factory/archive` for audit and CI history without changing repair behavior or `.factory/runs-index.json`.
 
 ---
 
@@ -1392,6 +1394,72 @@ v3.7 deterministic checks:
 * cli-help-readonly-guarantee-unit
 * cli-help-existing-behavior-unit
 
+---
+
+## Governance Snapshot Archive Layer (v3.8)
+
+v3.8 lets operators preserve deterministic governance export snapshots instead of only overwriting files under `.factory/exports`.
+
+Archive commands:
+
+```bash
+node dist/cli.js runs --export all --archive
+node dist/cli.js runs --status blocked --export markdown --archive
+node dist/cli.js insights --export --archive
+node dist/cli.js insights --profile conservative --export --archive
+node dist/cli.js ci-summary --export --archive
+node dist/cli.js ci-summary --profile balanced --json --export --archive
+```
+
+Archive layout:
+
+```text
+.factory/archive/<archiveId>/runs-dashboard/runs-dashboard.json
+.factory/archive/<archiveId>/runs-dashboard/runs-dashboard.md
+.factory/archive/<archiveId>/runs-dashboard/runs-dashboard.csv
+.factory/archive/<archiveId>/governance-insights/governance-insights.json
+.factory/archive/<archiveId>/governance-insights/governance-insights.md
+.factory/archive/<archiveId>/governance-ci-summary/governance-ci-summary.json
+.factory/archive/<archiveId>/governance-ci-summary/governance-ci-summary.md
+```
+
+Archive IDs use UTC and Windows-safe timestamps:
+
+```text
+YYYY-MM-DDTHH-mm-ss-SSSZ
+```
+
+Archive rules:
+
+* `--archive` only works with `--export`
+* using `--archive` without `--export` exits `1`
+* existing export files are written first
+* generated export files are copied into `.factory/archive/<archiveId>/<kind>/`
+* JSON export output includes an `archive` result only when `--archive` is used
+* CI summary exit-code behavior is preserved, including `fail -> 1`
+
+Read-only/archive-only guarantee:
+
+* archive writes only under `.factory/archive`
+* archive does not update `.factory/runs-index.json`
+* archive does not generate patches
+* archive does not retry repairs
+* archive does not mutate source files
+* archive does not change governance, release, trust, review, insight, or CI summary decisions
+* archive does not bypass any safety gate
+
+v3.8 deterministic checks:
+
+* governance-archive-id-unit
+* governance-archive-copy-unit
+* governance-archive-missing-file-unit
+* governance-archive-runs-export-unit
+* governance-archive-insights-export-unit
+* governance-archive-ci-summary-export-unit
+* governance-archive-json-output-unit
+* governance-archive-requires-export-unit
+* governance-archive-help-unit
+* governance-archive-ci-exit-code-unit
 ---
 
 ## 🚀 Usage

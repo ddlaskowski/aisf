@@ -8361,6 +8361,228 @@ function runGovernanceCiSummaryMissingIndexUnit() {
   }
 }
 
+function createArchiveRepo(name, index = warnCiIndex()) {
+  return createCiSummaryRepo(name, index);
+}
+
+function assertArchivePath(filePath, kind) {
+  const normalized = filePath.split(path.sep).join("/");
+  const pattern = new RegExp(`^\\.factory/archive/\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z/${kind}/`);
+  if (!pattern.test(normalized)) {
+    throw new Error(`archive path mismatch for ${kind}: ${filePath}`);
+  }
+}
+
+function runGovernanceArchiveIdUnit() {
+  const { createGovernanceArchiveId } = require(path.join(projectRoot, "dist", "repair", "governanceArchive.js"));
+  try {
+    const archiveId = createGovernanceArchiveId(new Date("2026-05-10T19:45:22.123Z"));
+    if (archiveId !== "2026-05-10T19-45-22-123Z") {
+      throw new Error(`archive id mismatch: ${archiveId}`);
+    }
+
+    console.log("PASS governance-archive-id-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-id-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveCopyUnit() {
+  const { archiveGovernanceFiles } = require(path.join(projectRoot, "dist", "repair", "governanceArchive.js"));
+  try {
+    const repo = createArchiveRepo("governance-archive-copy");
+    const sourcePath = path.join(repo, ".factory", "exports", "sample.json");
+    ensureDir(path.dirname(sourcePath));
+    fs.writeFileSync(sourcePath, "{\"ok\":true}\n", "utf8");
+    const result = archiveGovernanceFiles(repo, "governance-insights", [{ sourcePath: ".factory/exports/sample.json", archiveName: "governance-insights.json" }], {
+      date: new Date("2026-05-10T19:45:22.123Z")
+    });
+    const archivedPath = path.join(repo, result.files[0]);
+    if (!result.archived || result.archiveId !== "2026-05-10T19-45-22-123Z" || !fs.existsSync(archivedPath)) {
+      throw new Error(`archive copy mismatch: ${JSON.stringify(result)}`);
+    }
+    if (fs.readFileSync(archivedPath, "utf8") !== "{\"ok\":true}\n") {
+      throw new Error("archived file content mismatch");
+    }
+
+    console.log("PASS governance-archive-copy-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-copy-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveMissingFileUnit() {
+  const { archiveGovernanceFiles } = require(path.join(projectRoot, "dist", "repair", "governanceArchive.js"));
+  try {
+    const repo = createArchiveRepo("governance-archive-missing");
+    const result = archiveGovernanceFiles(repo, "runs-dashboard", [{ sourcePath: ".factory/exports/missing.json", archiveName: "missing.json" }], {
+      date: new Date("2026-05-10T19:45:22.123Z")
+    });
+    if (result.archived !== false || result.files.length !== 0 || result.warnings[0] !== "Archive source file missing: .factory/exports/missing.json") {
+      throw new Error(`missing file archive mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-archive-missing-file-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-missing-file-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveRunsExportUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-runs", warnCiIndex());
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const result = runCliHelpCommand(["runs", "--repo", repo, "--export", "all", "--archive"]);
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (result.status !== 0 || !result.stdout.includes("Archived run dashboard:")) {
+      throw new Error(`runs archive CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    for (const fileName of ["runs-dashboard.json", "runs-dashboard.md", "runs-dashboard.csv"]) {
+      const match = result.stdout.split(/\r?\n/).find((line) => line.includes(`/runs-dashboard/${fileName}`));
+      if (!match) throw new Error(`missing archived ${fileName}: ${result.stdout}`);
+      assertArchivePath(match.slice(2), "runs-dashboard");
+    }
+    if (beforeIndex !== afterIndex) throw new Error("runs archive must not modify runs-index.json");
+
+    console.log("PASS governance-archive-runs-export-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-runs-export-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveInsightsExportUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-insights", warnCiIndex());
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const result = runCliHelpCommand(["insights", "--repo", repo, "--export", "--archive"]);
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (result.status !== 0 || !result.stdout.includes("Archived governance insights:")) {
+      throw new Error(`insights archive CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    if (!result.stdout.includes("governance-insights/governance-insights.json") || !result.stdout.includes("governance-insights/governance-insights.md")) {
+      throw new Error(`insights archive files missing: ${result.stdout}`);
+    }
+    if (beforeIndex !== afterIndex) throw new Error("insights archive must not modify runs-index.json");
+
+    console.log("PASS governance-archive-insights-export-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-insights-export-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveCiSummaryExportUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-ci-summary", warnCiIndex());
+    const indexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeIndex = fs.readFileSync(indexPath, "utf8");
+    const result = runCliHelpCommand(["ci-summary", "--repo", repo, "--export", "--archive"]);
+    const afterIndex = fs.readFileSync(indexPath, "utf8");
+    if (result.status !== 0 || !result.stdout.includes("Archived governance CI summary:")) {
+      throw new Error(`ci summary archive CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    if (!result.stdout.includes("governance-ci-summary/governance-ci-summary.json") || !result.stdout.includes("governance-ci-summary/governance-ci-summary.md")) {
+      throw new Error(`ci summary archive files missing: ${result.stdout}`);
+    }
+    if (beforeIndex !== afterIndex) throw new Error("ci summary archive must not modify runs-index.json");
+
+    console.log("PASS governance-archive-ci-summary-export-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-ci-summary-export-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveJsonOutputUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-json", warnCiIndex());
+    const result = runCliHelpCommand(["runs", "--repo", repo, "--export", "json", "--archive", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.export.exported !== true || parsed.archive.archived !== true || parsed.archive.files.length !== 1) {
+      throw new Error(`archive JSON output mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    assertArchivePath(parsed.archive.files[0], "runs-dashboard");
+
+    console.log("PASS governance-archive-json-output-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-json-output-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveRequiresExportUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-requires-export", warnCiIndex());
+    for (const command of ["runs", "insights", "ci-summary"]) {
+      const result = runCliHelpCommand([command, "--repo", repo, "--archive"]);
+      if (result.status !== 1 || !result.stderr.includes("Archive option requires --export.")) {
+        throw new Error(`${command} archive requires export mismatch: status=${result.status} stderr=${result.stderr}`);
+      }
+    }
+
+    console.log("PASS governance-archive-requires-export-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-requires-export-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveHelpUnit() {
+  try {
+    for (const command of ["runs", "insights", "ci-summary"]) {
+      const result = runCliHelpCommand([command, "--help"]);
+      if (result.status !== 0 || !result.stdout.includes("--archive") || !result.stdout.includes("only works with --export")) {
+        throw new Error(`${command} help missing archive text: ${result.stdout}`);
+      }
+    }
+
+    console.log("PASS governance-archive-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveCiExitCodeUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-ci-fail", failCiIndex());
+    const result = runCliHelpCommand(["ci-summary", "--repo", repo, "--export", "--archive"]);
+    if (result.status !== 1 || !result.stdout.includes("Archived governance CI summary:")) {
+      throw new Error(`CI archive fail exit mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-archive-ci-exit-code-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-ci-exit-code-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -9016,7 +9238,36 @@ async function main() {
   if (!runGovernanceCiSummaryMissingIndexUnit()) {
     failed += 1;
   }
-  if (!runCliHelpMainUnit()) {
+  if (!runGovernanceArchiveIdUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveCopyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveMissingFileUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveRunsExportUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveInsightsExportUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveCiSummaryExportUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveRequiresExportUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveCiExitCodeUnit()) {
+    failed += 1;
+  }  if (!runCliHelpMainUnit()) {
     failed += 1;
   }
   if (!runCliHelpRunsUnit()) {

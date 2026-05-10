@@ -30,7 +30,9 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
+import { archiveGovernanceFiles, type GovernanceArchiveInputFile, type GovernanceArchiveKind, type GovernanceArchiveResult } from "./repair/governanceArchive.js";
 import {
+  renderArchiveRequiresExportError,
   renderCiSummaryHelp,
   renderInsightsHelp,
   renderInvalidFlagError,
@@ -125,6 +127,55 @@ function printCiSummaryExportResult(result: ReturnType<typeof exportGovernanceCi
   }
 }
 
+function archiveInputFiles(files: string[]): GovernanceArchiveInputFile[] {
+  return files.map((file) => ({
+    sourcePath: file,
+    archiveName: path.basename(file)
+  }));
+}
+
+function printArchiveResult(label: string, result: GovernanceArchiveResult): void {
+  console.log(label);
+  for (const file of result.files) {
+    console.log(`- ${file}`);
+  }
+  if (result.warnings.length) {
+    console.log("Archive warnings:");
+    for (const warning of result.warnings) {
+      console.log(`- ${warning}`);
+    }
+  }
+}
+
+function printExportAndArchiveResult<T extends { files: string[] }>(
+  exportResult: T,
+  archiveResult: GovernanceArchiveResult | null,
+  asJson: boolean,
+  textPrinter: (result: T, asJson: boolean) => void,
+  archiveLabel: string
+): void {
+  if (asJson) {
+    if (archiveResult === null) {
+      textPrinter(exportResult, true);
+      return;
+    }
+    console.log(JSON.stringify({ export: exportResult, archive: archiveResult }, null, 2));
+    return;
+  }
+  textPrinter(exportResult, false);
+  if (archiveResult !== null) {
+    console.log("");
+    printArchiveResult(archiveLabel, archiveResult);
+  }
+}
+
+function archiveExportResult(
+  repoPath: string,
+  kind: GovernanceArchiveKind,
+  files: string[]
+): GovernanceArchiveResult {
+  return archiveGovernanceFiles(repoPath, kind, archiveInputFiles(files));
+}
 function printGovernancePolicyProfiles(asJson: boolean): void {
   const profiles = listGovernancePolicyProfiles();
   if (asJson) {
@@ -149,9 +200,9 @@ function parseGovernancePolicyProfileOption(value: unknown): GovernancePolicyPro
 const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
-  runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--help", "-h"]),
-  insights: new Set(["--repo", "--profile", "--profiles", "--json", "--export", "--help", "-h"]),
-  "ci-summary": new Set(["--repo", "--profile", "--json", "--export", "--help", "-h"])
+  runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
+  insights: new Set(["--repo", "--profile", "--profiles", "--json", "--export", "--archive", "--help", "-h"]),
+  "ci-summary": new Set(["--repo", "--profile", "--json", "--export", "--archive", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -288,6 +339,7 @@ program
   .option("--latest", "Show only the latest run")
   .option("--json", "Print machine-readable JSON")
   .option("--export [format]", "Export dashboard as json, markdown, csv, or all")
+  .option("--archive", "Archive generated export files")
   .action(async (options) => {
     const asJson = !!options.json;
     const dashboardOptions: RunIndexDashboardOptions = {
@@ -321,6 +373,11 @@ program
     }
 
     const repoPath = path.resolve(options.repo);
+    if (options.archive && options.export === undefined) {
+      console.error(renderArchiveRequiresExportError("runs").trimEnd());
+      process.exitCode = 1;
+      return;
+    }
     if (options.export !== undefined) {
       const exportFormat = parseExportFormat(options.export);
       if (exportFormat === null) {
@@ -339,7 +396,8 @@ program
         humanReviewOnly: dashboardOptions.humanReviewOnly,
         latestOnly: dashboardOptions.latestOnly
       });
-      printExportResult(exportResult, asJson);
+      const archiveResult = options.archive ? archiveExportResult(repoPath, "runs-dashboard", exportResult.files) : null;
+      printExportAndArchiveResult(exportResult, archiveResult, asJson, printExportResult, "Archived run dashboard:");
       return;
     }
 
@@ -368,11 +426,18 @@ program
   .option("--repo <path>", "Path to target repository", process.cwd())
   .option("--json", "Print machine-readable JSON")
   .option("--export", "Export governance insights JSON and Markdown")
+  .option("--archive", "Archive generated export files")
   .option("--profile <name>", "Governance policy profile: conservative, balanced, or experimental")
   .option("--profiles", "List available governance policy profiles")
   .action(async (options) => {
     const repoPath = path.resolve(options.repo);
     const asJson = !!options.json;
+
+    if (options.archive && !options.export) {
+      console.error(renderArchiveRequiresExportError("insights").trimEnd());
+      process.exitCode = 1;
+      return;
+    }
 
     if (options.profiles) {
       printGovernancePolicyProfiles(asJson);
@@ -394,7 +459,9 @@ program
     const insights = loadGovernanceInsights(repoPath, { profile });
 
     if (options.export) {
-      printInsightsExportResult(exportGovernanceInsights(repoPath, insights), asJson);
+      const exportResult = exportGovernanceInsights(repoPath, insights);
+      const archiveResult = options.archive ? archiveExportResult(repoPath, "governance-insights", exportResult.files) : null;
+      printExportAndArchiveResult(exportResult, archiveResult, asJson, printInsightsExportResult, "Archived governance insights:");
       return;
     }
 
@@ -413,6 +480,7 @@ program
   .option("--profile <name>", "Governance policy profile: conservative, balanced, or experimental")
   .option("--json", "Print machine-readable JSON")
   .option("--export", "Export governance CI summary JSON and Markdown")
+  .option("--archive", "Archive generated export files")
   .action(async (options) => {
     const profile = parseGovernancePolicyProfileOption(options.profile);
     if (profile === null) {
@@ -423,12 +491,20 @@ program
       return;
     }
 
+    if (options.archive && !options.export) {
+      console.error(renderArchiveRequiresExportError("ci-summary").trimEnd());
+      process.exitCode = 1;
+      return;
+    }
+
     const repoPath = path.resolve(options.repo);
     const summary = buildGovernanceCiSummary(loadGovernanceInsights(repoPath, { profile }));
     const asJson = !!options.json;
 
     if (options.export) {
-      printCiSummaryExportResult(exportGovernanceCiSummary(repoPath, summary), asJson);
+      const exportResult = exportGovernanceCiSummary(repoPath, summary);
+      const archiveResult = options.archive ? archiveExportResult(repoPath, "governance-ci-summary", exportResult.files) : null;
+      printExportAndArchiveResult(exportResult, archiveResult, asJson, printCiSummaryExportResult, "Archived governance CI summary:");
     } else if (asJson) {
       console.log(JSON.stringify(summary, null, 2));
     } else {

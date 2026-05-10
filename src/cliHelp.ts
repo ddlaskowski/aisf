@@ -40,6 +40,7 @@ export function renderRunsHelp(): string {
     "  --latest             Show latest run only",
     "  --json               Print JSON output",
     "  --export [format]    Export dashboard: json, markdown, csv, all",
+    "  --archive            Archive generated export files",
     "  --help, -h           Show help",
     "",
     "Statuses:",
@@ -52,10 +53,12 @@ export function renderRunsHelp(): string {
     "  node dist/cli.js runs --limit 10",
     "  node dist/cli.js runs --status blocked",
     "  node dist/cli.js runs --export all",
+    "  node dist/cli.js runs --export all --archive",
     "  node dist/cli.js runs --json",
     "",
     "Read-only guarantee:",
-    "  This command reads .factory/runs-index.json and does not modify repair behavior."
+    "  This command reads .factory/runs-index.json and does not modify repair behavior.",
+    "  The --archive option only works with --export and writes under .factory/archive."
   ].join("\n") + "\n";
 }
 
@@ -72,6 +75,7 @@ export function renderInsightsHelp(): string {
     "  --profiles         List available profiles",
     "  --json             Print JSON output",
     "  --export           Export insights JSON/Markdown",
+    "  --archive          Archive generated export files",
     "  --help, -h         Show help",
     "",
     "Profiles:",
@@ -84,9 +88,11 @@ export function renderInsightsHelp(): string {
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js insights --profiles",
     "  node dist/cli.js insights --json --export",
+    "  node dist/cli.js insights --export --archive",
     "",
     "Read-only guarantee:",
-    "  This command reads .factory/runs-index.json and does not modify repair behavior."
+    "  This command reads .factory/runs-index.json and does not modify repair behavior.",
+    "  The --archive option only works with --export and writes under .factory/archive."
   ].join("\n") + "\n";
 }
 
@@ -102,6 +108,7 @@ export function renderCiSummaryHelp(): string {
     "  --profile <name>   Use governance policy profile",
     "  --json             Print JSON output",
     "  --export           Export CI summary JSON/Markdown",
+    "  --archive          Archive generated export files",
     "  --help, -h         Show help",
     "",
     "Exit codes:",
@@ -114,9 +121,11 @@ export function renderCiSummaryHelp(): string {
     "  node dist/cli.js ci-summary --profile conservative",
     "  node dist/cli.js ci-summary --json",
     "  node dist/cli.js ci-summary --export",
+    "  node dist/cli.js ci-summary --export --archive",
     "",
     "Read-only guarantee:",
-    "  This command reads .factory/runs-index.json and does not modify repair behavior."
+    "  This command reads .factory/runs-index.json and does not modify repair behavior.",
+    "  The --archive option only works with --export and writes under .factory/archive."
   ].join("\n") + "\n";
 }
 
@@ -134,6 +143,17 @@ export function renderUnknownCommandError(command: string): string {
 export function renderInvalidFlagError(command: string, flag: string): string {
   return [
     `Invalid option for ${command}: ${flag}`,
+    "",
+    "Run:",
+    `  node dist/cli.js ${command} --help`,
+    "",
+    "for usage."
+  ].join("\n") + "\n";
+}
+
+export function renderArchiveRequiresExportError(command: string): string {
+  return [
+    "Archive option requires --export.",
     "",
     "Run:",
     `  node dist/cli.js ${command} --help`,
