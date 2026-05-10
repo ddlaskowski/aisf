@@ -6374,6 +6374,249 @@ function runRepairReleaseGateArtifactUnit() {
   }
 }
 
+function sampleGovernanceInput(overrides = {}) {
+  const { buildRepairTrustIndex } = require(path.join(projectRoot, "dist", "repair", "repairTrustIndex.js"));
+  const { buildRepairReleaseGate } = require(path.join(projectRoot, "dist", "repair", "repairReleaseGate.js"));
+  const trustInput = sampleTrustInput();
+  const releaseInput = sampleReleaseGateInput();
+  return {
+    repairReleaseGate: buildRepairReleaseGate(releaseInput),
+    repairTrustIndex: buildRepairTrustIndex(trustInput),
+    repairReview: trustInput.repairReview,
+    repairOutcome: trustInput.repairOutcome,
+    validation: trustInput.validation,
+    repairEvidenceValidation: trustInput.repairEvidenceValidation,
+    repairRegressionRisk: trustInput.repairRegressionRisk,
+    repairPatchPolicy: trustInput.repairPatchPolicy,
+    repairReviewAnalytics: trustInput.repairReviewAnalytics,
+    repairAnalytics: trustInput.repairAnalytics,
+    repairDecisionAudit: trustInput.repairDecisionAudit,
+    ...overrides
+  };
+}
+
+function runRepairGovernanceUnit() {
+  const { buildRepairGovernance } = require(path.join(projectRoot, "dist", "repair", "repairGovernance.js"));
+
+  try {
+    const governance = buildRepairGovernance(sampleGovernanceInput());
+    if (governance.version !== 1 || governance.governanceStatus !== "ready") {
+      throw new Error(`allow release should map to ready governance, got ${JSON.stringify(governance)}`);
+    }
+    if (
+      governance.finalDecision.canProceed !== true ||
+      governance.finalDecision.requiresHumanReview !== false ||
+      governance.finalDecision.isBlocked !== false
+    ) {
+      throw new Error(`ready final decision flags mismatch: ${JSON.stringify(governance.finalDecision)}`);
+    }
+    if (!governance.supportingSignals.includes("Release gate allowed the repair") || !governance.supportingSignals.includes("Validation passed")) {
+      throw new Error(`expected supporting signals, got ${JSON.stringify(governance.supportingSignals)}`);
+    }
+
+    console.log("PASS repair-governance-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-governance-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairGovernanceStatusUnit() {
+  const { buildRepairGovernance } = require(path.join(projectRoot, "dist", "repair", "repairGovernance.js"));
+
+  try {
+    const cases = [
+      ["allow", "ready"],
+      ["allow-with-warnings", "ready-with-caution"],
+      ["require-human-review", "manual-review-required"],
+      ["block", "blocked"]
+    ];
+    for (const [releaseDecision, expected] of cases) {
+      const governance = buildRepairGovernance(sampleGovernanceInput({
+        repairReleaseGate: {
+          releaseDecision,
+          releaseScore: 80,
+          blockingReasons: [],
+          releaseWarnings: [],
+          requiredActions: []
+        }
+      }));
+      if (governance.governanceStatus !== expected) {
+        throw new Error(`${releaseDecision}: expected ${expected}, got ${JSON.stringify(governance)}`);
+      }
+    }
+
+    console.log("PASS repair-governance-status-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-governance-status-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairGovernanceOverrideUnit() {
+  const { buildRepairGovernance } = require(path.join(projectRoot, "dist", "repair", "repairGovernance.js"));
+
+  try {
+    const validationFailed = buildRepairGovernance(sampleGovernanceInput({ validation: { verdict: "fail", status: "fail" } }));
+    const rejectedReview = buildRepairGovernance(sampleGovernanceInput({ repairReview: sampleRepairReview({ verdict: "rejected" }) }));
+    const unsafeTrust = buildRepairGovernance(sampleGovernanceInput({ repairTrustIndex: { trustLevel: "unsafe", trustScore: 20 } }));
+    const manualOutcome = buildRepairGovernance(sampleGovernanceInput({ repairOutcome: { outcome: "manual-review-required" } }));
+    const failedWorse = buildRepairGovernance(sampleGovernanceInput({ repairOutcome: { outcome: "failed-worse" } }));
+    const patchManual = buildRepairGovernance(sampleGovernanceInput({ repairPatchPolicy: { ok: true, mode: "manual-review" } }));
+    const missing = buildRepairGovernance({});
+
+    if (validationFailed.governanceStatus !== "blocked") {
+      throw new Error(`validation failure must block: ${JSON.stringify(validationFailed)}`);
+    }
+    if (rejectedReview.governanceStatus !== "blocked") {
+      throw new Error(`rejected review must block: ${JSON.stringify(rejectedReview)}`);
+    }
+    if (unsafeTrust.governanceStatus !== "blocked") {
+      throw new Error(`unsafe trust must block: ${JSON.stringify(unsafeTrust)}`);
+    }
+    if (failedWorse.governanceStatus !== "blocked") {
+      throw new Error(`failed-worse must block: ${JSON.stringify(failedWorse)}`);
+    }
+    if (manualOutcome.governanceStatus !== "manual-review-required") {
+      throw new Error(`manual-review-required outcome must require review: ${JSON.stringify(manualOutcome)}`);
+    }
+    if (patchManual.governanceStatus !== "manual-review-required") {
+      throw new Error(`manual-review patch policy must require review: ${JSON.stringify(patchManual)}`);
+    }
+    if (missing.governanceStatus !== "manual-review-required") {
+      throw new Error(`missing core artifacts must require review: ${JSON.stringify(missing)}`);
+    }
+
+    console.log("PASS repair-governance-override-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-governance-override-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairGovernanceReportUnit() {
+  const { renderRepairGovernanceMarkdown } = require(path.join(projectRoot, "dist", "repair", "repairGovernance.js"));
+
+  try {
+    const markdown = renderRepairGovernanceMarkdown({
+      version: 1,
+      governanceStatus: "ready-with-caution",
+      summary: "The repair is governed as ready with caution because it may proceed, but warnings or moderate risks were detected.",
+      finalDecision: { canProceed: true, requiresHumanReview: false, isBlocked: false },
+      supportingSignals: ["Release gate allowed with warnings", "Validation passed"],
+      riskSignals: ["Conservative patch policy was used"],
+      requiredActions: ["Review warnings before release"],
+      blockingReasons: [],
+      sourceDecisions: {
+        releaseDecision: "allow-with-warnings",
+        releaseScore: 76,
+        trustLevel: "medium",
+        trustScore: 72,
+        reviewVerdict: "approved-with-warnings",
+        repairOutcome: "success",
+        validationPassed: true
+      }
+    });
+    for (const needle of [
+      "# Repair Governance",
+      "Governance status: ready-with-caution",
+      "Final decision:",
+      "Supporting signals:",
+      "Risk signals:",
+      "Required actions:",
+      "Blocking reasons:",
+      "Source decisions:"
+    ]) {
+      if (!markdown.includes(needle)) {
+        throw new Error(`governance markdown missing ${needle}: ${markdown}`);
+      }
+    }
+
+    const finalReport = [
+      "## Repair Governance",
+      "Governance status: ready-with-caution",
+      "Summary:",
+      "The repair is governed as ready with caution because it may proceed, but warnings or moderate risks were detected.",
+      "Final decision:",
+      "- Can proceed: true",
+      "- Requires human review: false",
+      "- Is blocked: false",
+      "Artifacts:",
+      "- repair-governance.json",
+      "- repair-governance.md"
+    ].join("\n");
+    for (const needle of ["Repair Governance", "Governance status:", "Final decision:", "repair-governance.json", "repair-governance.md"]) {
+      if (!finalReport.includes(needle)) {
+        throw new Error(`final report governance section missing ${needle}: ${finalReport}`);
+      }
+    }
+
+    console.log("PASS repair-governance-report-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-governance-report-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairGovernanceArtifactUnit() {
+  const { buildRepairGovernance, renderRepairGovernanceMarkdown } = require(path.join(projectRoot, "dist", "repair", "repairGovernance.js"));
+  const tmpDir = path.join(projectRoot, ".scenario-unit", "repair-governance-artifact");
+
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    ensureDir(tmpDir);
+    const governance = buildRepairGovernance(sampleGovernanceInput());
+    const jsonPath = path.join(tmpDir, "repair-governance.json");
+    const mdPath = path.join(tmpDir, "repair-governance.md");
+    fs.writeFileSync(jsonPath, `${JSON.stringify(governance, null, 2)}\n`, "utf8");
+    fs.writeFileSync(mdPath, renderRepairGovernanceMarkdown(governance), "utf8");
+
+    const fromDisk = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const markdown = fs.readFileSync(mdPath, "utf8");
+    if (fromDisk.version !== 1 || fromDisk.governanceStatus !== "ready" || !markdown.includes("Governance status: ready")) {
+      throw new Error(`governance artifacts invalid: json=${JSON.stringify(fromDisk)} md=${markdown}`);
+    }
+
+    console.log("PASS repair-governance-artifact-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-governance-artifact-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runRepairGovernanceNoBehaviorChangeUnit() {
+  const { buildRepairGovernance } = require(path.join(projectRoot, "dist", "repair", "repairGovernance.js"));
+
+  try {
+    const before = JSON.stringify(sampleGovernanceInput());
+    const governance = buildRepairGovernance(sampleGovernanceInput());
+    const after = JSON.stringify(sampleGovernanceInput());
+    if (before !== after) {
+      throw new Error("Governance builder should not mutate input fixtures.");
+    }
+    if (governance.finalDecision.canProceed !== true || governance.requiredActions.includes("Run repair automatically")) {
+      throw new Error(`governance must remain reporting-only, got ${JSON.stringify(governance)}`);
+    }
+
+    console.log("PASS repair-governance-no-behavior-change-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL repair-governance-no-behavior-change-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 async function runGuardedLegacyAppendUnit() {
   const { applyOperation } = require(path.join(projectRoot, "dist", "tools", "fileEditor.js"));
   const tmpDir = path.join(projectRoot, ".scenario-unit", "guarded-legacy-append");
@@ -6662,6 +6905,24 @@ async function main() {
     failed += 1;
   }
   if (!runRepairReleaseGateArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runRepairGovernanceUnit()) {
+    failed += 1;
+  }
+  if (!runRepairGovernanceStatusUnit()) {
+    failed += 1;
+  }
+  if (!runRepairGovernanceOverrideUnit()) {
+    failed += 1;
+  }
+  if (!runRepairGovernanceReportUnit()) {
+    failed += 1;
+  }
+  if (!runRepairGovernanceArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runRepairGovernanceNoBehaviorChangeUnit()) {
     failed += 1;
   }
   if (!(await runGuardedLegacyAppendUnit())) {

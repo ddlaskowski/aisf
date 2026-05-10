@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v2.9 — Repair Release Gate Layer**
+**v3.0 — Autonomous Repair Governance Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -42,6 +42,8 @@ v2.7 adds deterministic repair review analytics. It aggregates historical review
 v2.8 adds a deterministic Repair Trust Index. It combines completed-run signals into one final trust score and trust level without changing repair behavior, review verdicts, patch policy, or orchestration decisions.
 
 v2.9 adds a deterministic Repair Release Gate. It converts completed-run trust, review, validation, policy, regression, and analytics signals into one final release recommendation without changing repair behavior or orchestration.
+
+v3.0 adds a deterministic Autonomous Repair Governance Layer. It summarizes the completed repair lifecycle into one final governance status without changing repair behavior, release gate decisions, trust scores, or any safety gate.
 
 ---
 
@@ -870,6 +872,68 @@ v2.9 deterministic checks:
 * repair-release-gate-override-unit
 * repair-release-gate-report-unit
 * repair-release-gate-artifact-unit
+
+---
+
+## 🏛️ Autonomous Repair Governance Layer (v3.0)
+
+v3.0 produces one final deterministic governance summary after the repair lifecycle has completed. It answers:
+
+* is this repair governed as ready?
+* is it ready only with caution?
+* does it require human review?
+* is it blocked?
+* what evidence supports that governance status?
+
+Artifacts written per run:
+
+```text
+.factory/runs/<runId>/repair-governance.json
+.factory/runs/<runId>/repair-governance.md
+```
+
+Governance statuses:
+
+* ready
+* ready-with-caution
+* manual-review-required
+* blocked
+
+The governance layer summarizes deterministic signals from:
+
+* repair release gate
+* Repair Trust Index
+* repair review verdict
+* repair outcome
+* validation result
+* evidence validation
+* regression guard
+* patch policy
+* repair analytics warnings
+* repair review analytics warnings
+* retry audit
+
+Safety guarantees:
+
+* governance-only behavior
+* no patch generation
+* no retry behavior changes
+* no release gate decision changes
+* no trust score changes
+* no review verdict changes
+* no repair outcome changes
+* no safety gate bypasses
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+
+v3.0 deterministic checks:
+
+* repair-governance-unit
+* repair-governance-status-unit
+* repair-governance-override-unit
+* repair-governance-report-unit
+* repair-governance-artifact-unit
+* repair-governance-no-behavior-change-unit
 
 ---
 

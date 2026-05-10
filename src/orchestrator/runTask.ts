@@ -83,6 +83,7 @@ import { buildRepairReview, renderRepairReviewMarkdown } from "../repair/buildRe
 import { updateRepairReviewAnalytics } from "../repair/repairReviewAnalytics.js";
 import { buildRepairTrustIndex, renderRepairTrustIndexMarkdown } from "../repair/repairTrustIndex.js";
 import { buildRepairReleaseGate, renderRepairReleaseGateMarkdown } from "../repair/repairReleaseGate.js";
+import { buildRepairGovernance, renderRepairGovernanceMarkdown } from "../repair/repairGovernance.js";
 
 function detectMode(task: string): "feature" | "bugfix" {
   const t = task.toLowerCase();
@@ -2207,6 +2208,21 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     renderRepairReleaseGateMarkdown(repairReleaseGate),
     "utf8"
   );
+  const repairGovernance = buildRepairGovernance({
+    repairReleaseGate,
+    repairTrustIndex,
+    repairReview,
+    repairOutcome,
+    validation: review,
+    repairEvidenceValidation,
+    repairRegressionRisk,
+    repairPatchPolicy,
+    repairReviewAnalytics,
+    repairAnalytics,
+    repairDecisionAudit
+  });
+  await saveStateFile(state.runDir, "repair-governance.json", repairGovernance);
+  await fs.writeFile(path.join(state.runDir, "repair-governance.md"), renderRepairGovernanceMarkdown(repairGovernance), "utf8");
 
   const finalReport = [
     `# Final Report`,
@@ -2285,6 +2301,21 @@ export async function runTask(inputData: FactoryRunInput): Promise<RunSummary> {
     "Artifacts:",
     "- repair-release-gate.json",
     "- repair-release-gate.md",
+    "",
+    "## Repair Governance",
+    `Governance status: ${repairGovernance.governanceStatus}`,
+    "",
+    "Summary:",
+    repairGovernance.summary,
+    "",
+    "Final decision:",
+    `- Can proceed: ${repairGovernance.finalDecision.canProceed}`,
+    `- Requires human review: ${repairGovernance.finalDecision.requiresHumanReview}`,
+    `- Is blocked: ${repairGovernance.finalDecision.isBlocked}`,
+    "",
+    "Artifacts:",
+    "- repair-governance.json",
+    "- repair-governance.md",
     "",
     "## Repair strategy",
     `- Strategy: ${repairStrategy?.strategy ?? "not available"}`,
