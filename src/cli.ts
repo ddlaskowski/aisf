@@ -118,6 +118,11 @@ import {
   renderGovernanceConfigEffectivePreviewText
 } from "./repair/governanceConfigEffectivePreview.js";
 import {
+  buildGovernanceConfigActivationPlan,
+  renderGovernanceConfigActivationPlanText,
+  writeGovernanceConfigActivationPlanArtifacts
+} from "./governance/configActivationPlan.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -126,6 +131,7 @@ import {
   renderEvidencePackHelp,
   renderEvidenceListHelp,
   renderEvidenceDiffHelp,
+  renderGovernanceConfigActivationPlanHelp,
   renderGovernanceConfigEffectiveHelp,
   renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
@@ -478,6 +484,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "config") {
+    if (args[2] === "activation-plan") {
+      const allowed = new Set(["--json", "--help", "-h"]);
+      for (const arg of args.slice(3)) {
+        if (!arg.startsWith("-")) {
+          continue;
+        }
+        const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+        if (!allowed.has(flag)) {
+          printAndExit(renderInvalidFlagError("governance config activation-plan", flag), 1);
+        }
+      }
+
+      if (args.includes("--help") || args.includes("-h")) {
+        printAndExit(renderGovernanceConfigActivationPlanHelp(), 0);
+      }
+
+      const plan = buildGovernanceConfigActivationPlan(process.cwd());
+      writeGovernanceConfigActivationPlanArtifacts(process.cwd(), plan);
+      if (args.includes("--json")) {
+        printAndExit(JSON.stringify(plan, null, 2), 0);
+      }
+      printAndExit(renderGovernanceConfigActivationPlanText(plan), 0);
+    }
+
     if (args[2] === "effective") {
       const allowed = new Set(["--json", "--help", "-h"]);
       for (const arg of args.slice(3)) {

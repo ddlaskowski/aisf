@@ -13654,6 +13654,176 @@ function runGovernanceConfigEffectivePreviewValidateExitCodeUnit() {
     return false;
   }
 }
+
+function directGovernanceConfigActivationPlan(repo) {
+  const { buildGovernanceConfigActivationPlan } = require(path.join(projectRoot, "dist", "governance", "configActivationPlan.js"));
+  return buildGovernanceConfigActivationPlan(repo);
+}
+
+function cleanupProjectActivationPlanArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "config-activation-plan.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "config-activation-plan.md"), { force: true });
+}
+
+function runGovernanceConfigActivationPlanUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-activation-plan-unit");
+    const plan = directGovernanceConfigActivationPlan(repo);
+    const { renderGovernanceConfigActivationPlanText } = require(path.join(projectRoot, "dist", "governance", "configActivationPlan.js"));
+    const rendered = renderGovernanceConfigActivationPlanText(plan);
+    if (
+      plan.schemaVersion !== 1 ||
+      plan.runtimeConfigLoadingEnabled !== false ||
+      plan.applied !== false ||
+      !plan.requiredSafetyChecks.includes("Config validation status must be valid.") ||
+      !rendered.includes("Governance Config Activation Plan")
+    ) {
+      throw new Error(`activation plan unit mismatch: ${JSON.stringify(plan)}`);
+    }
+
+    console.log("PASS governance-config-activation-plan-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-activation-plan-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigActivationPlanMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-activation-plan-missing");
+    const plan = directGovernanceConfigActivationPlan(repo);
+    if (
+      plan.configStatus !== "missing" ||
+      plan.activationReadiness !== "not-ready" ||
+      plan.recommendedNextStage !== "continue-preview-only" ||
+      plan.candidateOverrides.length !== 0 ||
+      !plan.warnings.includes("No governance config file was found.")
+    ) {
+      throw new Error(`activation missing mismatch: ${JSON.stringify(plan)}`);
+    }
+
+    console.log("PASS governance-config-activation-plan-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-activation-plan-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigActivationPlanValidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-activation-plan-valid");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const plan = directGovernanceConfigActivationPlan(repo);
+    if (
+      plan.configStatus !== "valid" ||
+      plan.activationReadiness !== "ready-for-guarded-loading" ||
+      plan.recommendedNextStage !== "prepare-guarded-loading" ||
+      plan.candidateOverrides.length !== 2 ||
+      plan.blockedOptions.length !== 0 ||
+      !plan.candidateOverrides.every((override) => override.safeForFutureActivation === true)
+    ) {
+      throw new Error(`activation valid mismatch: ${JSON.stringify(plan)}`);
+    }
+
+    console.log("PASS governance-config-activation-plan-valid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-activation-plan-valid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigActivationPlanInvalidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-activation-plan-invalid");
+    ensureDir(path.join(repo, ".factory"));
+    fs.writeFileSync(path.join(repo, ".factory", "governance.config.json"), "{", "utf8");
+    const plan = directGovernanceConfigActivationPlan(repo);
+    if (
+      plan.configStatus !== "invalid" ||
+      plan.activationReadiness !== "blocked" ||
+      plan.recommendedNextStage !== "fix-config" ||
+      plan.candidateOverrides.length !== 0 ||
+      !plan.warnings.includes("Governance config is invalid and cannot be considered for activation.")
+    ) {
+      throw new Error(`activation invalid mismatch: ${JSON.stringify(plan)}`);
+    }
+
+    console.log("PASS governance-config-activation-plan-invalid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-activation-plan-invalid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigActivationPlanBlockedUnsafeUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-activation-plan-blocked-unsafe");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.pluginSettings = { enabled: true };
+    config.dynamicScript = "return true";
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const plan = directGovernanceConfigActivationPlan(repo);
+    const blockedKeys = plan.blockedOptions.map((blocked) => blocked.key).join(",");
+    if (
+      plan.configStatus !== "valid" ||
+      plan.activationReadiness !== "blocked" ||
+      plan.recommendedNextStage !== "blocked" ||
+      blockedKeys !== "dynamicScript,pluginSettings" ||
+      plan.candidateOverrides.length !== 0
+    ) {
+      throw new Error(`activation unsafe mismatch: ${JSON.stringify(plan)}`);
+    }
+
+    console.log("PASS governance-config-activation-plan-blocked-unsafe");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-activation-plan-blocked-unsafe");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigActivationPlanJsonOutputUnit() {
+  try {
+    cleanupProjectActivationPlanArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "activation-plan", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "config-activation-plan.json");
+    if (
+      result.status !== 0 ||
+      parsed.activationReadiness !== "ready-for-guarded-loading" ||
+      parsed.applied !== false ||
+      parsed.runtimeConfigLoadingEnabled !== false ||
+      !fs.existsSync(artifactPath)
+    ) {
+      throw new Error(`activation JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (JSON.stringify(artifact) !== JSON.stringify(parsed)) {
+      throw new Error(`activation artifact mismatch: artifact=${JSON.stringify(artifact)} cli=${JSON.stringify(parsed)}`);
+    }
+    cleanupProjectActivationPlanArtifacts();
+
+    console.log("PASS governance-config-activation-plan-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectActivationPlanArtifacts();
+    console.log("FAIL governance-config-activation-plan-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -14875,6 +15045,24 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceConfigEffectivePreviewValidateExitCodeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigActivationPlanUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigActivationPlanMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigActivationPlanValidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigActivationPlanInvalidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigActivationPlanBlockedUnsafeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigActivationPlanJsonOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

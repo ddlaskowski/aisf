@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.5 - Governance Config Effective Preview Layer**
+**v5.6 - Governance Config Activation Plan Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -94,6 +94,8 @@ v5.3 adds a deterministic Governance Config Schema Draft. It prints and optional
 v5.4 adds deterministic Governance Config Validation. It validates `.factory/governance.config.json` structure and safety flags without loading, applying, creating, or enforcing runtime configuration.
 
 v5.5 adds deterministic Governance Config Effective Preview. It shows static defaults, config validation status, and candidate overrides while keeping runtime config loading disabled and `applied: false`.
+
+v5.6 adds deterministic Governance Config Activation Plans. It writes advisory activation-plan artifacts for future guarded loading while keeping runtime config loading disabled and `applied: false`.
 
 ---
 
@@ -2731,6 +2733,49 @@ v5.5 deterministic checks:
 * governance-config-effective-preview-help-unit
 * governance-config-effective-preview-no-apply-unit
 * governance-config-effective-preview-validate-exit-code-unit
+
+## Governance Config Activation Plan Layer (v5.6)
+
+v5.6 adds an advisory-only activation plan for future guarded governance config loading.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance config activation-plan
+node dist/cli.js governance config activation-plan --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/config-activation-plan.json
+.factory/governance/config-activation-plan.md
+```
+
+Activation readiness rules:
+
+* missing config produces `not-ready`
+* invalid config produces `blocked`
+* valid config with only allowlisted governance override keys produces `ready-for-guarded-loading`
+* valid config with unsafe runtime, plugin, command, dynamic code, mutation, safety-bypass, or repair-pipeline fields produces `blocked`
+
+Safety invariants:
+
+* `runtimeConfigLoadingEnabled` is always `false`
+* `applied` is always `false`
+* config values are not loaded into runtime behavior
+* config values are not applied to governance thresholds
+* repair orchestration and governance decisions are unchanged
+* no external dependencies, plugins, network behavior, or runtime execution are introduced
+
+v5.6 deterministic checks:
+
+* governance-config-activation-plan-unit
+* governance-config-activation-plan-missing
+* governance-config-activation-plan-valid
+* governance-config-activation-plan-invalid
+* governance-config-activation-plan-blocked-unsafe
+* governance-config-activation-plan-json-output
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
