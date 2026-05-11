@@ -158,8 +158,20 @@ export function renderArchiveHelp(): string {
     "  node dist/cli.js archive --kind governance-ci-summary --limit 5",
     "  node dist/cli.js archive --json",
     "",
+    "Diff usage:",
+    "  node dist/cli.js archive diff <archiveIdA> <archiveIdB>",
+    "",
+    "Diff examples:",
+    "  node dist/cli.js archive diff <A> <B>",
+    "  node dist/cli.js archive diff <A> <B> --json",
+    "",
+    "Supported diff kinds:",
+    "  governance-insights",
+    "  governance-ci-summary",
+    "",
     "Read-only guarantee:",
-    "  This command reads .factory/archive-index.json and does not modify repair behavior."
+    "  This command reads .factory/archive-index.json and does not modify repair behavior.",
+    "  Archive diff does not modify repair behavior or archive data."
   ].join("\n") + "\n";
 }
 

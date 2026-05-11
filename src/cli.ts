@@ -47,6 +47,11 @@ import {
   type GovernanceArchiveDashboardOptions
 } from "./repair/governanceArchiveDashboard.js";
 import {
+  buildGovernanceArchiveDiff,
+  loadGovernanceArchiveSnapshot,
+  renderGovernanceArchiveDiffText
+} from "./repair/governanceArchiveDiff.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -568,13 +573,55 @@ program
 program
   .command("archive")
   .description("Show governance archive snapshot history")
+  .argument("[subcommand]", "Optional archive subcommand")
+  .argument("[archiveIdA]", "First archive ID for diff")
+  .argument("[archiveIdB]", "Second archive ID for diff")
   .option("--repo <path>", "Path to target repository", process.cwd())
   .option("--latest", "Show latest archive snapshot only")
   .option("--kind <kind>", "Filter by archive kind")
   .option("--limit <n>", "Show latest n archive snapshots")
   .option("--json", "Print machine-readable JSON")
-  .action(async (options) => {
+  .action(async (subcommand, archiveIdA, archiveIdB, options) => {
     const asJson = !!options.json;
+    const repoPath = path.resolve(options.repo);
+
+    if (subcommand !== undefined) {
+      if (subcommand !== "diff") {
+        console.error(`Unknown archive subcommand: ${subcommand}`);
+        console.error("Run:\n  node dist/cli.js archive --help\n\nfor usage.");
+        process.exitCode = 1;
+        return;
+      }
+      if (!archiveIdA || !archiveIdB) {
+        console.error("Archive diff requires two archive IDs.");
+        console.error("Run:\n  node dist/cli.js archive --help\n\nfor usage.");
+        process.exitCode = 1;
+        return;
+      }
+
+      try {
+        const index = loadGovernanceArchiveIndex(repoPath);
+        const previous = loadGovernanceArchiveSnapshot(repoPath, index, archiveIdA);
+        const current = loadGovernanceArchiveSnapshot(repoPath, index, archiveIdB);
+        if (previous.entry.kind !== current.entry.kind) {
+          console.error("Archive diff requires both archives to have the same kind.");
+          process.exitCode = 1;
+          return;
+        }
+        const diff = buildGovernanceArchiveDiff({ previous, current });
+        if (asJson) {
+          console.log(JSON.stringify(diff, null, 2));
+          return;
+        }
+        console.log(renderGovernanceArchiveDiffText(diff));
+        return;
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : "Archive diff failed.");
+        process.exitCode = 1;
+        return;
+      }
+    }
+
     const dashboardOptions: GovernanceArchiveDashboardOptions = {
       latestOnly: !!options.latest
     };
@@ -604,7 +651,6 @@ program
       dashboardOptions.kind = options.kind;
     }
 
-    const repoPath = path.resolve(options.repo);
     const indexPath = getGovernanceArchiveIndexPath(repoPath);
     const result = (await fs.pathExists(indexPath))
       ? buildGovernanceArchiveDashboard(loadGovernanceArchiveIndex(repoPath), dashboardOptions)

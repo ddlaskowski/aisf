@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v3.9 - Governance Archive Index Layer**
+**v4.0 - Governance Archive Diff Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -62,6 +62,8 @@ v3.7 hardens governance CLI help and operator UX. It adds stable help text, dete
 v3.8 adds optional governance snapshot archiving for export outputs. It preserves timestamped copies under `.factory/archive` for audit and CI history without changing repair behavior or `.factory/runs-index.json`.
 
 v3.9 adds a deterministic Governance Archive Index Layer. It records compact metadata for archived governance snapshots in `.factory/archive-index.json` and adds a read-only `archive` CLI dashboard for browsing archive history.
+
+v4.0 adds a deterministic Governance Archive Diff Layer. It compares existing archive snapshots to report governance improvements, regressions, stable metrics, and mixed changes without modifying repair behavior, archive history, or run indexes.
 
 ---
 
@@ -1543,6 +1545,76 @@ v3.9 deterministic checks:
 * governance-archive-cli-missing-index-unit
 * governance-archive-cli-invalid-kind-unit
 * governance-archive-cli-help-unit
+---
+
+## Governance Archive Diff Layer (v4.0)
+
+v4.0 compares existing governance archive snapshots and reports deterministic improvements, regressions, stability, and mixed changes.
+
+Supported archive kinds:
+
+* `governance-insights`
+* `governance-ci-summary`
+
+`runs-dashboard` snapshots are not diffed yet.
+
+CLI usage:
+
+```bash
+node dist/cli.js archive diff <archiveIdA> <archiveIdB>
+node dist/cli.js archive diff <archiveIdA> <archiveIdB> --json
+```
+
+Diff status meanings:
+
+* `improved` means comparable metrics improved and none degraded
+* `degraded` means comparable metrics degraded and none improved
+* `mixed` means some metrics improved and others degraded
+* `stable` means comparable metrics stayed within the deterministic stability threshold
+* `unknown` means there were not enough comparable metrics
+
+Governance insights diff compares:
+
+* blocked rate
+* human-review rate
+* validation success rate
+* average trust score
+* ready rate
+
+Deterministic insight rules include:
+
+* blocked rate decreased -> `BLOCKED_RATE_IMPROVED`
+* blocked rate increased -> `BLOCKED_RATE_DEGRADED`
+* validation success increased -> `VALIDATION_SUCCESS_IMPROVED`
+* average trust score decreased -> `TRUST_SCORE_DEGRADED`
+* all comparable metrics stable -> `GOVERNANCE_STABLE`
+
+Read-only guarantee:
+
+* archive diff reads `.factory/archive-index.json`
+* archive diff reads existing archived JSON snapshots
+* archive diff does not update `.factory/archive-index.json`
+* archive diff does not update `.factory/runs-index.json`
+* archive diff does not generate patches
+* archive diff does not retry repairs
+* archive diff does not mutate source files
+* archive diff does not change governance, release, trust, review, insight, CI summary, or repair behavior
+* archive diff does not bypass any safety gate
+
+v4.0 deterministic checks:
+
+* governance-archive-diff-unit
+* governance-archive-diff-improved-unit
+* governance-archive-diff-degraded-unit
+* governance-archive-diff-mixed-unit
+* governance-archive-diff-stable-unit
+* governance-archive-diff-unknown-unit
+* governance-archive-diff-insights-unit
+* governance-archive-diff-json-unit
+* governance-archive-diff-cli-unit
+* governance-archive-diff-invalid-kind-unit
+* governance-archive-diff-missing-archive-unit
+* governance-archive-diff-help-unit
 ---
 
 ## 🚀 Usage

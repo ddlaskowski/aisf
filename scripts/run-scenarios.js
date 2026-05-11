@@ -8998,6 +8998,356 @@ function runGovernanceArchiveCliHelpUnit() {
     return false;
   }
 }
+
+const ARCHIVE_DIFF_A = "2026-05-10T10-00-00-000Z";
+const ARCHIVE_DIFF_B = "2026-05-11T10-00-00-000Z";
+
+function archiveCreatedAt(archiveId) {
+  return archiveId.replace(/T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/, "T$1:$2:$3.$4Z");
+}
+
+function archiveDiffEntry(kind, archiveId, fileName = `${kind}.json`) {
+  return {
+    archiveId,
+    createdAt: archiveCreatedAt(archiveId),
+    kind,
+    archiveDir: `.factory/archive/${archiveId}/${kind}`,
+    files: [`.factory/archive/${archiveId}/${kind}/${fileName}`],
+    metadata: kind === "governance-insights" ? { profile: "balanced", runCount: 4 } : { profile: "balanced", ciStatus: "warn" }
+  };
+}
+
+function governanceInsightsSnapshot({
+  blockedRate,
+  humanReviewRate,
+  validationSuccessRate,
+  averageTrustScore,
+  readyRate,
+  generatedAt = "2026-05-11T10:00:00.000Z"
+}) {
+  return {
+    version: 1,
+    totalRuns: 4,
+    rates: {
+      blockedRate,
+      humanReviewRate,
+      validationSuccessRate,
+      readyRate
+    },
+    trust: {
+      averageTrustScore
+    },
+    insights: [],
+    generatedAt
+  };
+}
+
+function createArchiveDiffRepo(name, kind = "governance-insights", previousData = null, currentData = null) {
+  const repo = createArchiveRepo(name, warnCiIndex());
+  const previous = archiveDiffEntry(kind, ARCHIVE_DIFF_A);
+  const current = archiveDiffEntry(kind, ARCHIVE_DIFF_B);
+  const index = {
+    version: 1,
+    updatedAt: "2026-05-11T10:00:00.000Z",
+    totalArchives: 2,
+    archives: [current, previous]
+  };
+  writeArchiveIndex(repo, index);
+  for (const [entry, data] of [[previous, previousData], [current, currentData]]) {
+    if (data === null) continue;
+    const filePath = path.join(repo, entry.files[0]);
+    ensureDir(path.dirname(filePath));
+    fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  }
+  return repo;
+}
+
+function directDiff(previousData, currentData, kind = "governance-insights") {
+  const { buildGovernanceArchiveDiff } = require(path.join(projectRoot, "dist", "repair", "governanceArchiveDiff.js"));
+  return buildGovernanceArchiveDiff({
+    previous: {
+      entry: archiveDiffEntry(kind, ARCHIVE_DIFF_A),
+      data: previousData
+    },
+    current: {
+      entry: archiveDiffEntry(kind, ARCHIVE_DIFF_B),
+      data: currentData
+    }
+  });
+}
+
+function runGovernanceArchiveDiffUnit() {
+  try {
+    const diff = directDiff(
+      governanceInsightsSnapshot({ blockedRate: 20, humanReviewRate: 30, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 40 }),
+      governanceInsightsSnapshot({ blockedRate: 15, humanReviewRate: 25, validationSuccessRate: 88, averageTrustScore: 78, readyRate: 50 })
+    );
+    if (
+      diff.version !== 1 ||
+      diff.archiveA.archiveId !== ARCHIVE_DIFF_A ||
+      diff.archiveB.archiveId !== ARCHIVE_DIFF_B ||
+      diff.metrics.blockedRate.delta !== -5 ||
+      diff.metrics.validationSuccessRate.delta !== 8 ||
+      diff.comparison.status !== "improved"
+    ) {
+      throw new Error(`archive diff unit mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-archive-diff-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffImprovedUnit() {
+  try {
+    const diff = directDiff(
+      governanceInsightsSnapshot({ blockedRate: 25, humanReviewRate: 20, validationSuccessRate: 70, averageTrustScore: 65, readyRate: 50 }),
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 15, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    );
+    if (diff.comparison.status !== "improved" || !diff.insights.some((insight) => insight.code === "BLOCKED_RATE_IMPROVED")) {
+      throw new Error(`improved archive diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-archive-diff-improved-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-improved-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffDegradedUnit() {
+  try {
+    const diff = directDiff(
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 95, averageTrustScore: 90, readyRate: 80 }),
+      governanceInsightsSnapshot({ blockedRate: 30, humanReviewRate: 25, validationSuccessRate: 70, averageTrustScore: 60, readyRate: 55 })
+    );
+    if (diff.comparison.status !== "degraded" || !diff.insights.some((insight) => insight.code === "TRUST_SCORE_DEGRADED")) {
+      throw new Error(`degraded archive diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-archive-diff-degraded-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-degraded-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffMixedUnit() {
+  try {
+    const diff = directDiff(
+      governanceInsightsSnapshot({ blockedRate: 30, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 80, readyRate: 60 }),
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 35, validationSuccessRate: 90, averageTrustScore: 70, readyRate: 65 })
+    );
+    if (
+      diff.comparison.status !== "mixed" ||
+      !diff.insights.some((insight) => insight.code === "BLOCKED_RATE_IMPROVED") ||
+      !diff.insights.some((insight) => insight.code === "HUMAN_REVIEW_RATE_DEGRADED")
+    ) {
+      throw new Error(`mixed archive diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-archive-diff-mixed-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-mixed-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffStableUnit() {
+  try {
+    const diff = directDiff(
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    );
+    if (diff.comparison.status !== "stable" || diff.insights[0]?.code !== "GOVERNANCE_STABLE") {
+      throw new Error(`stable archive diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-archive-diff-stable-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-stable-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffUnknownUnit() {
+  try {
+    const diff = directDiff({ version: 1 }, { version: 1 });
+    if (diff.comparison.status !== "unknown" || diff.insights[0]?.code !== "GOVERNANCE_DIFF_UNKNOWN") {
+      throw new Error(`unknown archive diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-archive-diff-unknown-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-unknown-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffInsightsUnit() {
+  try {
+    const diff = directDiff(
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      governanceInsightsSnapshot({ blockedRate: 20, humanReviewRate: 5, validationSuccessRate: 95, averageTrustScore: 75, readyRate: 80 })
+    );
+    const codes = diff.insights.map((insight) => insight.code);
+    for (const code of ["BLOCKED_RATE_DEGRADED", "HUMAN_REVIEW_RATE_IMPROVED", "VALIDATION_SUCCESS_IMPROVED", "TRUST_SCORE_DEGRADED", "READY_RATE_IMPROVED"]) {
+      if (!codes.includes(code)) {
+        throw new Error(`missing archive diff insight ${code}: ${JSON.stringify(codes)}`);
+      }
+    }
+
+    console.log("PASS governance-archive-diff-insights-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-insights-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffJsonUnit() {
+  try {
+    const repo = createArchiveDiffRepo(
+      "governance-archive-diff-json",
+      "governance-insights",
+      governanceInsightsSnapshot({ blockedRate: 20, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 50 }),
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    );
+    const result = runCliHelpCommand(["archive", "diff", ARCHIVE_DIFF_A, ARCHIVE_DIFF_B, "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.comparison.status !== "improved" || parsed.metrics.blockedRate.delta !== -10) {
+      throw new Error(`archive diff JSON CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-archive-diff-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffCliUnit() {
+  try {
+    const repo = createArchiveDiffRepo(
+      "governance-archive-diff-cli",
+      "governance-insights",
+      governanceInsightsSnapshot({ blockedRate: 25, humanReviewRate: 20, validationSuccessRate: 75, averageTrustScore: 60, readyRate: 40 }),
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 15, validationSuccessRate: 90, averageTrustScore: 85, readyRate: 70 })
+    );
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["archive", "diff", ARCHIVE_DIFF_A, ARCHIVE_DIFF_B, "--repo", repo]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Archive Diff") ||
+      !result.stdout.includes("Comparison status:\nimproved") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`archive diff CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-archive-diff-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffInvalidKindUnit() {
+  try {
+    const repo = createArchiveRepo("governance-archive-diff-invalid-kind", warnCiIndex());
+    writeArchiveIndex(repo, {
+      version: 1,
+      updatedAt: "2026-05-11T10:00:00.000Z",
+      totalArchives: 2,
+      archives: [
+        archiveDiffEntry("runs-dashboard", ARCHIVE_DIFF_A, "runs-dashboard.json"),
+        archiveDiffEntry("runs-dashboard", ARCHIVE_DIFF_B, "runs-dashboard.json")
+      ]
+    });
+    const result = runCliHelpCommand(["archive", "diff", ARCHIVE_DIFF_A, ARCHIVE_DIFF_B, "--repo", repo]);
+    if (result.status !== 1 || !result.stderr.includes("Archive diff currently supports: governance-insights, governance-ci-summary")) {
+      throw new Error(`archive diff invalid kind mismatch: status=${result.status} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-archive-diff-invalid-kind-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-invalid-kind-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffMissingArchiveUnit() {
+  try {
+    const repo = createArchiveDiffRepo(
+      "governance-archive-diff-missing",
+      "governance-insights",
+      governanceInsightsSnapshot({ blockedRate: 20, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 50 }),
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    );
+    const result = runCliHelpCommand(["archive", "diff", ARCHIVE_DIFF_A, "missing-archive", "--repo", repo]);
+    if (result.status !== 1 || !result.stderr.includes("Archive not found: missing-archive")) {
+      throw new Error(`archive diff missing archive mismatch: status=${result.status} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-archive-diff-missing-archive-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-missing-archive-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArchiveDiffHelpUnit() {
+  const { renderArchiveHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const help = renderArchiveHelp();
+    const cliHelp = runCliHelpCommand(["archive", "--help"]);
+    if (cliHelp.status !== 0 || cliHelp.stdout !== help) {
+      throw new Error(`archive diff help CLI mismatch: status=${cliHelp.status} stdout=${cliHelp.stdout}`);
+    }
+    assertHelpIncludes(help, [
+      "Diff usage:",
+      "node dist/cli.js archive diff <archiveIdA> <archiveIdB>",
+      "Supported diff kinds:",
+      "Archive diff does not modify repair behavior or archive data."
+    ]);
+
+    console.log("PASS governance-archive-diff-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-archive-diff-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -9720,6 +10070,42 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceArchiveCliHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffImprovedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffDegradedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffMixedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffStableUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffUnknownUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffInsightsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffInvalidKindUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffMissingArchiveUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchiveDiffHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
