@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.1 - Governance Control Plane Hardening Layer**
+**v5.2 - Governance Config Preview Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -86,6 +86,8 @@ v4.9 adds deterministic Governance Evidence Diff. It compares two registered evi
 v5.0 adds a deterministic Governance Control Plane. It summarizes stability, escalation, policy, CI status, latest archive snapshot, and latest evidence-pack state in one read-only operator view without generating archives, generating evidence packs, or changing repair behavior.
 
 v5.1 hardens the governance control-plane CLI surface. It standardizes help coverage, invalid-option behavior, missing-data behavior, read-only boundary checks, and consolidated governance CLI documentation without changing governance algorithms, policy recommendations, or repair behavior.
+
+v5.2 adds deterministic Governance Config Preview. It reports current static policy profiles, thresholds, command write boundaries, governance data paths, and the reserved future config path without loading configuration from disk or changing runtime behavior.
 
 ---
 
@@ -2461,6 +2463,68 @@ v5.1 deterministic checks:
 * governance-cli-missing-data-consistency-unit
 * governance-cli-readonly-boundary-unit
 * governance-cli-readme-docs-unit
+
+## Governance Config Preview Layer (v5.2)
+
+v5.2 adds a read-only preview of the current static governance configuration surface.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance config
+node dist/cli.js governance config --json
+node dist/cli.js governance config --help
+```
+
+The config preview reports:
+
+* available governance policy profiles: `conservative`, `balanced`, `experimental`
+* default policy profile: `balanced`
+* deterministic policy threshold values
+* read-only governance commands
+* commands that write exports
+* commands that update governance indexes
+* current governance data paths
+* reserved future config path: `.factory/governance.config.json`
+
+Command boundary categories:
+
+* read-only commands include `runs`, `archive`, `archive diff`, `insights`, `ci-summary`, `trends`, `drift`, `stability`, `escalation`, `policy`, `decision-matrix`, `evidence-list`, `evidence-diff`, `governance`, and `governance config`
+* export-writing commands include `runs --export`, `insights --export`, `ci-summary --export`, and `evidence-pack`
+* index-updating commands include `runs --export --archive`, `insights --export --archive`, `ci-summary --export --archive`, and `evidence-pack`
+
+Governance data paths:
+
+* runs index: `.factory/runs-index.json`
+* archive index: `.factory/archive-index.json`
+* evidence index: `.factory/evidence-index.json`
+* exports directory: `.factory/exports`
+* archive directory: `.factory/archive`
+* evidence packs directory: `.factory/evidence-packs`
+* future config path: `.factory/governance.config.json`
+
+Read-only guarantee:
+
+* v5.2 does not load configuration from disk
+* v5.2 does not create `.factory/governance.config.json`
+* v5.2 does not mutate `.factory/runs-index.json`
+* v5.2 does not mutate `.factory/archive-index.json`
+* v5.2 does not mutate `.factory/evidence-index.json`
+* v5.2 does not change policy thresholds
+* v5.2 does not change governance calculations
+* v5.2 does not change repair behavior or orchestration behavior
+
+v5.2 deterministic checks:
+
+* governance-config-preview-unit
+* governance-config-preview-profiles-unit
+* governance-config-preview-command-boundaries-unit
+* governance-config-preview-paths-unit
+* governance-config-preview-json-unit
+* governance-config-preview-cli-unit
+* governance-config-preview-help-unit
+* governance-config-preview-readonly-unit
+* governance-config-preview-no-runtime-config-unit
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

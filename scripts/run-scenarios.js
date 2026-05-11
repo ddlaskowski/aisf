@@ -12652,6 +12652,228 @@ function runGovernanceCliReadmeDocsUnit() {
     return false;
   }
 }
+
+function directGovernanceConfigPreview() {
+  const { buildGovernanceConfigPreview } = require(path.join(projectRoot, "dist", "repair", "governanceConfigPreview.js"));
+  return buildGovernanceConfigPreview();
+}
+
+function runGovernanceConfigPreviewUnit() {
+  try {
+    const preview = directGovernanceConfigPreview();
+    if (preview.version !== 1 || preview.defaultPolicyProfile !== "balanced" || preview.generatedAt !== "1970-01-01T00:00:00.000Z") {
+      throw new Error(`config preview mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigPreviewProfilesUnit() {
+  try {
+    const preview = directGovernanceConfigPreview();
+    const profiles = preview.availablePolicyProfiles.map((profile) => profile.name).join(",");
+    const balanced = preview.availablePolicyProfiles.find((profile) => profile.name === "balanced");
+    if (
+      profiles !== "conservative,balanced,experimental" ||
+      balanced?.operatorMode !== "Balanced governance" ||
+      balanced?.riskTolerance !== "medium" ||
+      balanced?.thresholds.highBlockedRatePercent !== 25 ||
+      balanced?.thresholds.lowAverageTrustScore !== 65
+    ) {
+      throw new Error(`config profiles mismatch: ${JSON.stringify(preview.availablePolicyProfiles)}`);
+    }
+
+    console.log("PASS governance-config-preview-profiles-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-profiles-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigPreviewCommandBoundariesUnit() {
+  try {
+    const preview = directGovernanceConfigPreview();
+    const readOnly = preview.commandBoundaries.readOnlyCommands.join(",");
+    const exportWriting = preview.commandBoundaries.exportWritingCommands.join(",");
+    const indexUpdating = preview.commandBoundaries.indexUpdatingCommands.join(",");
+    if (
+      !readOnly.includes("governance config") ||
+      exportWriting !== "runs --export,insights --export,ci-summary --export,evidence-pack" ||
+      indexUpdating !== "runs --export --archive,insights --export --archive,ci-summary --export --archive,evidence-pack"
+    ) {
+      throw new Error(`config command boundaries mismatch: ${JSON.stringify(preview.commandBoundaries)}`);
+    }
+
+    console.log("PASS governance-config-preview-command-boundaries-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-command-boundaries-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigPreviewPathsUnit() {
+  try {
+    const preview = directGovernanceConfigPreview();
+    const paths = preview.dataPaths;
+    if (
+      paths.runsIndex !== ".factory/runs-index.json" ||
+      paths.archiveIndex !== ".factory/archive-index.json" ||
+      paths.evidenceIndex !== ".factory/evidence-index.json" ||
+      paths.exportsDirectory !== ".factory/exports" ||
+      paths.archiveDirectory !== ".factory/archive" ||
+      paths.evidencePacksDirectory !== ".factory/evidence-packs" ||
+      paths.futureConfigPath !== ".factory/governance.config.json"
+    ) {
+      throw new Error(`config paths mismatch: ${JSON.stringify(paths)}`);
+    }
+
+    console.log("PASS governance-config-preview-paths-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-paths-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigPreviewJsonUnit() {
+  try {
+    const result = runCliHelpCommand(["governance", "config", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.defaultPolicyProfile !== "balanced" ||
+      parsed.availablePolicyProfiles.length !== 3 ||
+      parsed.dataPaths.futureConfigPath !== ".factory/governance.config.json"
+    ) {
+      throw new Error(`config JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-config-preview-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigPreviewCliUnit() {
+  try {
+    const result = runCliHelpCommand(["governance", "config"]);
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Config Preview") ||
+      !result.stdout.includes("Default policy profile:\nbalanced") ||
+      !result.stdout.includes("- governance config")
+    ) {
+      throw new Error(`config CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    const governanceResult = runCliHelpCommand(["governance", "--json"]);
+    const parsedGovernance = JSON.parse(governanceResult.stdout);
+    if (governanceResult.status !== 0 || parsedGovernance.version !== 1 || parsedGovernance.status !== "unknown") {
+      throw new Error(`existing governance command mismatch: status=${governanceResult.status} stdout=${governanceResult.stdout}`);
+    }
+
+    console.log("PASS governance-config-preview-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigPreviewHelpUnit() {
+  const { renderGovernanceConfigHelp, renderGovernanceHelp, renderMainHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const configHelp = renderGovernanceConfigHelp();
+    const cliHelp = runCliHelpCommand(["governance", "config", "--help"]);
+    const shortHelp = runCliHelpCommand(["governance", "config", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== configHelp || shortHelp.stdout !== configHelp) {
+      throw new Error(`config help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(configHelp, [
+      "Usage:\n  node dist/cli.js governance config [options]",
+      "--json      Print JSON output",
+      "Governance config preview does not modify repair behavior or governance indexes."
+    ]);
+    assertHelpIncludes(renderGovernanceHelp(), ["node dist/cli.js governance config"]);
+    assertHelpIncludes(renderMainHelp(), ["node dist/cli.js governance config"]);
+
+    console.log("PASS governance-config-preview-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigPreviewReadonlyUnit() {
+  try {
+    const repo = createControlPlaneRepo("governance-config-preview-readonly", repeatedDriftValues(7, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }), passCiIndex(), sampleEvidenceIndex());
+    const before = readGovernanceIndexSnapshots(repo);
+    const result = runCliHelpCommand(["governance", "config", "--json"]);
+    const after = readGovernanceIndexSnapshots(repo);
+    if (result.status !== 0) {
+      throw new Error(`config readonly command failed: status=${result.status} stderr=${result.stderr}`);
+    }
+    assertGovernanceIndexSnapshotsEqual(before, after, "governance config");
+    if (fs.existsSync(path.join(repo, ".factory", "governance.config.json"))) {
+      throw new Error("governance config preview created future config file");
+    }
+    if (fs.existsSync(path.join(projectRoot, ".factory", "governance.config.json"))) {
+      throw new Error("governance config preview created project future config file");
+    }
+
+    console.log("PASS governance-config-preview-readonly-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-readonly-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigPreviewNoRuntimeConfigUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-preview-no-runtime-config");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), {
+      defaultPolicyProfile: "experimental",
+      thresholds: { highBlockedRatePercent: 999 }
+    });
+    const result = runCliHelpCommand(["governance", "config", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.defaultPolicyProfile !== "balanced" ||
+      parsed.availablePolicyProfiles.find((profile) => profile.name === "balanced")?.thresholds.highBlockedRatePercent !== 25 ||
+      !fs.existsSync(path.join(repo, ".factory", "governance.config.json"))
+    ) {
+      throw new Error(`config preview loaded runtime config unexpectedly: status=${result.status} stdout=${result.stdout}`);
+    }
+
+    console.log("PASS governance-config-preview-no-runtime-config-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-preview-no-runtime-config-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -13753,6 +13975,33 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceCliReadmeDocsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewProfilesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewCommandBoundariesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewPathsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewReadonlyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigPreviewNoRuntimeConfigUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
