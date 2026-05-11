@@ -12291,6 +12291,367 @@ function runGovernanceControlPlaneHelpUnit() {
     return false;
   }
 }
+
+const GOVERNANCE_HARDENING_COMMANDS = [
+  "runs",
+  "archive",
+  "insights",
+  "ci-summary",
+  "trends",
+  "drift",
+  "stability",
+  "escalation",
+  "policy",
+  "decision-matrix",
+  "evidence-pack",
+  "evidence-list",
+  "evidence-diff",
+  "governance"
+];
+
+function createGovernanceHardeningEmptyRepo(name) {
+  const repo = path.join(projectRoot, ".scenario-unit", name);
+  fs.rmSync(repo, { recursive: true, force: true });
+  ensureDir(repo);
+  return repo;
+}
+
+function runGovernanceCliSmokeCommandUnit(checkName, args, expected) {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo(checkName);
+    const result = runCliHelpCommand([...args, "--repo", repo, "--json"]);
+    if (result.status !== expected.status || !result.stdout.includes(expected.includes)) {
+      throw new Error(`${checkName} mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    if (fs.existsSync(path.join(repo, ".factory", "runs-index.json")) || fs.existsSync(path.join(repo, ".factory", "archive-index.json")) || fs.existsSync(path.join(repo, ".factory", "evidence-index.json"))) {
+      throw new Error(`${checkName} created a governance index unexpectedly`);
+    }
+
+    console.log(`PASS ${checkName}`);
+    return true;
+  } catch (error) {
+    console.log(`FAIL ${checkName}`);
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCliSmokeRunsUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-runs-unit", ["runs"], { status: 0, includes: "\"totalRuns\"" });
+}
+
+function runGovernanceCliSmokeArchiveUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-archive-unit", ["archive"], { status: 0, includes: "\"totalArchives\"" });
+}
+
+function runGovernanceCliSmokeInsightsUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-insights-unit", ["insights"], { status: 0, includes: "\"totalRuns\"" });
+}
+
+function runGovernanceCliSmokeCiSummaryUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-ci-summary-unit", ["ci-summary"], { status: 0, includes: "\"status\"" });
+}
+
+function runGovernanceCliSmokeTrendsUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-trends-unit", ["trends"], { status: 0, includes: "\"trendHealth\"" });
+}
+
+function runGovernanceCliSmokeDriftUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-drift-unit", ["drift"], { status: 0, includes: "\"overallSeverity\"" });
+}
+
+function runGovernanceCliSmokeStabilityUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-stability-unit", ["stability"], { status: 0, includes: "\"score\"" });
+}
+
+function runGovernanceCliSmokeEscalationUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-escalation-unit", ["escalation"], { status: 0, includes: "\"escalationLevel\"" });
+}
+
+function runGovernanceCliSmokePolicyUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-policy-unit", ["policy"], { status: 0, includes: "\"recommendedPolicyMode\"" });
+}
+
+function runGovernanceCliSmokeDecisionMatrixUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-decision-matrix-unit", ["decision-matrix"], { status: 0, includes: "\"finalDecision\"" });
+}
+
+function runGovernanceCliSmokeEvidenceListUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-evidence-list-unit", ["evidence-list"], { status: 0, includes: "\"entries\"" });
+}
+
+function runGovernanceCliSmokeGovernanceUnit() {
+  return runGovernanceCliSmokeCommandUnit("governance-cli-smoke-governance-unit", ["governance"], { status: 0, includes: "\"status\"" });
+}
+
+function runGovernanceCliSmokeAllUnit() {
+  let failed = 0;
+  for (const check of [
+    runGovernanceCliSmokeRunsUnit,
+    runGovernanceCliSmokeArchiveUnit,
+    runGovernanceCliSmokeInsightsUnit,
+    runGovernanceCliSmokeCiSummaryUnit,
+    runGovernanceCliSmokeTrendsUnit,
+    runGovernanceCliSmokeDriftUnit,
+    runGovernanceCliSmokeStabilityUnit,
+    runGovernanceCliSmokeEscalationUnit,
+    runGovernanceCliSmokePolicyUnit,
+    runGovernanceCliSmokeDecisionMatrixUnit,
+    runGovernanceCliSmokeEvidenceListUnit,
+    runGovernanceCliSmokeGovernanceUnit
+  ]) {
+    if (!check()) failed += 1;
+  }
+  if (failed === 0) {
+    console.log("PASS governance-cli-smoke-all-unit");
+    return true;
+  }
+  console.log("FAIL governance-cli-smoke-all-unit");
+  console.log(`  ${failed} smoke checks failed`);
+  return false;
+}
+
+function runGovernanceCliHelpConsistencyUnit() {
+  const help = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  const renderers = {
+    runs: help.renderRunsHelp,
+    archive: help.renderArchiveHelp,
+    insights: help.renderInsightsHelp,
+    "ci-summary": help.renderCiSummaryHelp,
+    trends: help.renderTrendsHelp,
+    drift: help.renderDriftHelp,
+    stability: help.renderStabilityHelp,
+    escalation: help.renderEscalationHelp,
+    policy: help.renderPolicyHelp,
+    "decision-matrix": help.renderDecisionMatrixHelp,
+    "evidence-pack": help.renderEvidencePackHelp,
+    "evidence-list": help.renderEvidenceListHelp,
+    "evidence-diff": help.renderEvidenceDiffHelp,
+    governance: help.renderGovernanceHelp
+  };
+
+  try {
+    const mainHelp = help.renderMainHelp();
+    for (const command of GOVERNANCE_HARDENING_COMMANDS) {
+      if (!mainHelp.includes(command)) {
+        throw new Error(`main help missing ${command}`);
+      }
+      const renderer = renderers[command];
+      const rendered = renderer();
+      const result = runCliHelpCommand([command, "--help"]);
+      if (result.status !== 0 || result.stdout !== rendered) {
+        throw new Error(`${command} help mismatch: status=${result.status} stdout=${result.stdout}`);
+      }
+      for (const required of ["Usage:", "Options:", "Examples:", "Read-only guarantee:"]) {
+        if (!rendered.includes(required)) {
+          throw new Error(`${command} help missing ${required}`);
+        }
+      }
+    }
+
+    console.log("PASS governance-cli-help-consistency-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-cli-help-consistency-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCliInvalidOptionConsistencyUnit() {
+  const { renderInvalidFlagError } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    for (const command of GOVERNANCE_HARDENING_COMMANDS) {
+      const result = runCliHelpCommand([command, "--bad"]);
+      const expected = renderInvalidFlagError(command, "--bad");
+      if (result.status !== 1 || result.stderr !== expected) {
+        throw new Error(`${command} invalid option mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+      }
+    }
+
+    console.log("PASS governance-cli-invalid-option-consistency-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-cli-invalid-option-consistency-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCliMissingDataConsistencyUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-cli-missing-data-consistency");
+    const checks = [
+      { args: ["runs", "--json"], status: 0, includes: "\"totalRuns\"" },
+      { args: ["archive", "--json"], status: 0, includes: "\"totalArchives\"" },
+      { args: ["insights", "--json"], status: 0, includes: "NO_RUNS" },
+      { args: ["ci-summary", "--json"], status: 0, includes: "\"status\": \"warn\"" },
+      { args: ["trends", "--json"], status: 0, includes: "NO_ARCHIVE_HISTORY" },
+      { args: ["drift", "--json"], status: 0, includes: "NO_ARCHIVE_HISTORY" },
+      { args: ["stability", "--json"], status: 0, includes: "NO_ARCHIVE_HISTORY" },
+      { args: ["escalation", "--json"], status: 0, includes: "NO_ESCALATION" },
+      { args: ["policy", "--json"], status: 0, includes: "GOVERNANCE_HEALTHY" },
+      { args: ["decision-matrix", "--json"], status: 0, includes: "NO_HISTORY" },
+      { args: ["evidence-list", "--json"], status: 0, includes: "\"entries\": []" },
+      { args: ["evidence-diff", "missing-a", "missing-b", "--json"], status: 1, stderrIncludes: "No governance evidence index found." },
+      { args: ["governance", "--json"], status: 0, includes: "\"status\": \"unknown\"" }
+    ];
+    for (const check of checks) {
+      const result = runCliHelpCommand([...check.args, "--repo", repo]);
+      if (result.status !== check.status) {
+        throw new Error(`missing data status mismatch for ${check.args.join(" ")}: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+      }
+      if (check.includes && !result.stdout.includes(check.includes)) {
+        throw new Error(`missing data stdout mismatch for ${check.args.join(" ")}: stdout=${result.stdout}`);
+      }
+      if (check.stderrIncludes && !result.stderr.includes(check.stderrIncludes)) {
+        throw new Error(`missing data stderr mismatch for ${check.args.join(" ")}: stderr=${result.stderr}`);
+      }
+    }
+
+    console.log("PASS governance-cli-missing-data-consistency-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-cli-missing-data-consistency-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function readGovernanceIndexSnapshots(repo) {
+  const files = [
+    ".factory/runs-index.json",
+    ".factory/archive-index.json",
+    ".factory/evidence-index.json"
+  ];
+  const snapshots = {};
+  for (const file of files) {
+    const fullPath = path.join(repo, file);
+    snapshots[file] = fs.existsSync(fullPath) ? fs.readFileSync(fullPath, "utf8") : null;
+  }
+  return snapshots;
+}
+
+function assertGovernanceIndexSnapshotsEqual(before, after, label) {
+  for (const key of Object.keys(before)) {
+    if (before[key] !== after[key]) {
+      throw new Error(`${label} modified ${key}`);
+    }
+  }
+}
+
+function runGovernanceCliReadonlyBoundaryUnit() {
+  try {
+    const repo = createControlPlaneRepo("governance-cli-readonly-boundary", repeatedDriftValues(7, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }), passCiIndex(), sampleEvidenceIndex());
+    const commands = [
+      ["runs", "--repo", repo, "--json"],
+      ["archive", "--repo", repo, "--json"],
+      ["insights", "--repo", repo, "--json"],
+      ["ci-summary", "--repo", repo, "--json"],
+      ["trends", "--repo", repo, "--window", "7", "--json"],
+      ["drift", "--repo", repo, "--baseline-window", "5", "--comparison-window", "2", "--json"],
+      ["stability", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"],
+      ["escalation", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"],
+      ["policy", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"],
+      ["decision-matrix", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"],
+      ["evidence-list", "--repo", repo, "--json"],
+      ["governance", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"]
+    ];
+    for (const command of commands) {
+      const before = readGovernanceIndexSnapshots(repo);
+      const result = runCliHelpCommand(command);
+      const after = readGovernanceIndexSnapshots(repo);
+      if (result.status !== 0) {
+        throw new Error(`readonly command failed ${command.join(" ")}: status=${result.status} stderr=${result.stderr}`);
+      }
+      assertGovernanceIndexSnapshotsEqual(before, after, command[0]);
+    }
+
+    const archiveRepo = createArchiveDiffRepo(
+      "governance-cli-readonly-archive-diff",
+      "governance-insights",
+      governanceInsightsSnapshot({ blockedRate: 20, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 50 }),
+      governanceInsightsSnapshot({ blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    );
+    const beforeArchiveDiff = readGovernanceIndexSnapshots(archiveRepo);
+    const archiveDiffResult = runCliHelpCommand(["archive", "diff", ARCHIVE_DIFF_A, ARCHIVE_DIFF_B, "--repo", archiveRepo, "--json"]);
+    const afterArchiveDiff = readGovernanceIndexSnapshots(archiveRepo);
+    if (archiveDiffResult.status !== 0) {
+      throw new Error(`archive diff readonly failed: status=${archiveDiffResult.status} stderr=${archiveDiffResult.stderr}`);
+    }
+    assertGovernanceIndexSnapshotsEqual(beforeArchiveDiff, afterArchiveDiff, "archive diff");
+
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "conservative", escalationLevel: "warning", stabilityLevel: "caution", stabilityScore: 73, driftSeverity: "low", trendHealth: "warning" });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "normal", escalationLevel: "none", stabilityLevel: "stable", stabilityScore: 100, driftSeverity: "none", trendHealth: "healthy" });
+    const evidenceRepo = createEvidenceDiffRepo("governance-cli-readonly-evidence-diff", [previous, current]);
+    writeArchiveIndex(evidenceRepo, sampleArchiveIndex());
+    writeJson(path.join(evidenceRepo, ".factory", "runs-index.json"), passCiIndex());
+    const beforeEvidenceDiff = readGovernanceIndexSnapshots(evidenceRepo);
+    const evidenceDiffResult = runCliHelpCommand(["evidence-diff", previous.id, current.id, "--repo", evidenceRepo, "--json"]);
+    const afterEvidenceDiff = readGovernanceIndexSnapshots(evidenceRepo);
+    if (evidenceDiffResult.status !== 0) {
+      throw new Error(`evidence diff readonly failed: status=${evidenceDiffResult.status} stderr=${evidenceDiffResult.stderr}`);
+    }
+    assertGovernanceIndexSnapshotsEqual(beforeEvidenceDiff, afterEvidenceDiff, "evidence diff");
+
+    console.log("PASS governance-cli-readonly-boundary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-cli-readonly-boundary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneHardeningUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-control-plane-hardening");
+    const result = runCliHelpCommand(["governance", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.status !== "unknown" ||
+      !parsed.warnings.includes("No governance archive index found.") ||
+      !parsed.warnings.includes("No governance evidence index found.") ||
+      fs.existsSync(path.join(repo, ".factory", "archive-index.json")) ||
+      fs.existsSync(path.join(repo, ".factory", "evidence-index.json"))
+    ) {
+      throw new Error(`governance hardening mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-control-plane-hardening-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-hardening-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCliReadmeDocsUnit() {
+  try {
+    const readme = fs.readFileSync(path.join(projectRoot, "README.md"), "utf8");
+    for (const required of [
+      "## Governance Control Plane Hardening Layer (v5.1)",
+      "| Command | Purpose | Reads | Writes |",
+      "`governance` | Show unified governance control-plane summary",
+      "read-only governance commands do not update `.factory/runs-index.json`",
+      "unsupported governance flags use deterministic `Invalid option for <command>: <flag>` errors",
+      "v5.1 deterministic checks:"
+    ]) {
+      if (!readme.includes(required)) {
+        throw new Error(`README missing ${required}`);
+      }
+    }
+
+    console.log("PASS governance-cli-readme-docs-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-cli-readme-docs-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -12319,7 +12680,8 @@ function runCliHelpMainUnit() {
       "# AI Software Factory CLI",
       "node dist/cli.js <command> [options]",
       "runs        Show historical governance run dashboard",
-      "Governance commands are read-only and do not modify repair behavior."
+      "Governance inspection commands are read-only unless --export, --archive, or evidence-pack is explicitly used.",
+      "Governance commands do not modify repair behavior."
     ]);
 
     console.log("PASS cli-help-main-unit");
@@ -13370,6 +13732,27 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceControlPlaneHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneHardeningUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCliSmokeAllUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCliHelpConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCliInvalidOptionConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCliMissingDataConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCliReadonlyBoundaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCliReadmeDocsUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

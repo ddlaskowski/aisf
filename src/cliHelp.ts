@@ -42,7 +42,8 @@
     "  node dist/cli.js evidence-list --latest",
     "  node dist/cli.js evidence-diff <A> <B>",
     "",
-    "Governance commands are read-only and do not modify repair behavior."
+    "Governance inspection commands are read-only unless --export, --archive, or evidence-pack is explicitly used.",
+    "Governance commands do not modify repair behavior."
   ].join("\n") + "\n";
 }
 

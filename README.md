@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.0 - Governance Control Plane Layer**
+**v5.1 - Governance Control Plane Hardening Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -84,6 +84,8 @@ v4.8 adds a deterministic Governance Evidence Manifest Index. It registers gener
 v4.9 adds deterministic Governance Evidence Diff. It compares two registered evidence packs and reports policy, escalation, stability, drift, trend, operator approval, autonomous-operation, and decision-matrix rule changes without mutating evidence packs or indexes.
 
 v5.0 adds a deterministic Governance Control Plane. It summarizes stability, escalation, policy, CI status, latest archive snapshot, and latest evidence-pack state in one read-only operator view without generating archives, generating evidence packs, or changing repair behavior.
+
+v5.1 hardens the governance control-plane CLI surface. It standardizes help coverage, invalid-option behavior, missing-data behavior, read-only boundary checks, and consolidated governance CLI documentation without changing governance algorithms, policy recommendations, or repair behavior.
 
 ---
 
@@ -2400,6 +2402,65 @@ v5.0 deterministic checks:
 * governance-control-plane-cli-unit
 * governance-control-plane-missing-data-unit
 * governance-control-plane-help-unit
+
+## Governance Control Plane Hardening Layer (v5.1)
+
+v5.1 consolidates the governance CLI surface after the v5.0 control-plane milestone.
+
+Governance CLI command table:
+
+| Command | Purpose | Reads | Writes |
+|---|---|---|---|
+| `runs` | Show historical governance run dashboard | `.factory/runs-index.json` | none unless `--export` is used |
+| `archive` | Browse governance archive snapshot history | `.factory/archive-index.json` | none |
+| `archive diff <A> <B>` | Compare archive snapshots | `.factory/archive-index.json`, registered archive files | none |
+| `insights` | Show governance insights over indexed runs | `.factory/runs-index.json` | none unless `--export` is used |
+| `ci-summary` | Show CI-friendly governance summary | `.factory/runs-index.json` | none unless `--export` is used |
+| `trends` | Analyze governance trends over archive history | `.factory/archive-index.json`, registered archive files | none |
+| `drift` | Detect governance drift against baselines | `.factory/archive-index.json`, registered archive files | none |
+| `stability` | Compute governance stability score | `.factory/archive-index.json`, registered archive files | none |
+| `escalation` | Compute governance escalation status | `.factory/archive-index.json`, registered archive files | none |
+| `policy` | Recommend governance policy mode | `.factory/archive-index.json`, registered archive files | none |
+| `decision-matrix` | Explain governance decision reasoning | `.factory/archive-index.json`, registered archive files | none |
+| `evidence-pack` | Export governance evidence pack | `.factory/archive-index.json`, registered archive files | `.factory/evidence-packs`, `.factory/evidence-index.json` |
+| `evidence-list` | Browse governance evidence registry | `.factory/evidence-index.json` | none |
+| `evidence-diff <A> <B>` | Compare governance evidence packs | `.factory/evidence-index.json`, registered evidence files | none |
+| `governance` | Show unified governance control-plane summary | `.factory/runs-index.json`, `.factory/archive-index.json`, `.factory/evidence-index.json` | none |
+
+Read-only boundaries:
+
+* read-only governance commands do not update `.factory/runs-index.json`
+* read-only governance commands do not update `.factory/archive-index.json`
+* read-only governance commands do not update `.factory/evidence-index.json`
+* export commands may write deterministic files under `.factory/exports`
+* `--archive` export flows may write snapshots under `.factory/archive` and update `.factory/archive-index.json`
+* `evidence-pack` writes deterministic evidence bundles under `.factory/evidence-packs` and updates `.factory/evidence-index.json`
+* no governance CLI command changes repair behavior, patch policy, validation behavior, or orchestration behavior
+
+Missing-data behavior:
+
+* missing `.factory/runs-index.json` is handled by empty dashboard, `NO_RUNS`, or CI `warn` output depending on command
+* missing `.factory/archive-index.json` is handled without crashing by archive, trend, drift, stability, escalation, policy, decision-matrix, and governance commands
+* missing `.factory/evidence-index.json` is handled as an empty registry by `evidence-list`
+* missing `.factory/evidence-index.json` is a deterministic error for `evidence-diff`
+* missing archive or evidence indexes make `governance` report `status: unknown`
+
+CLI UX guarantees:
+
+* every governance command supports `--help`
+* unsupported governance flags use deterministic `Invalid option for <command>: <flag>` errors
+* help output uses stable formatting and no dynamic terminal width
+* CI summary exit codes remain `pass -> 0`, `warn -> 0`, and `fail -> 1`
+
+v5.1 deterministic checks:
+
+* governance-control-plane-hardening-unit
+* governance-cli-smoke-all-unit
+* governance-cli-help-consistency-unit
+* governance-cli-invalid-option-consistency-unit
+* governance-cli-missing-data-consistency-unit
+* governance-cli-readonly-boundary-unit
+* governance-cli-readme-docs-unit
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
