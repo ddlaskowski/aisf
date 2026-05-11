@@ -13,6 +13,7 @@
     "  archive     Show governance archive snapshot history",
     "  trends      Show governance trend analysis over archives",
     "  drift       Show governance drift detection against baselines",
+    "  stability   Show governance operational stability score",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -25,6 +26,7 @@
     "  node dist/cli.js archive --latest",
     "  node dist/cli.js trends --window 20",
     "  node dist/cli.js drift --json",
+    "  node dist/cli.js stability --json",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -235,6 +237,34 @@ export function renderDriftHelp(): string {
     "Read-only guarantee:",
     "  Drift detection reads governance history and does not modify repair behavior.",
     "  Drift detection does not modify .factory/archive-index.json or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderStabilityHelp(): string {
+  return [
+    "# AI Software Factory CLI - stability",
+    "",
+    "Usage:",
+    "  node dist/cli.js stability [options]",
+    "",
+    "Options:",
+    "  --repo <path>                Path to target repository",
+    "  --window <n>                 Trend analysis window",
+    "  --baseline-window <n>       Drift baseline window",
+    "  --comparison-window <n>     Drift comparison window",
+    "  --json                      Print JSON output",
+    "  --help, -h                  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js stability",
+    "  node dist/cli.js stability --window 20",
+    "  node dist/cli.js stability --baseline-window 30",
+    "  node dist/cli.js stability --comparison-window 10",
+    "  node dist/cli.js stability --json",
+    "",
+    "Read-only guarantee:",
+    "  Stability scoring reads governance history and does not modify repair behavior.",
+    "  Stability scoring does not modify .factory/archive-index.json or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

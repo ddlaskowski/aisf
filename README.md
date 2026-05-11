@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.2 - Governance Drift Detection Layer**
+**v4.3 - Governance Stability Scoring Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -68,6 +68,8 @@ v4.0 adds a deterministic Governance Archive Diff Layer. It compares existing ar
 v4.1 adds deterministic Governance Trend Analysis across multiple archived governance-insights snapshots. It reports metric directions, volatility, trend health, and fixed insight codes without mutating archive history, run indexes, or repair behavior.
 
 v4.2 adds deterministic Governance Drift Detection. It compares recent governance-insights snapshots against historical baseline windows to detect blocked-rate drift, trust degradation, validation-success drift, and baseline instability without mutating archive history, run indexes, or repair behavior.
+
+v4.3 adds deterministic Governance Stability Scoring. It combines governance trend analysis and drift detection into one operational stability score without mutating archive history, run indexes, or repair behavior.
 
 ---
 
@@ -1755,6 +1757,69 @@ Read-only guarantee:
 * drift detection does not generate patches
 * drift detection does not retry repairs
 * drift detection does not mutate source files
+
+## Governance Stability Scoring Layer (v4.3)
+
+v4.3 computes one deterministic operational stability score from governance trend analysis and governance drift detection.
+
+CLI usage:
+
+```bash
+node dist/cli.js stability
+node dist/cli.js stability --window 20
+node dist/cli.js stability --baseline-window 30
+node dist/cli.js stability --comparison-window 10
+node dist/cli.js stability --json
+```
+
+Score philosophy:
+
+* the score starts at `100`
+* deterministic deductions are applied for trend warnings, drift severity, high volatility, unhealthy metrics, and anomalies
+* the score is clamped between `0` and `100`
+* no predictive scoring, ML, forecasting, or dynamic threshold learning is used
+
+Stability levels:
+
+* `stable` means score is `85` through `100`
+* `caution` means score is `70` through `84`
+* `unstable` means score is `40` through `69`
+* `critical` means score is below `40`
+
+Deterministic deductions:
+
+* trend health `critical` -> `-35`
+* trend health `warning` -> `-20`
+* trend health `unknown` -> `-10`
+* drift severity `critical` -> `-35`
+* drift severity `high` -> `-25`
+* drift severity `medium` -> `-15`
+* drift severity `low` -> `-5`
+* governance, trust, or validation volatility above `15` -> `-10` each
+* blocked rate above `25` -> `-15`
+* validation success rate below `80` -> `-15`
+* average trust score below `65` -> `-15`
+* ready rate below `70` -> `-10`
+* each critical anomaly -> `-10`
+* each warning anomaly -> `-3`
+
+Missing history behavior:
+
+* missing archive history returns score `100`
+* level is `stable`
+* summary is `No governance history is available. Stability assumed.`
+* anomaly code is `NO_ARCHIVE_HISTORY`
+
+Read-only guarantee:
+
+* stability scoring reads `.factory/archive-index.json`
+* stability scoring reads indexed archived `governance-insights.json` snapshots
+* stability scoring aggregates existing trend and drift analysis
+* stability scoring does not update `.factory/archive-index.json`
+* stability scoring does not update `.factory/runs-index.json`
+* stability scoring does not generate patches
+* stability scoring does not retry repairs
+* stability scoring does not mutate source files
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

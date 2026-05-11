@@ -9968,6 +9968,299 @@ function runGovernanceDriftHelpUnit() {
     return false;
   }
 }
+
+function stabilityTrend(overrides = {}) {
+  return {
+    version: 1,
+    analyzedKind: "governance-insights",
+    windowSize: 10,
+    totalSnapshots: 7,
+    analyzedSnapshots: 7,
+    trendHealth: "healthy",
+    metrics: {},
+    volatility: {
+      governanceVolatilityScore: 0,
+      trustVolatilityScore: 0,
+      validationVolatilityScore: 0
+    },
+    insights: [],
+    generatedAt: "2026-05-11T10:00:00.000Z",
+    ...overrides
+  };
+}
+
+function stabilityDrift(overrides = {}) {
+  return {
+    version: 1,
+    analyzedKind: "governance-insights",
+    baselineWindowSize: 5,
+    comparisonWindowSize: 2,
+    analyzedSnapshots: 7,
+    overallSeverity: "none",
+    metrics: {
+      blockedRate: { baselineAverage: 10, currentValue: 10, absoluteDelta: 0, percentDelta: 0, driftDetected: false, severity: "none" },
+      humanReviewRate: { baselineAverage: 10, currentValue: 10, absoluteDelta: 0, percentDelta: 0, driftDetected: false, severity: "none" },
+      validationSuccessRate: { baselineAverage: 90, currentValue: 90, absoluteDelta: 0, percentDelta: 0, driftDetected: false, severity: "none" },
+      averageTrustScore: { baselineAverage: 80, currentValue: 80, absoluteDelta: 0, percentDelta: 0, driftDetected: false, severity: "none" },
+      readyRate: { baselineAverage: 75, currentValue: 75, absoluteDelta: 0, percentDelta: 0, driftDetected: false, severity: "none" }
+    },
+    anomalies: [],
+    summary: "Governance metrics remain within historical baseline ranges.",
+    generatedAt: "2026-05-11T10:00:00.000Z",
+    ...overrides
+  };
+}
+
+function directStability(trendOverrides = {}, driftOverrides = {}) {
+  const { buildGovernanceStabilityScore } = require(path.join(projectRoot, "dist", "repair", "governanceStabilityScore.js"));
+  return buildGovernanceStabilityScore({
+    trend: stabilityTrend(trendOverrides),
+    drift: stabilityDrift(driftOverrides)
+  });
+}
+
+function runGovernanceStabilityScoreUnit() {
+  try {
+    const stability = directStability();
+    if (stability.version !== 1 || stability.score !== 100 || stability.level !== "stable" || stability.metrics.trendHealth !== "healthy") {
+      throw new Error(`stability score mismatch: ${JSON.stringify(stability)}`);
+    }
+
+    console.log("PASS governance-stability-score-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-score-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilityLevelUnit() {
+  try {
+    const caution = directStability({ trendHealth: "warning" }, { overallSeverity: "low" });
+    const unstable = directStability({ trendHealth: "warning" }, { overallSeverity: "medium" });
+    const critical = directStability({ trendHealth: "critical" }, { overallSeverity: "critical" });
+    if (caution.score !== 75 || caution.level !== "caution" || unstable.score !== 65 || unstable.level !== "unstable" || critical.score !== 30 || critical.level !== "critical") {
+      throw new Error(`stability level mismatch: caution=${JSON.stringify(caution)} unstable=${JSON.stringify(unstable)} critical=${JSON.stringify(critical)}`);
+    }
+
+    console.log("PASS governance-stability-level-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-level-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilityDeductionUnit() {
+  try {
+    const stability = directStability(
+      { trendHealth: "unknown" },
+      {
+        overallSeverity: "high",
+        metrics: {
+          ...stabilityDrift().metrics,
+          blockedRate: { baselineAverage: 10, currentValue: 30, absoluteDelta: 20, percentDelta: 200, driftDetected: true, severity: "critical" },
+          validationSuccessRate: { baselineAverage: 90, currentValue: 70, absoluteDelta: -20, percentDelta: -22.22, driftDetected: true, severity: "medium" },
+          averageTrustScore: { baselineAverage: 80, currentValue: 60, absoluteDelta: -20, percentDelta: -25, driftDetected: true, severity: "medium" },
+          readyRate: { baselineAverage: 80, currentValue: 60, absoluteDelta: -20, percentDelta: -25, driftDetected: true, severity: "medium" }
+        }
+      }
+    );
+    if (stability.score !== 10 || stability.level !== "critical") {
+      throw new Error(`deduction mismatch: ${JSON.stringify(stability)}`);
+    }
+
+    console.log("PASS governance-stability-deduction-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-deduction-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilityVolatilityUnit() {
+  try {
+    const stability = directStability({
+      volatility: {
+        governanceVolatilityScore: 16,
+        trustVolatilityScore: 20,
+        validationVolatilityScore: 30
+      }
+    });
+    const volatilityFactors = stability.contributingFactors.filter((factor) => factor.category === "volatility");
+    if (stability.score !== 70 || stability.level !== "caution" || volatilityFactors.length !== 3) {
+      throw new Error(`volatility stability mismatch: ${JSON.stringify(stability)}`);
+    }
+
+    console.log("PASS governance-stability-volatility-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-volatility-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilityAnomalyUnit() {
+  try {
+    const stability = directStability(
+      {
+        insights: [
+          { severity: "warning", code: "TRUST_TREND_DEGRADING", message: "Governance trust score trend is degrading." },
+          { severity: "critical", code: "HIGH_GOVERNANCE_VOLATILITY", message: "Governance metrics show high volatility." }
+        ]
+      },
+      {
+        anomalies: [
+          { severity: "warning", code: "BLOCKED_RATE_DRIFT", message: "Blocked governance rate drift exceeded historical baseline." }
+        ]
+      }
+    );
+    const anomalyFactors = stability.contributingFactors.filter((factor) => factor.category === "anomaly");
+    if (stability.score !== 84 || stability.level !== "caution" || anomalyFactors.length !== 3) {
+      throw new Error(`anomaly stability mismatch: ${JSON.stringify(stability)}`);
+    }
+
+    console.log("PASS governance-stability-anomaly-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-anomaly-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilitySummaryUnit() {
+  try {
+    const stable = directStability();
+    const caution = directStability({ trendHealth: "warning" }, { overallSeverity: "low" });
+    const unstable = directStability({ trendHealth: "warning" }, { overallSeverity: "medium" });
+    const critical = directStability({ trendHealth: "critical" }, { overallSeverity: "critical" });
+    if (
+      stable.summary !== "Governance operations appear stable and within acceptable ranges." ||
+      caution.summary !== "Governance operations show moderate instability or elevated risk." ||
+      unstable.summary !== "Governance operations show significant instability." ||
+      critical.summary !== "Governance operations are critically unstable."
+    ) {
+      throw new Error(`summary mismatch: ${JSON.stringify({ stable, caution, unstable, critical })}`);
+    }
+
+    console.log("PASS governance-stability-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilityJsonUnit() {
+  try {
+    const repo = createDriftRepo("governance-stability-json", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const result = runCliHelpCommand(["stability", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.version !== 1 || parsed.metrics.driftSeverity !== "low" || typeof parsed.score !== "number") {
+      throw new Error(`stability JSON CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-stability-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilityCliUnit() {
+  try {
+    const repo = createDriftRepo("governance-stability-cli", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["stability", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2"]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Stability Score") ||
+      !result.stdout.includes("Score:") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`stability CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-stability-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilityMissingHistoryUnit() {
+  try {
+    const repo = createArchiveRepo("governance-stability-missing-history", null);
+    const result = runCliHelpCommand(["stability", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.score !== 100 ||
+      parsed.level !== "stable" ||
+      parsed.summary !== "No governance history is available. Stability assumed." ||
+      parsed.anomalies[0]?.code !== "NO_ARCHIVE_HISTORY"
+    ) {
+      throw new Error(`missing stability history mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-stability-missing-history-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-missing-history-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStabilityHelpUnit() {
+  const { renderMainHelp, renderStabilityHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const stabilityHelp = renderStabilityHelp();
+    const cliHelp = runCliHelpCommand(["stability", "--help"]);
+    const shortHelp = runCliHelpCommand(["stability", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== stabilityHelp || shortHelp.stdout !== stabilityHelp) {
+      throw new Error(`stability help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["stability   Show governance operational stability score"]);
+    assertHelpIncludes(stabilityHelp, [
+      "Usage:\n  node dist/cli.js stability [options]",
+      "--window <n>                 Trend analysis window",
+      "--baseline-window <n>       Drift baseline window",
+      "--comparison-window <n>     Drift comparison window",
+      "Read-only guarantee:"
+    ]);
+
+    console.log("PASS governance-stability-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-stability-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -10123,7 +10416,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -10795,6 +11088,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceDriftHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityScoreUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityLevelUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityDeductionUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityVolatilityUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityAnomalyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilitySummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityMissingHistoryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStabilityHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
