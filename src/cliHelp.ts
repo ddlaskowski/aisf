@@ -18,6 +18,7 @@
     "  policy      Show governance policy recommendation",
     "  decision-matrix  Explain governance decision reasoning",
     "  evidence-pack    Export governance evidence pack",
+    "  evidence-list    Show governance evidence registry",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -35,6 +36,7 @@
     "  node dist/cli.js policy --json",
     "  node dist/cli.js decision-matrix --json",
     "  node dist/cli.js evidence-pack --json",
+    "  node dist/cli.js evidence-list --latest",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -385,6 +387,50 @@ export function renderEvidencePackHelp(): string {
     "  Evidence pack export does not modify repair behavior.",
     "  Evidence pack export does not change governance decisions or policy recommendations.",
     "  Evidence pack export does not modify .factory/archive-index.json or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderEvidenceListHelp(): string {
+  return [
+    "# AI Software Factory CLI - evidence-list",
+    "",
+    "Usage:",
+    "  node dist/cli.js evidence-list [options]",
+    "",
+    "Options:",
+    "  --repo <path>             Path to target repository",
+    "  --latest                  Show latest evidence pack only",
+    "  --limit <n>               Limit results",
+    "  --policy <mode>           Filter by policy mode",
+    "  --escalation <level>      Filter by escalation level",
+    "  --json                    Print JSON output",
+    "  --help, -h                Show help",
+    "",
+    "Policy modes:",
+    "  normal",
+    "  conservative",
+    "  restricted",
+    "  manual-review-only",
+    "",
+    "Escalation levels:",
+    "  none",
+    "  info",
+    "  warning",
+    "  high-risk",
+    "  critical",
+    "",
+    "Examples:",
+    "  node dist/cli.js evidence-list",
+    "  node dist/cli.js evidence-list --latest",
+    "  node dist/cli.js evidence-list --limit 20",
+    "  node dist/cli.js evidence-list --policy restricted",
+    "  node dist/cli.js evidence-list --escalation critical",
+    "  node dist/cli.js evidence-list --json",
+    "",
+    "Read-only guarantee:",
+    "  Evidence registry browsing does not modify repair behavior.",
+    "  Evidence registry browsing reads .factory/evidence-index.json.",
+    "  Evidence registry browsing does not modify .factory/archive-index.json or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

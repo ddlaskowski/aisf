@@ -79,12 +79,26 @@ import {
 } from "./repair/governanceDecisionMatrix.js";
 import { buildGovernanceEvidencePack } from "./repair/governanceEvidencePack.js";
 import {
+  buildGovernanceEvidenceIndexEntry,
+  filterGovernanceEvidenceIndex,
+  getGovernanceEvidenceIndexPath,
+  GOVERNANCE_EVIDENCE_ESCALATION_LEVELS,
+  GOVERNANCE_EVIDENCE_POLICY_MODES,
+  loadGovernanceEvidenceIndex,
+  readGovernanceEvidenceManifest,
+  renderGovernanceEvidenceIndexText,
+  saveGovernanceEvidenceIndex,
+  updateGovernanceEvidenceIndex,
+  type GovernanceEvidenceIndexFilterOptions
+} from "./repair/governanceEvidenceIndex.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
   renderDecisionMatrixHelp,
   renderDriftHelp,
   renderEvidencePackHelp,
+  renderEvidenceListHelp,
   renderEscalationHelp,
   renderInsightsHelp,
   renderInvalidFlagError,
@@ -286,7 +300,7 @@ function parseDriftWindow(value: unknown, fallback: number): number | null {
   return Math.min(parsed, 100);
 }
 
-const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation", "policy", "decision-matrix", "evidence-pack"] as const;
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation", "policy", "decision-matrix", "evidence-pack", "evidence-list"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
@@ -299,7 +313,8 @@ const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   escalation: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
   policy: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
   "decision-matrix": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
-  "evidence-pack": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"])
+  "evidence-pack": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
+  "evidence-list": new Set(["--repo", "--latest", "--limit", "--policy", "--escalation", "--json", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -341,6 +356,9 @@ function renderCommandHelp(command: string): string | null {
   }
   if (command === "evidence-pack") {
     return renderEvidencePackHelp();
+  }
+  if (command === "evidence-list") {
+    return renderEvidenceListHelp();
   }
   return null;
 }
@@ -1277,6 +1295,10 @@ program
       policy,
       decisionMatrix
     });
+    const manifest = readGovernanceEvidenceManifest(repoPath, evidencePack.manifestPath);
+    const evidenceEntry = buildGovernanceEvidenceIndexEntry({ manifest, evidencePack });
+    const evidenceIndex = updateGovernanceEvidenceIndex(loadGovernanceEvidenceIndex(repoPath), evidenceEntry);
+    saveGovernanceEvidenceIndex(repoPath, evidenceIndex);
 
     if (asJson) {
       console.log(JSON.stringify(evidencePack, null, 2));
@@ -1290,6 +1312,70 @@ program
     for (const file of evidencePack.generatedFiles) {
       console.log(`- ${file}`);
     }
+  });
+
+program
+  .command("evidence-list")
+  .description("Show governance evidence pack registry")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--latest", "Show latest evidence pack only")
+  .option("--limit <n>", "Limit results")
+  .option("--policy <mode>", "Filter by policy mode")
+  .option("--escalation <level>", "Filter by escalation level")
+  .option("--json", "Print machine-readable JSON")
+  .action(async (options) => {
+    const asJson = !!options.json;
+    const repoPath = path.resolve(options.repo);
+    const filterOptions: GovernanceEvidenceIndexFilterOptions = {
+      latestOnly: !!options.latest
+    };
+
+    if (options.limit !== undefined) {
+      const limit = parsePositiveInteger(options.limit);
+      if (limit === null) {
+        console.error(`Invalid limit value: ${options.limit}`);
+        console.error("Limit must be a positive integer.");
+        console.error("Run:\n  node dist/cli.js evidence-list --help\n\nfor usage.");
+        process.exitCode = 1;
+        return;
+      }
+      filterOptions.limit = Math.min(limit, 100);
+    }
+
+    if (options.policy !== undefined) {
+      if (!GOVERNANCE_EVIDENCE_POLICY_MODES.includes(options.policy)) {
+        console.error(`Invalid policy mode: ${options.policy}`);
+        console.error(`Allowed policy modes: ${GOVERNANCE_EVIDENCE_POLICY_MODES.join(", ")}`);
+        console.error("Run:\n  node dist/cli.js evidence-list --help\n\nfor usage.");
+        process.exitCode = 1;
+        return;
+      }
+      filterOptions.policyMode = options.policy;
+    }
+
+    if (options.escalation !== undefined) {
+      if (!GOVERNANCE_EVIDENCE_ESCALATION_LEVELS.includes(options.escalation)) {
+        console.error(`Invalid escalation level: ${options.escalation}`);
+        console.error(`Allowed escalation levels: ${GOVERNANCE_EVIDENCE_ESCALATION_LEVELS.join(", ")}`);
+        console.error("Run:\n  node dist/cli.js evidence-list --help\n\nfor usage.");
+        process.exitCode = 1;
+        return;
+      }
+      filterOptions.escalationLevel = options.escalation;
+    }
+
+    const indexPath = getGovernanceEvidenceIndexPath(repoPath);
+    const index = (await fs.pathExists(indexPath))
+      ? loadGovernanceEvidenceIndex(repoPath)
+      : { version: 1 as const, updatedAt: "1970-01-01T00:00:00.000Z", entries: [] };
+    const filtered = filterGovernanceEvidenceIndex(index, filterOptions);
+
+    if (asJson) {
+      console.log(JSON.stringify(filtered, null, 2));
+      return;
+    }
+
+    console.log(renderGovernanceEvidenceIndexText(filtered));
   });
 
 program.parseAsync(process.argv);

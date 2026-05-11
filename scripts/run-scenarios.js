@@ -11381,6 +11381,270 @@ function runGovernanceEvidencePackHelpUnit() {
     return false;
   }
 }
+
+function sampleEvidenceManifest(id = "2026-05-11T21-55-33-120Z", summary = {}) {
+  const relativePath = `.factory/evidence-packs/${id}`;
+  return {
+    version: 1,
+    evidencePackId: id,
+    generatedAt: id.replace(/T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/, "T$1:$2:$3.$4Z"),
+    includedArtifacts: [
+      { name: "summary.md", relativePath: `${relativePath}/summary.md`, kind: "summary" },
+      { name: "trends.md", relativePath: `${relativePath}/trends.md`, kind: "trends" },
+      { name: "drift.md", relativePath: `${relativePath}/drift.md`, kind: "drift" }
+    ],
+    governanceSummary: {
+      policyMode: "restricted",
+      escalationLevel: "high-risk",
+      stabilityLevel: "unstable",
+      stabilityScore: 51,
+      driftSeverity: "high",
+      trendHealth: "warning",
+      ...summary
+    }
+  };
+}
+
+function sampleEvidenceIndex() {
+  const { buildGovernanceEvidenceIndexEntry, updateGovernanceEvidenceIndex } = require(path.join(projectRoot, "dist", "repair", "governanceEvidenceIndex.js"));
+  const empty = { version: 1, updatedAt: "1970-01-01T00:00:00.000Z", entries: [] };
+  const entries = [
+    buildGovernanceEvidenceIndexEntry({ manifest: sampleEvidenceManifest("2026-05-11T21-55-33-120Z", { policyMode: "restricted", escalationLevel: "high-risk", stabilityLevel: "unstable", stabilityScore: 51 }) }),
+    buildGovernanceEvidenceIndexEntry({ manifest: sampleEvidenceManifest("2026-05-11T20-01-12-552Z", { policyMode: "conservative", escalationLevel: "warning", stabilityLevel: "caution", stabilityScore: 73 }) }),
+    buildGovernanceEvidenceIndexEntry({ manifest: sampleEvidenceManifest("2026-05-11T19-01-12-552Z", { policyMode: "normal", escalationLevel: "none", stabilityLevel: "stable", stabilityScore: 100 }) })
+  ];
+  return entries.reduce((index, entry) => updateGovernanceEvidenceIndex(index, entry), empty);
+}
+
+function writeEvidenceIndex(repo, index = sampleEvidenceIndex()) {
+  const indexPath = path.join(repo, ".factory", "evidence-index.json");
+  ensureDir(path.dirname(indexPath));
+  fs.writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+  return indexPath;
+}
+
+function runGovernanceEvidenceIndexUnit() {
+  const { buildGovernanceEvidenceIndexEntry, loadGovernanceEvidenceIndex } = require(path.join(projectRoot, "dist", "repair", "governanceEvidenceIndex.js"));
+  try {
+    const repo = createArchiveRepo("governance-evidence-index-unit", null);
+    const empty = loadGovernanceEvidenceIndex(repo);
+    const entry = buildGovernanceEvidenceIndexEntry({ manifest: sampleEvidenceManifest() });
+    if (
+      empty.version !== 1 ||
+      empty.entries.length !== 0 ||
+      entry.evidencePackId !== "2026-05-11T21-55-33-120Z" ||
+      entry.relativePath !== ".factory/evidence-packs/2026-05-11T21-55-33-120Z" ||
+      entry.policyMode !== "restricted" ||
+      entry.artifactCount !== 4
+    ) {
+      throw new Error(`evidence index unit mismatch: empty=${JSON.stringify(empty)} entry=${JSON.stringify(entry)}`);
+    }
+
+    console.log("PASS governance-evidence-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexUpdateUnit() {
+  const { buildGovernanceEvidenceIndexEntry, updateGovernanceEvidenceIndex } = require(path.join(projectRoot, "dist", "repair", "governanceEvidenceIndex.js"));
+  try {
+    const empty = { version: 1, updatedAt: "1970-01-01T00:00:00.000Z", entries: [] };
+    const entry = buildGovernanceEvidenceIndexEntry({ manifest: sampleEvidenceManifest() });
+    const updated = updateGovernanceEvidenceIndex(empty, entry);
+    if (updated.entries.length !== 1 || updated.entries[0].evidencePackId !== entry.evidencePackId) {
+      throw new Error(`evidence index update mismatch: ${JSON.stringify(updated)}`);
+    }
+
+    console.log("PASS governance-evidence-index-update-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-update-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexOrderUnit() {
+  try {
+    const index = sampleEvidenceIndex();
+    const ids = index.entries.map((entry) => entry.evidencePackId).join(",");
+    const expected = "2026-05-11T21-55-33-120Z,2026-05-11T20-01-12-552Z,2026-05-11T19-01-12-552Z";
+    if (ids !== expected) {
+      throw new Error(`evidence index order mismatch: ${ids}`);
+    }
+
+    console.log("PASS governance-evidence-index-order-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-order-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexReplaceUnit() {
+  const { buildGovernanceEvidenceIndexEntry, updateGovernanceEvidenceIndex } = require(path.join(projectRoot, "dist", "repair", "governanceEvidenceIndex.js"));
+  try {
+    const index = sampleEvidenceIndex();
+    const replacement = buildGovernanceEvidenceIndexEntry({
+      manifest: sampleEvidenceManifest("2026-05-11T21-55-33-120Z", { policyMode: "manual-review-only", escalationLevel: "critical", stabilityScore: 22 })
+    });
+    const updated = updateGovernanceEvidenceIndex(index, replacement);
+    if (updated.entries.length !== 3 || updated.entries[0].policyMode !== "manual-review-only" || updated.entries[0].escalationLevel !== "critical") {
+      throw new Error(`evidence index replace mismatch: ${JSON.stringify(updated)}`);
+    }
+
+    console.log("PASS governance-evidence-index-replace-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-replace-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexFilterUnit() {
+  const { filterGovernanceEvidenceIndex } = require(path.join(projectRoot, "dist", "repair", "governanceEvidenceIndex.js"));
+  try {
+    const index = sampleEvidenceIndex();
+    const restricted = filterGovernanceEvidenceIndex(index, { policyMode: "restricted" });
+    const warning = filterGovernanceEvidenceIndex(index, { escalationLevel: "warning" });
+    if (restricted.entries.length !== 1 || restricted.entries[0].policyMode !== "restricted" || warning.entries.length !== 1 || warning.entries[0].escalationLevel !== "warning") {
+      throw new Error(`evidence index filter mismatch: restricted=${JSON.stringify(restricted)} warning=${JSON.stringify(warning)}`);
+    }
+
+    console.log("PASS governance-evidence-index-filter-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-filter-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexJsonUnit() {
+  try {
+    const repo = createArchiveRepo("governance-evidence-index-json", null);
+    writeEvidenceIndex(repo);
+    const result = runCliHelpCommand(["evidence-list", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.version !== 1 || parsed.entries.length !== 3 || parsed.entries[0].policyMode !== "restricted") {
+      throw new Error(`evidence index JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-evidence-index-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexCliUnit() {
+  try {
+    const repo = createArchiveRepo("governance-evidence-index-cli", null);
+    writeEvidenceIndex(repo);
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.existsSync(archiveIndexPath) ? fs.readFileSync(archiveIndexPath, "utf8") : "";
+    const beforeRunsIndex = fs.existsSync(runsIndexPath) ? fs.readFileSync(runsIndexPath, "utf8") : "";
+    const result = runCliHelpCommand(["evidence-list", "--repo", repo, "--policy", "restricted"]);
+    const afterArchiveIndex = fs.existsSync(archiveIndexPath) ? fs.readFileSync(archiveIndexPath, "utf8") : "";
+    const afterRunsIndex = fs.existsSync(runsIndexPath) ? fs.readFileSync(runsIndexPath, "utf8") : "";
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Evidence Registry") ||
+      !result.stdout.includes("restricted") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`evidence index CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-evidence-index-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexLimitUnit() {
+  try {
+    const repo = createArchiveRepo("governance-evidence-index-limit", null);
+    writeEvidenceIndex(repo);
+    const latest = JSON.parse(runCliHelpCommand(["evidence-list", "--repo", repo, "--latest", "--json"]).stdout);
+    const limit = JSON.parse(runCliHelpCommand(["evidence-list", "--repo", repo, "--limit", "2", "--json"]).stdout);
+    if (latest.entries.length !== 1 || limit.entries.length !== 2 || latest.entries[0].evidencePackId !== "2026-05-11T21-55-33-120Z") {
+      throw new Error(`evidence index limit mismatch: latest=${JSON.stringify(latest)} limit=${JSON.stringify(limit)}`);
+    }
+
+    console.log("PASS governance-evidence-index-limit-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-limit-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexMissingIndexUnit() {
+  try {
+    const repo = createArchiveRepo("governance-evidence-index-missing", null);
+    const text = runCliHelpCommand(["evidence-list", "--repo", repo]);
+    const json = runCliHelpCommand(["evidence-list", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(json.stdout);
+    if (
+      text.status !== 0 ||
+      !text.stdout.includes("No governance evidence packs are registered.") ||
+      json.status !== 0 ||
+      parsed.version !== 1 ||
+      parsed.entries.length !== 0
+    ) {
+      throw new Error(`missing evidence index mismatch: text=${text.stdout} json=${json.stdout}`);
+    }
+
+    console.log("PASS governance-evidence-index-missing-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-missing-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceIndexHelpUnit() {
+  const { renderMainHelp, renderEvidenceListHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const evidenceHelp = renderEvidenceListHelp();
+    const cliHelp = runCliHelpCommand(["evidence-list", "--help"]);
+    const shortHelp = runCliHelpCommand(["evidence-list", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== evidenceHelp || shortHelp.stdout !== evidenceHelp) {
+      throw new Error(`evidence list help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["evidence-list    Show governance evidence registry"]);
+    assertHelpIncludes(evidenceHelp, [
+      "Usage:\n  node dist/cli.js evidence-list [options]",
+      "--policy <mode>           Filter by policy mode",
+      "--escalation <level>      Filter by escalation level",
+      "Evidence registry browsing does not modify repair behavior."
+    ]);
+
+    console.log("PASS governance-evidence-index-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-index-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -11536,7 +11800,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"], ["evidence-pack", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"], ["evidence-pack", "--help"], ["evidence-list", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -12364,6 +12628,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceEvidencePackHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexUpdateUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexOrderUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexReplaceUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexFilterUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexLimitUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexMissingIndexUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceIndexHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

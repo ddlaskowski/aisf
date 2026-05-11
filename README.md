@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.7 - Governance Evidence Pack Layer**
+**v4.8 - Governance Evidence Manifest Index Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -78,6 +78,8 @@ v4.5 adds deterministic Governance Policy Enforcement recommendations. It conver
 v4.6 adds deterministic Governance Decision Matrix explainability. It traces trend, drift, stability, escalation, and policy rules into an ordered decision matrix without changing any governance decision or repair behavior.
 
 v4.7 adds deterministic Governance Evidence Packs. It exports trend, drift, stability, escalation, policy, and decision-matrix artifacts into portable audit-ready bundles under `.factory/evidence-packs` without changing governance decisions, indexes, or repair behavior.
+
+v4.8 adds a deterministic Governance Evidence Manifest Index. It registers generated evidence packs in `.factory/evidence-index.json` and adds a read-only `evidence-list` CLI for browsing evidence lineage without changing governance decisions, archive history, run indexes, or repair behavior.
 
 ---
 
@@ -2182,6 +2184,84 @@ Export-only guarantee:
 * evidence pack export does not change governance decisions
 * evidence pack export does not change policy recommendations
 * evidence pack export does not change orchestration behavior
+
+## Governance Evidence Manifest Index Layer (v4.8)
+
+v4.8 creates a deterministic registry for governance evidence packs.
+
+When `node dist/cli.js evidence-pack` successfully generates a pack, the system updates:
+
+```txt
+.factory/evidence-index.json
+```
+
+This index lets operators browse evidence lineage without scanning evidence-pack directories.
+
+Index entry fields:
+
+* `evidencePackId`
+* `generatedAt`
+* `relativePath`
+* `policyMode`
+* `escalationLevel`
+* `stabilityLevel`
+* `stabilityScore`
+* `driftSeverity`
+* `trendHealth`
+* `artifactCount`
+
+Index rules:
+
+* newest entries first
+* duplicate evidence pack IDs are replaced deterministically
+* serialized JSON is stable and pretty-printed
+* evidence pack paths are project-relative
+* artifact count equals generated evidence pack files
+
+CLI usage:
+
+```bash
+node dist/cli.js evidence-list
+node dist/cli.js evidence-list --latest
+node dist/cli.js evidence-list --limit 20
+node dist/cli.js evidence-list --policy restricted
+node dist/cli.js evidence-list --escalation critical
+node dist/cli.js evidence-list --json
+```
+
+Supported policy filters:
+
+* `normal`
+* `conservative`
+* `restricted`
+* `manual-review-only`
+
+Supported escalation filters:
+
+* `none`
+* `info`
+* `warning`
+* `high-risk`
+* `critical`
+
+Missing index behavior:
+
+* text mode reports that no governance evidence packs are registered
+* JSON mode returns an empty deterministic index
+* exit code remains `0`
+
+Read-only registry guarantee:
+
+* `evidence-list` reads `.factory/evidence-index.json`
+* `evidence-list` does not scan evidence-pack directories
+* `evidence-list` does not update `.factory/evidence-index.json`
+* `evidence-list` does not update `.factory/archive-index.json`
+* `evidence-list` does not update `.factory/runs-index.json`
+* `evidence-list` does not generate patches
+* `evidence-list` does not retry repairs
+* `evidence-list` does not mutate source files
+* `evidence-list` does not change governance decisions
+* `evidence-list` does not change orchestration behavior
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
