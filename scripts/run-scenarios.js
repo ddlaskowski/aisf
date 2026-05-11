@@ -10853,6 +10853,257 @@ function runGovernancePolicyHelpUnit() {
     return false;
   }
 }
+
+function directDecisionMatrix(kind = "restricted") {
+  const { buildGovernanceDecisionMatrix } = require(path.join(projectRoot, "dist", "repair", "governanceDecisionMatrix.js"));
+  const trend = stabilityTrend({ trendHealth: kind === "normal" ? "healthy" : "warning" });
+  const drift = stabilityDrift({ overallSeverity: kind === "manual-review-only" ? "critical" : kind === "restricted" ? "high" : "none" });
+  const stability = kind === "manual-review-only"
+    ? directStability({ trendHealth: "critical" }, { overallSeverity: "critical" })
+    : kind === "restricted"
+      ? directStability({ trendHealth: "warning" }, { overallSeverity: "high" })
+      : kind === "conservative"
+        ? directStability({ trendHealth: "warning" }, { overallSeverity: "none" })
+        : directStability();
+  const escalation = kind === "manual-review-only"
+    ? directEscalation({ score: stability.score, level: stability.level, metrics: { ...stability.metrics, driftSeverity: "critical", trendHealth: "critical" } })
+    : kind === "restricted"
+      ? directEscalation({ score: stability.score, level: stability.level, metrics: { ...stability.metrics, driftSeverity: "high", trendHealth: "warning" } })
+      : kind === "conservative"
+        ? directEscalation({ score: stability.score, level: stability.level, metrics: { ...stability.metrics, trendHealth: "warning" } })
+        : directEscalation({ score: stability.score, level: stability.level, metrics: stability.metrics });
+  const policy = directPolicy({ escalationLevel: escalation.escalationLevel, sourceSignals: escalation.sourceSignals });
+  return buildGovernanceDecisionMatrix({ trend, drift, stability, escalation, policy });
+}
+
+function runGovernanceDecisionMatrixUnit() {
+  try {
+    const matrix = directDecisionMatrix("restricted");
+    if (
+      matrix.version !== 1 ||
+      matrix.finalDecision.policyMode !== "restricted" ||
+      matrix.finalDecision.escalationLevel !== "high-risk" ||
+      matrix.finalDecision.operatorApprovalRequired !== true ||
+      matrix.matrix.length !== 5
+    ) {
+      throw new Error(`decision matrix mismatch: ${JSON.stringify(matrix)}`);
+    }
+
+    console.log("PASS governance-decision-matrix-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixOrderUnit() {
+  try {
+    const matrix = directDecisionMatrix("restricted");
+    const stages = matrix.matrix.map((entry) => entry.stage).join(",");
+    const expected = "trend-analysis,drift-detection,stability-scoring,escalation,policy-enforcement";
+    if (stages !== expected) {
+      throw new Error(`matrix order mismatch: ${stages}`);
+    }
+
+    console.log("PASS governance-decision-matrix-order-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-order-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixRuleUnit() {
+  try {
+    const matrix = directDecisionMatrix("restricted");
+    const rules = matrix.matrix.map((entry) => entry.ruleId);
+    for (const rule of ["TREND_WARNING", "HIGH_DRIFT", "STABILITY_UNSTABLE", "ESCALATION_HIGH_RISK", "POLICY_RESTRICTED"]) {
+      if (!rules.includes(rule)) {
+        throw new Error(`missing rule ${rule}: ${JSON.stringify(matrix)}`);
+      }
+    }
+
+    console.log("PASS governance-decision-matrix-rule-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-rule-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixEscalationUnit() {
+  try {
+    const matrix = directDecisionMatrix("manual-review-only");
+    const escalation = matrix.matrix.find((entry) => entry.stage === "escalation");
+    if (escalation?.ruleId !== "ESCALATION_CRITICAL" || escalation.evaluation !== "upgraded" || escalation.impact !== "critical") {
+      throw new Error(`escalation matrix mismatch: ${JSON.stringify(matrix)}`);
+    }
+
+    console.log("PASS governance-decision-matrix-escalation-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-escalation-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixPolicyUnit() {
+  try {
+    const restricted = directDecisionMatrix("restricted");
+    const normal = directDecisionMatrix("normal");
+    const restrictedPolicy = restricted.matrix.find((entry) => entry.stage === "policy-enforcement");
+    const normalPolicy = normal.matrix.find((entry) => entry.stage === "policy-enforcement");
+    if (
+      restrictedPolicy?.ruleId !== "POLICY_RESTRICTED" ||
+      !restrictedPolicy.explanation.includes("requires operator approval") ||
+      normalPolicy?.ruleId !== "POLICY_NORMAL" ||
+      normal.finalDecision.autonomousOperationAllowed !== true
+    ) {
+      throw new Error(`policy matrix mismatch: restricted=${JSON.stringify(restricted)} normal=${JSON.stringify(normal)}`);
+    }
+
+    console.log("PASS governance-decision-matrix-policy-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-policy-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixSummaryUnit() {
+  try {
+    const normal = directDecisionMatrix("normal");
+    const conservative = directDecisionMatrix("conservative");
+    const restricted = directDecisionMatrix("restricted");
+    const manual = directDecisionMatrix("manual-review-only");
+    if (
+      normal.decisionSummary !== "Governance decisions remained within normal operational policy." ||
+      conservative.decisionSummary !== "Governance decisions resulted in conservative operational policy." ||
+      restricted.decisionSummary !== "Governance decisions resulted in restricted operational policy." ||
+      manual.decisionSummary !== "Governance decisions resulted in manual-review-only operational policy."
+    ) {
+      throw new Error(`matrix summary mismatch: ${JSON.stringify({ normal, conservative, restricted, manual })}`);
+    }
+
+    console.log("PASS governance-decision-matrix-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixJsonUnit() {
+  try {
+    const repo = createDriftRepo("governance-decision-matrix-json", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const result = runCliHelpCommand(["decision-matrix", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.version !== 1 || parsed.finalDecision.policyMode !== "restricted" || !Array.isArray(parsed.matrix)) {
+      throw new Error(`decision matrix JSON CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-decision-matrix-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixCliUnit() {
+  try {
+    const repo = createDriftRepo("governance-decision-matrix-cli", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["decision-matrix", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2"]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Decision Matrix") ||
+      !result.stdout.includes("## Final Decision") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`decision matrix CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-decision-matrix-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixMissingHistoryUnit() {
+  try {
+    const repo = createArchiveRepo("governance-decision-matrix-missing-history", null);
+    const result = runCliHelpCommand(["decision-matrix", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.finalDecision.policyMode !== "normal" ||
+      parsed.finalDecision.escalationLevel !== "none" ||
+      parsed.finalDecision.stabilityLevel !== "stable" ||
+      parsed.matrix[0]?.ruleId !== "NO_HISTORY" ||
+      parsed.matrix[0]?.evaluation !== "informational"
+    ) {
+      throw new Error(`missing matrix history mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-decision-matrix-missing-history-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-missing-history-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDecisionMatrixHelpUnit() {
+  const { renderMainHelp, renderDecisionMatrixHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const decisionHelp = renderDecisionMatrixHelp();
+    const cliHelp = runCliHelpCommand(["decision-matrix", "--help"]);
+    const shortHelp = runCliHelpCommand(["decision-matrix", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== decisionHelp || shortHelp.stdout !== decisionHelp) {
+      throw new Error(`decision matrix help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["decision-matrix  Explain governance decision reasoning"]);
+    assertHelpIncludes(decisionHelp, [
+      "Usage:\n  node dist/cli.js decision-matrix [options]",
+      "--window <n>                 Trend analysis window",
+      "explains governance decisions and does not modify repair behavior",
+      "does not change governance decisions"
+    ]);
+
+    console.log("PASS governance-decision-matrix-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-decision-matrix-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -11008,7 +11259,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -11776,6 +12027,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernancePolicyHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixOrderUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixRuleUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixEscalationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixPolicyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixMissingHistoryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDecisionMatrixHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

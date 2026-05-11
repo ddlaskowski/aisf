@@ -16,6 +16,7 @@
     "  stability   Show governance operational stability score",
     "  escalation  Show governance operator escalation status",
     "  policy      Show governance policy recommendation",
+    "  decision-matrix  Explain governance decision reasoning",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -31,6 +32,7 @@
     "  node dist/cli.js stability --json",
     "  node dist/cli.js escalation --json",
     "  node dist/cli.js policy --json",
+    "  node dist/cli.js decision-matrix --json",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -327,6 +329,33 @@ export function renderPolicyHelp(): string {
     "  Policy recommendation reads governance history and does not modify repair behavior.",
     "  Policy recommendation does not enforce policies automatically.",
     "  Policy recommendation does not modify .factory/archive-index.json or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderDecisionMatrixHelp(): string {
+  return [
+    "# AI Software Factory CLI - decision-matrix",
+    "",
+    "Usage:",
+    "  node dist/cli.js decision-matrix [options]",
+    "",
+    "Options:",
+    "  --repo <path>                Path to target repository",
+    "  --window <n>                 Trend analysis window",
+    "  --baseline-window <n>       Drift baseline window",
+    "  --comparison-window <n>     Drift comparison window",
+    "  --json                      Print JSON output",
+    "  --help, -h                  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js decision-matrix",
+    "  node dist/cli.js decision-matrix --window 20",
+    "  node dist/cli.js decision-matrix --json",
+    "",
+    "Read-only guarantee:",
+    "  Decision matrix analysis explains governance decisions and does not modify repair behavior.",
+    "  Decision matrix analysis does not change governance decisions or policy recommendations.",
+    "  Decision matrix analysis does not modify .factory/archive-index.json or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

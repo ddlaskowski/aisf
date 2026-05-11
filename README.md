@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.5 - Governance Policy Enforcement Layer**
+**v4.6 - Governance Decision Matrix Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -74,6 +74,8 @@ v4.3 adds deterministic Governance Stability Scoring. It combines governance tre
 v4.4 adds deterministic Governance Escalation. It converts stability, drift, trend, volatility, and anomaly signals into an operator escalation status without sending notifications, calling external services, or changing repair behavior.
 
 v4.5 adds deterministic Governance Policy Enforcement recommendations. It converts escalation, stability, drift, trend, and anomaly signals into policy mode recommendations without enforcing policies automatically or changing repair behavior.
+
+v4.6 adds deterministic Governance Decision Matrix explainability. It traces trend, drift, stability, escalation, and policy rules into an ordered decision matrix without changing any governance decision or repair behavior.
 
 ---
 
@@ -1979,6 +1981,95 @@ Read-only guarantee:
 * policy recommendation does not enforce policies automatically
 * policy recommendation does not block execution automatically
 * policy recommendation does not downgrade repair modes automatically
+
+## Governance Decision Matrix Layer (v4.6)
+
+v4.6 explains why a governance policy recommendation was produced by rendering a deterministic decision matrix.
+
+This layer does not change governance decisions. It only explains the deterministic reasoning path that was already produced by trend analysis, drift detection, stability scoring, escalation, and policy recommendation.
+
+CLI usage:
+
+```bash
+node dist/cli.js decision-matrix
+node dist/cli.js decision-matrix --window 20
+node dist/cli.js decision-matrix --baseline-window 30
+node dist/cli.js decision-matrix --comparison-window 10
+node dist/cli.js decision-matrix --json
+```
+
+Decision matrix structure:
+
+* final policy mode
+* final escalation level
+* final stability level
+* operator approval requirement
+* autonomous operation allowance
+* ordered rule matrix
+* deterministic explanations for each rule
+
+Evaluation order:
+
+1. `trend-analysis`
+2. `drift-detection`
+3. `stability-scoring`
+4. `escalation`
+5. `policy-enforcement`
+
+Matrix entry fields:
+
+* `stage`
+* `ruleId`
+* `inputSignal`
+* `evaluation`
+* `impact`
+* `explanation`
+
+Evaluation values:
+
+* `matched`
+* `not-matched`
+* `upgraded`
+* `downgraded`
+* `informational`
+
+Impact values:
+
+* `none`
+* `low`
+* `medium`
+* `high`
+* `critical`
+
+Example rule traces:
+
+* `TREND_WARNING` explains that trend health warning contributed to instability scoring
+* `HIGH_DRIFT` explains that high governance drift increased escalation severity
+* `STABILITY_UNSTABLE` explains that unstable score contributed to restricted policy reasoning
+* `ESCALATION_HIGH_RISK` explains that high-risk escalation triggered restricted policy recommendation
+* `POLICY_RESTRICTED` explains that restricted governance mode requires operator approval
+
+Missing history behavior:
+
+* policy mode is `normal`
+* escalation level is `none`
+* stability level is `stable`
+* operator approval is `false`
+* autonomous operation is `true`
+* matrix contains `NO_HISTORY`
+
+Read-only guarantee:
+
+* decision matrix analysis reads `.factory/archive-index.json`
+* decision matrix analysis reads indexed archived `governance-insights.json` snapshots
+* decision matrix analysis aggregates existing trend, drift, stability, escalation, and policy recommendation output
+* decision matrix analysis does not update `.factory/archive-index.json`
+* decision matrix analysis does not update `.factory/runs-index.json`
+* decision matrix analysis does not generate patches
+* decision matrix analysis does not retry repairs
+* decision matrix analysis does not mutate source files
+* decision matrix analysis does not change governance decisions
+* decision matrix analysis does not change policy recommendations
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
