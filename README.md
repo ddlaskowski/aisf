@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.1 - Governance Trend Analysis Layer**
+**v4.2 - Governance Drift Detection Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -66,6 +66,8 @@ v3.9 adds a deterministic Governance Archive Index Layer. It records compact met
 v4.0 adds a deterministic Governance Archive Diff Layer. It compares existing archive snapshots to report governance improvements, regressions, stable metrics, and mixed changes without modifying repair behavior, archive history, or run indexes.
 
 v4.1 adds deterministic Governance Trend Analysis across multiple archived governance-insights snapshots. It reports metric directions, volatility, trend health, and fixed insight codes without mutating archive history, run indexes, or repair behavior.
+
+v4.2 adds deterministic Governance Drift Detection. It compares recent governance-insights snapshots against historical baseline windows to detect blocked-rate drift, trust degradation, validation-success drift, and baseline instability without mutating archive history, run indexes, or repair behavior.
 
 ---
 
@@ -1678,6 +1680,81 @@ Read-only guarantee:
 * trend analysis does not generate patches
 * trend analysis does not retry repairs
 * trend analysis does not mutate source files
+
+## Governance Drift Detection Layer (v4.2)
+
+v4.2 detects whether governance behavior has moved away from historical baseline norms.
+
+Supported archive kind:
+
+* `governance-insights`
+
+CLI usage:
+
+```bash
+node dist/cli.js drift
+node dist/cli.js drift --baseline-window 30
+node dist/cli.js drift --comparison-window 10
+node dist/cli.js drift --json
+```
+
+Drift detection compares:
+
+* blocked rate
+* human-review rate
+* validation success rate
+* average trust score
+* ready rate
+
+Window model:
+
+* baseline window defaults to `20` historical snapshots
+* comparison window defaults to `5` recent snapshots
+* at least `5` baseline snapshots and `2` comparison snapshots are required for drift scoring
+* at most `100` indexed snapshots are analyzed
+
+Severity meanings:
+
+* `none` means governance metrics remain within historical baseline ranges
+* `low` means minor governance drift was detected
+* `medium` means moderate governance drift was detected
+* `high` means significant governance drift was detected
+* `critical` means critical governance drift was detected
+
+Deterministic thresholds:
+
+* below `5%` absolute percent delta is `none`
+* `5%` through `15%` is `low`
+* above `15%` through `30%` is `medium`
+* above `30%` through `50%` is `high`
+* above `50%` is `critical`
+
+Bad drift signals:
+
+* blocked rate increases
+* human-review rate increases
+* validation success rate decreases
+* average trust score decreases
+* ready rate decreases
+
+Deterministic anomaly rules include:
+
+* blocked rate drift -> `BLOCKED_RATE_DRIFT`
+* trust score drift -> `TRUST_SCORE_DRIFT`
+* validation success drift -> `VALIDATION_SUCCESS_DRIFT`
+* stable baseline -> `GOVERNANCE_BASELINE_STABLE`
+* insufficient history -> `INSUFFICIENT_DRIFT_HISTORY`
+* missing archive history -> `NO_ARCHIVE_HISTORY`
+
+Read-only guarantee:
+
+* drift detection reads `.factory/archive-index.json`
+* drift detection reads indexed archived `governance-insights.json` snapshots
+* drift detection does not update `.factory/archive-index.json`
+* drift detection does not update `.factory/runs-index.json`
+* drift detection does not generate patches
+* drift detection does not retry repairs
+* drift detection does not mutate source files
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

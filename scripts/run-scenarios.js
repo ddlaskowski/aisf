@@ -9644,6 +9644,330 @@ function runGovernanceTrendAnalysisHelpUnit() {
     return false;
   }
 }
+
+function driftSnapshot(archiveId, values) {
+  return {
+    archiveId,
+    createdAt: archiveCreatedAt(archiveId),
+    kind: "governance-insights",
+    data: governanceInsightsSnapshot(values)
+  };
+}
+
+function driftSnapshots(valueList) {
+  return valueList.map((values, index) => {
+    const day = String(index + 1).padStart(2, "0");
+    return driftSnapshot(`2026-05-${day}T10-00-00-000Z`, values);
+  });
+}
+
+function directDrift(valueList, baselineWindowSize = 5, comparisonWindowSize = 2) {
+  const { buildGovernanceDriftDetection } = require(path.join(projectRoot, "dist", "repair", "governanceDriftDetection.js"));
+  return buildGovernanceDriftDetection({
+    snapshots: driftSnapshots(valueList),
+    baselineWindowSize,
+    comparisonWindowSize
+  });
+}
+
+function repeatedDriftValues(count, values) {
+  return Array.from({ length: count }, () => ({ ...values }));
+}
+
+function createDriftRepo(name, valueList, includeRunsIndex = true) {
+  const repo = createArchiveRepo(name, includeRunsIndex ? warnCiIndex() : null);
+  const archives = [];
+  for (let index = 0; index < valueList.length; index += 1) {
+    const day = String(index + 1).padStart(2, "0");
+    const archiveId = `2026-05-${day}T10-00-00-000Z`;
+    const entry = archiveDiffEntry("governance-insights", archiveId);
+    archives.push(entry);
+    const filePath = path.join(repo, entry.files[0]);
+    ensureDir(path.dirname(filePath));
+    fs.writeFileSync(filePath, `${JSON.stringify(governanceInsightsSnapshot(valueList[index]), null, 2)}\n`, "utf8");
+  }
+  writeArchiveIndex(repo, {
+    version: 1,
+    updatedAt: "2026-05-11T10:00:00.000Z",
+    totalArchives: archives.length,
+    archives: archives.slice().reverse()
+  });
+  return repo;
+}
+
+function runGovernanceDriftDetectionUnit() {
+  try {
+    const analysis = directDrift([
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    ]);
+    if (
+      analysis.version !== 1 ||
+      analysis.analyzedKind !== "governance-insights" ||
+      analysis.analyzedSnapshots !== 7 ||
+      analysis.metrics.blockedRate.baselineAverage !== 10 ||
+      analysis.metrics.blockedRate.currentValue !== 12 ||
+      analysis.metrics.blockedRate.percentDelta !== 20 ||
+      analysis.metrics.blockedRate.severity !== "medium" ||
+      analysis.overallSeverity !== "low"
+    ) {
+      throw new Error(`drift analysis mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-drift-detection-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-detection-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftBaselineUnit() {
+  try {
+    const analysis = directDrift([
+      { blockedRate: 8, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 14, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 16, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }
+    ]);
+    const metric = analysis.metrics.blockedRate;
+    if (metric.baselineAverage !== 10 || metric.currentValue !== 15 || metric.absoluteDelta !== 5 || metric.percentDelta !== 50 || metric.severity !== "high") {
+      throw new Error(`baseline drift mismatch: ${JSON.stringify(metric)}`);
+    }
+
+    console.log("PASS governance-drift-baseline-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-baseline-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftLowUnit() {
+  try {
+    const analysis = directDrift([
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      ...repeatedDriftValues(2, { blockedRate: 11, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    ]);
+    if (analysis.overallSeverity !== "low" || analysis.metrics.blockedRate.severity !== "low") {
+      throw new Error(`low drift mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-drift-low-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-low-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftMediumUnit() {
+  try {
+    const analysis = directDrift([
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 100, readyRate: 70 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    ]);
+    if (analysis.overallSeverity !== "medium" || analysis.metrics.blockedRate.severity !== "medium" || analysis.metrics.averageTrustScore.severity !== "medium") {
+      throw new Error(`medium drift mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-drift-medium-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-medium-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftHighUnit() {
+  try {
+    const analysis = directDrift([
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      ...repeatedDriftValues(2, { blockedRate: 14, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    ]);
+    if (analysis.overallSeverity !== "high" || analysis.metrics.blockedRate.severity !== "high") {
+      throw new Error(`high drift mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-drift-high-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-high-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftCriticalUnit() {
+  try {
+    const analysis = directDrift([
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      ...repeatedDriftValues(2, { blockedRate: 16, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    ]);
+    if (analysis.overallSeverity !== "critical" || analysis.metrics.blockedRate.severity !== "critical" || !analysis.anomalies.some((anomaly) => anomaly.code === "BLOCKED_RATE_DRIFT")) {
+      throw new Error(`critical drift mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-drift-critical-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-critical-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftGoodChangeUnit() {
+  try {
+    const analysis = directDrift([
+      ...repeatedDriftValues(5, { blockedRate: 20, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 60 }),
+      ...repeatedDriftValues(2, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 90, readyRate: 80 })
+    ]);
+    const codes = analysis.anomalies.map((anomaly) => anomaly.code);
+    if (analysis.overallSeverity !== "none" || !codes.includes("BLOCKED_RATE_IMPROVED") || !codes.includes("TRUST_SCORE_IMPROVED")) {
+      throw new Error(`good drift mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-drift-good-change-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-good-change-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftInsufficientHistoryUnit() {
+  try {
+    const insufficient = directDrift([
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 20, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 60 }
+    ]);
+    const empty = directDrift([]);
+    if (
+      insufficient.overallSeverity !== "none" ||
+      insufficient.anomalies[0]?.code !== "INSUFFICIENT_DRIFT_HISTORY" ||
+      empty.anomalies[0]?.code !== "NO_ARCHIVE_HISTORY" ||
+      empty.summary !== "No governance archive history is available."
+    ) {
+      throw new Error(`insufficient drift mismatch: insufficient=${JSON.stringify(insufficient)} empty=${JSON.stringify(empty)}`);
+    }
+
+    console.log("PASS governance-drift-insufficient-history-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-insufficient-history-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftJsonUnit() {
+  try {
+    const repo = createDriftRepo("governance-drift-json", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    ]);
+    const result = runCliHelpCommand(["drift", "--repo", repo, "--baseline-window", "5", "--comparison-window", "2", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.overallSeverity !== "low" || parsed.metrics.blockedRate.percentDelta !== 20) {
+      throw new Error(`drift JSON CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-drift-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftCliUnit() {
+  try {
+    const repo = createDriftRepo("governance-drift-cli", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    ]);
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["drift", "--repo", repo, "--baseline-window", "5", "--comparison-window", "2"]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Drift Detection") ||
+      !result.stdout.includes("Overall severity:") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`drift CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-drift-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftInvalidKindUnit() {
+  try {
+    const repo = createDriftRepo("governance-drift-invalid-kind", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 })
+    ]);
+    const result = runCliHelpCommand(["drift", "--repo", repo, "--kind", "governance-ci-summary"]);
+    if (result.status !== 1 || !result.stderr.includes("Governance drift detection currently supports:") || !result.stderr.includes("- governance-insights")) {
+      throw new Error(`invalid drift kind mismatch: status=${result.status} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-drift-invalid-kind-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-invalid-kind-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceDriftHelpUnit() {
+  const { renderMainHelp, renderDriftHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const driftHelp = renderDriftHelp();
+    const cliHelp = runCliHelpCommand(["drift", "--help"]);
+    const shortHelp = runCliHelpCommand(["drift", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== driftHelp || shortHelp.stdout !== driftHelp) {
+      throw new Error(`drift help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["drift       Show governance drift detection against baselines"]);
+    assertHelpIncludes(driftHelp, [
+      "Usage:\n  node dist/cli.js drift [options]",
+      "--baseline-window <n>       Historical baseline window",
+      "--comparison-window <n>     Recent comparison window",
+      "Read-only guarantee:"
+    ]);
+
+    console.log("PASS governance-drift-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-drift-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -9799,7 +10123,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -10435,6 +10759,42 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceTrendAnalysisHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftDetectionUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftBaselineUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftLowUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftMediumUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftHighUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftCriticalUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftGoodChangeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftInsufficientHistoryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftInvalidKindUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceDriftHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

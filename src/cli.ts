@@ -57,9 +57,15 @@ import {
   renderGovernanceTrendAnalysisText
 } from "./repair/governanceTrendAnalysis.js";
 import {
+  buildGovernanceDriftDetection,
+  loadGovernanceDriftSnapshots,
+  renderGovernanceDriftDetectionText
+} from "./repair/governanceDriftDetection.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
+  renderDriftHelp,
   renderInsightsHelp,
   renderInvalidFlagError,
   renderMainHelp,
@@ -247,15 +253,26 @@ function parseTrendWindow(value: unknown): number | null {
   return Math.min(parsed, 100);
 }
 
+function parseDriftWindow(value: unknown, fallback: number): number | null {
+  if (value === undefined) {
+    return fallback;
+  }
+  const parsed = parsePositiveInteger(value);
+  if (parsed === null) {
+    return null;
+  }
+  return Math.min(parsed, 100);
+}
 
-const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends"] as const;
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
   insights: new Set(["--repo", "--profile", "--profiles", "--json", "--export", "--archive", "--help", "-h"]),
   "ci-summary": new Set(["--repo", "--profile", "--json", "--export", "--archive", "--help", "-h"]),
   archive: new Set(["--repo", "--latest", "--kind", "--limit", "--json", "--help", "-h"]),
-  trends: new Set(["--repo", "--kind", "--window", "--json", "--help", "-h"])
+  trends: new Set(["--repo", "--kind", "--window", "--json", "--help", "-h"]),
+  drift: new Set(["--repo", "--kind", "--baseline-window", "--comparison-window", "--json", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -279,6 +296,9 @@ function renderCommandHelp(command: string): string | null {
   }
   if (command === "trends") {
     return renderTrendsHelp();
+  }
+  if (command === "drift") {
+    return renderDriftHelp();
   }
   return null;
 }
@@ -739,6 +759,71 @@ program
     }
 
     console.log(renderGovernanceTrendAnalysisText(analysis));
+  });
+
+program
+  .command("drift")
+  .description("Show read-only governance drift detection from archive history")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--kind <kind>", "Archive kind to analyze", "governance-insights")
+  .option("--baseline-window <n>", "Historical baseline window")
+  .option("--comparison-window <n>", "Recent comparison window")
+  .option("--json", "Print machine-readable JSON")
+  .action(async (options) => {
+    const asJson = !!options.json;
+    const repoPath = path.resolve(options.repo);
+    const kind = options.kind ?? "governance-insights";
+
+    if (kind !== "governance-insights") {
+      console.error("Governance drift detection currently supports:");
+      console.error("- governance-insights");
+      console.error("Run:\n  node dist/cli.js drift --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const baselineWindowSize = parseDriftWindow(options.baselineWindow, 20);
+    if (baselineWindowSize === null) {
+      console.error(`Invalid baseline window value: ${options.baselineWindow}`);
+      console.error("Baseline window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js drift --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const comparisonWindowSize = parseDriftWindow(options.comparisonWindow, 5);
+    if (comparisonWindowSize === null) {
+      console.error(`Invalid comparison window value: ${options.comparisonWindow}`);
+      console.error("Comparison window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js drift --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const indexPath = getGovernanceArchiveIndexPath(repoPath);
+    const index = (await fs.pathExists(indexPath)) ? loadGovernanceArchiveIndex(repoPath) : null;
+    const snapshots = index
+      ? loadGovernanceDriftSnapshots({
+          projectRoot: repoPath,
+          index,
+          kind,
+          maxSnapshots: baselineWindowSize + comparisonWindowSize
+        })
+      : [];
+
+    const drift = buildGovernanceDriftDetection({
+      snapshots,
+      analyzedKind: kind,
+      baselineWindowSize,
+      comparisonWindowSize
+    });
+
+    if (asJson) {
+      console.log(JSON.stringify(drift, null, 2));
+      return;
+    }
+
+    console.log(renderGovernanceDriftDetectionText(drift));
   });
 
 program.parseAsync(process.argv);
