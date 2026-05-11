@@ -123,6 +123,11 @@ import {
   writeGovernanceConfigActivationPlanArtifacts
 } from "./governance/configActivationPlan.js";
 import {
+  buildGovernanceConfigLoadPreview,
+  renderGovernanceConfigLoadPreviewText,
+  writeGovernanceConfigLoadPreviewArtifacts
+} from "./governance/configLoadPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -135,6 +140,7 @@ import {
   renderGovernanceConfigEffectiveHelp,
   renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
+  renderGovernanceConfigLoadPreviewHelp,
   renderGovernanceConfigValidateHelp,
   renderGovernanceHelp,
   renderEscalationHelp,
@@ -484,6 +490,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "config") {
+    if (args[2] === "load-preview") {
+      const allowed = new Set(["--json", "--help", "-h"]);
+      for (const arg of args.slice(3)) {
+        if (!arg.startsWith("-")) {
+          continue;
+        }
+        const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+        if (!allowed.has(flag)) {
+          printAndExit(renderInvalidFlagError("governance config load-preview", flag), 1);
+        }
+      }
+
+      if (args.includes("--help") || args.includes("-h")) {
+        printAndExit(renderGovernanceConfigLoadPreviewHelp(), 0);
+      }
+
+      const preview = buildGovernanceConfigLoadPreview(process.cwd());
+      writeGovernanceConfigLoadPreviewArtifacts(process.cwd(), preview);
+      if (args.includes("--json")) {
+        printAndExit(JSON.stringify(preview, null, 2), 0);
+      }
+      printAndExit(renderGovernanceConfigLoadPreviewText(preview), 0);
+    }
+
     if (args[2] === "activation-plan") {
       const allowed = new Set(["--json", "--help", "-h"]);
       for (const arg of args.slice(3)) {

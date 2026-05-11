@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.6 - Governance Config Activation Plan Layer**
+**v5.7 - Guarded Governance Config Loading Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -96,6 +96,8 @@ v5.4 adds deterministic Governance Config Validation. It validates `.factory/gov
 v5.5 adds deterministic Governance Config Effective Preview. It shows static defaults, config validation status, and candidate overrides while keeping runtime config loading disabled and `applied: false`.
 
 v5.6 adds deterministic Governance Config Activation Plans. It writes advisory activation-plan artifacts for future guarded loading while keeping runtime config loading disabled and `applied: false`.
+
+v5.7 adds deterministic guarded Governance Config Load Preview. It validates, normalizes, and snapshots safe governance config override candidates for preview only without applying runtime behavior changes.
 
 ---
 
@@ -2776,6 +2778,68 @@ v5.6 deterministic checks:
 * governance-config-activation-plan-invalid
 * governance-config-activation-plan-blocked-unsafe
 * governance-config-activation-plan-json-output
+
+## Guarded Governance Config Loading Layer (v5.7)
+
+v5.7 introduces a deterministic load-preview boundary for governance config.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance config load-preview
+node dist/cli.js governance config load-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/config-load-preview.json
+.factory/governance/config-load-preview.md
+```
+
+The load preview:
+
+* reads `.factory/governance.config.json` when present
+* validates the config using existing validation logic
+* rejects unsafe or unknown config fields
+* normalizes safe override keys into a deterministic loaded snapshot
+* uses `normalizedAt: deterministic-preview`
+* writes deterministic preview artifacts
+
+Example JSON fields:
+
+* `configStatus`
+* `loadStatus`
+* `applied`
+* `runtimeBehaviorChanged`
+* `governanceDecisionsChanged`
+* `repairOrchestrationChanged`
+* `loadedSnapshot.safeOverrideKeys`
+* `loadedSnapshot.blockedKeys`
+* `recommendedNextStage`
+
+Safety guarantees:
+
+* `applied` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* governance thresholds are not changed
+* governance decisions are not changed
+* repair orchestration is not changed
+* scripts, plugins, dynamic code, network behavior, unsafe runtime fields, mutation-scope expansion, and safety-gate bypass fields remain blocked
+
+v5.7 is load-preview only. It is not runtime activation.
+
+v5.7 deterministic checks:
+
+* governance-config-load-preview-unit
+* governance-config-load-preview-missing
+* governance-config-load-preview-valid
+* governance-config-load-preview-invalid
+* governance-config-load-preview-blocked-unsafe
+* governance-config-load-preview-json-output
+* governance-config-load-preview-artifact
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

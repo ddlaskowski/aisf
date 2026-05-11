@@ -13824,6 +13824,207 @@ function runGovernanceConfigActivationPlanJsonOutputUnit() {
     return false;
   }
 }
+
+function directGovernanceConfigLoadPreview(repo) {
+  const { buildGovernanceConfigLoadPreview } = require(path.join(projectRoot, "dist", "governance", "configLoadPreview.js"));
+  return buildGovernanceConfigLoadPreview(repo);
+}
+
+function cleanupProjectLoadPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "config-load-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "config-load-preview.md"), { force: true });
+}
+
+function assertLoadPreviewSafety(preview, label) {
+  if (
+    preview.applied !== false ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false
+  ) {
+    throw new Error(`${label} changed runtime behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function runGovernanceConfigLoadPreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-load-preview-unit");
+    const preview = directGovernanceConfigLoadPreview(repo);
+    const { renderGovernanceConfigLoadPreviewText } = require(path.join(projectRoot, "dist", "governance", "configLoadPreview.js"));
+    const rendered = renderGovernanceConfigLoadPreviewText(preview);
+    assertLoadPreviewSafety(preview, "load preview unit");
+    if (preview.schemaVersion !== 1 || !rendered.includes("Governance Config Load Preview")) {
+      throw new Error(`load preview unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-load-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-load-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigLoadPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-load-preview-missing");
+    const preview = directGovernanceConfigLoadPreview(repo);
+    assertLoadPreviewSafety(preview, "load preview missing");
+    if (
+      preview.configStatus !== "missing" ||
+      preview.loadStatus !== "not-loaded" ||
+      preview.loadedSnapshot !== null ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`load preview missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-load-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-load-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigLoadPreviewValidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-load-preview-valid");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const preview = directGovernanceConfigLoadPreview(repo);
+    assertLoadPreviewSafety(preview, "load preview valid");
+    if (
+      preview.configStatus !== "valid" ||
+      preview.loadStatus !== "loaded-for-preview" ||
+      preview.recommendedNextStage !== "prepare-snapshot-lock" ||
+      preview.loadedSnapshot?.normalizedAt !== "deterministic-preview" ||
+      preview.loadedSnapshot.safeOverrideKeys.join(",") !== "defaultPolicyProfile,policyProfiles.balanced.thresholds.highBlockedRatePercent" ||
+      preview.loadedSnapshot.values.defaultPolicyProfile !== "conservative"
+    ) {
+      throw new Error(`load preview valid mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-load-preview-valid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-load-preview-valid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigLoadPreviewInvalidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-load-preview-invalid");
+    ensureDir(path.join(repo, ".factory"));
+    fs.writeFileSync(path.join(repo, ".factory", "governance.config.json"), "{", "utf8");
+    const preview = directGovernanceConfigLoadPreview(repo);
+    assertLoadPreviewSafety(preview, "load preview invalid");
+    if (
+      preview.configStatus !== "invalid" ||
+      preview.loadStatus !== "blocked" ||
+      preview.loadedSnapshot !== null ||
+      preview.recommendedNextStage !== "fix-config"
+    ) {
+      throw new Error(`load preview invalid mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-load-preview-invalid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-load-preview-invalid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigLoadPreviewBlockedUnsafeUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-load-preview-blocked-unsafe");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.externalUrl = "https://example.test";
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const preview = directGovernanceConfigLoadPreview(repo);
+    assertLoadPreviewSafety(preview, "load preview blocked unsafe");
+    if (
+      preview.configStatus !== "valid" ||
+      preview.loadStatus !== "blocked" ||
+      preview.loadedSnapshot !== null ||
+      preview.blockedOptions.map((blocked) => blocked.key).join(",") !== "externalUrl" ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`load preview unsafe mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-load-preview-blocked-unsafe");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-load-preview-blocked-unsafe");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigLoadPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectLoadPreviewArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "load-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.loadStatus !== "loaded-for-preview" ||
+      parsed.loadedSnapshot.normalizedAt !== "deterministic-preview" ||
+      parsed.applied !== false ||
+      parsed.runtimeBehaviorChanged !== false
+    ) {
+      throw new Error(`load preview JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectLoadPreviewArtifacts();
+
+    console.log("PASS governance-config-load-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectLoadPreviewArtifacts();
+    console.log("FAIL governance-config-load-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigLoadPreviewArtifactUnit() {
+  try {
+    cleanupProjectLoadPreviewArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "load-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "config-load-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "config-load-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`load preview artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (
+      artifact.loadStatus !== "loaded-for-preview" ||
+      artifact.loadedSnapshot.normalizedAt !== "deterministic-preview" ||
+      !fs.readFileSync(markdownPath, "utf8").includes("Governance Config Load Preview")
+    ) {
+      throw new Error(`load preview artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectLoadPreviewArtifacts();
+
+    console.log("PASS governance-config-load-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectLoadPreviewArtifacts();
+    console.log("FAIL governance-config-load-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -15063,6 +15264,27 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceConfigActivationPlanJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigLoadPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigLoadPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigLoadPreviewValidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigLoadPreviewInvalidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigLoadPreviewBlockedUnsafeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigLoadPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigLoadPreviewArtifactUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
