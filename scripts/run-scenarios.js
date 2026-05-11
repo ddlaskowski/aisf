@@ -10537,6 +10537,322 @@ function runGovernanceEscalationHelpUnit() {
     return false;
   }
 }
+
+function directPolicy(escalationOverrides = {}) {
+  const { buildGovernancePolicyEnforcement } = require(path.join(projectRoot, "dist", "repair", "governancePolicyEnforcement.js"));
+  const escalation = {
+    version: 1,
+    escalationLevel: "none",
+    requiresOperatorAttention: false,
+    summary: "No governance escalation is required.",
+    triggers: [{ code: "NO_ESCALATION", severity: "info", message: "No governance escalation triggers were detected." }],
+    recommendedActions: ["No operator action required."],
+    sourceSignals: {
+      stabilityScore: 100,
+      stabilityLevel: "stable",
+      driftSeverity: "none",
+      trendHealth: "healthy",
+      criticalAnomalyCount: 0,
+      warningAnomalyCount: 0,
+      governanceVolatilityScore: 0,
+      trustVolatilityScore: 0,
+      validationVolatilityScore: 0
+    },
+    generatedAt: "2026-05-11T10:00:00.000Z",
+    ...escalationOverrides
+  };
+  return buildGovernancePolicyEnforcement({ escalation });
+}
+
+function runGovernancePolicyEnforcementUnit() {
+  try {
+    const policy = directPolicy();
+    if (policy.version !== 1 || policy.recommendedPolicyMode !== "normal" || policy.reasons[0]?.code !== "GOVERNANCE_HEALTHY") {
+      throw new Error(`policy mismatch: ${JSON.stringify(policy)}`);
+    }
+
+    console.log("PASS governance-policy-enforcement-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-enforcement-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyModeUnit() {
+  try {
+    const normal = directPolicy({ escalationLevel: "none" });
+    const conservative = directPolicy({ escalationLevel: "warning" });
+    const restricted = directPolicy({ escalationLevel: "high-risk" });
+    const manual = directPolicy({ escalationLevel: "critical" });
+    const unstableOverride = directPolicy({ escalationLevel: "warning", sourceSignals: { ...directPolicy().sourceSignals, stabilityLevel: "unstable" } });
+    const criticalDriftOverride = directPolicy({ escalationLevel: "warning", sourceSignals: { ...directPolicy().sourceSignals, driftSeverity: "critical" } });
+    if (
+      normal.recommendedPolicyMode !== "normal" ||
+      conservative.recommendedPolicyMode !== "conservative" ||
+      restricted.recommendedPolicyMode !== "restricted" ||
+      manual.recommendedPolicyMode !== "manual-review-only" ||
+      unstableOverride.recommendedPolicyMode !== "restricted" ||
+      criticalDriftOverride.recommendedPolicyMode !== "manual-review-only"
+    ) {
+      throw new Error(`policy mode mismatch: ${JSON.stringify({ normal, conservative, restricted, manual, unstableOverride, criticalDriftOverride })}`);
+    }
+
+    console.log("PASS governance-policy-mode-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-mode-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyAutonomousOperationUnit() {
+  try {
+    const normal = directPolicy({ escalationLevel: "none" });
+    const conservative = directPolicy({ escalationLevel: "warning" });
+    const restricted = directPolicy({ escalationLevel: "high-risk" });
+    const manual = directPolicy({ escalationLevel: "critical" });
+    if (
+      normal.autonomousOperationAllowed !== true ||
+      conservative.autonomousOperationAllowed !== true ||
+      restricted.autonomousOperationAllowed !== false ||
+      manual.autonomousOperationAllowed !== false
+    ) {
+      throw new Error(`autonomous operation mismatch: ${JSON.stringify({ normal, conservative, restricted, manual })}`);
+    }
+
+    console.log("PASS governance-policy-autonomous-operation-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-autonomous-operation-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyOperatorApprovalUnit() {
+  try {
+    const normal = directPolicy({ escalationLevel: "none" });
+    const conservative = directPolicy({ escalationLevel: "warning" });
+    const restricted = directPolicy({ escalationLevel: "high-risk" });
+    const manual = directPolicy({ escalationLevel: "critical" });
+    if (
+      normal.operatorApprovalRequired !== false ||
+      conservative.operatorApprovalRequired !== true ||
+      restricted.operatorApprovalRequired !== true ||
+      manual.operatorApprovalRequired !== true
+    ) {
+      throw new Error(`operator approval mismatch: ${JSON.stringify({ normal, conservative, restricted, manual })}`);
+    }
+
+    console.log("PASS governance-policy-operator-approval-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-operator-approval-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyCiModeUnit() {
+  try {
+    const normal = directPolicy({ escalationLevel: "none" });
+    const conservative = directPolicy({ escalationLevel: "warning" });
+    const restricted = directPolicy({ escalationLevel: "high-risk" });
+    const manual = directPolicy({ escalationLevel: "critical" });
+    if (normal.ciModeRecommendation !== "normal" || conservative.ciModeRecommendation !== "strict" || restricted.ciModeRecommendation !== "strict" || manual.ciModeRecommendation !== "restricted") {
+      throw new Error(`CI mode mismatch: ${JSON.stringify({ normal, conservative, restricted, manual })}`);
+    }
+
+    console.log("PASS governance-policy-ci-mode-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-ci-mode-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyReasonUnit() {
+  try {
+    const policy = directPolicy({
+      escalationLevel: "high-risk",
+      sourceSignals: {
+        ...directPolicy().sourceSignals,
+        stabilityLevel: "unstable",
+        driftSeverity: "critical",
+        criticalAnomalyCount: 2
+      }
+    });
+    const codes = policy.reasons.map((reason) => reason.code);
+    if (!codes.includes("ESCALATION_HIGH_RISK") || !codes.includes("STABILITY_UNSTABLE") || !codes.includes("CRITICAL_GOVERNANCE_DRIFT") || !codes.includes("MULTIPLE_CRITICAL_ANOMALIES")) {
+      throw new Error(`policy reasons mismatch: ${JSON.stringify(policy)}`);
+    }
+
+    console.log("PASS governance-policy-reason-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-reason-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRestrictionUnit() {
+  try {
+    const normal = directPolicy({ escalationLevel: "none" });
+    const conservative = directPolicy({ escalationLevel: "warning" });
+    const restricted = directPolicy({ escalationLevel: "high-risk" });
+    const manual = directPolicy({ escalationLevel: "critical" });
+    if (
+      normal.recommendedRestrictions[0] !== "No governance restrictions recommended." ||
+      !conservative.recommendedRestrictions.includes("Prefer conservative governance policy profiles.") ||
+      !restricted.recommendedRestrictions.includes("Require operator approval for high-risk autonomous workflows.") ||
+      !manual.recommendedRestrictions.includes("Disable unrestricted autonomous operation.")
+    ) {
+      throw new Error(`policy restrictions mismatch: ${JSON.stringify({ normal, conservative, restricted, manual })}`);
+    }
+
+    console.log("PASS governance-policy-restriction-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-restriction-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicySummaryUnit() {
+  try {
+    const normal = directPolicy({ escalationLevel: "none" });
+    const conservative = directPolicy({ escalationLevel: "warning" });
+    const restricted = directPolicy({ escalationLevel: "high-risk" });
+    const manual = directPolicy({ escalationLevel: "critical" });
+    if (
+      normal.summary !== "Normal autonomous governance operation is recommended." ||
+      conservative.summary !== "Conservative governance operation is recommended." ||
+      restricted.summary !== "Restricted governance operation is recommended." ||
+      manual.summary !== "Manual-review-only governance operation is recommended."
+    ) {
+      throw new Error(`policy summary mismatch: ${JSON.stringify({ normal, conservative, restricted, manual })}`);
+    }
+
+    console.log("PASS governance-policy-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyJsonUnit() {
+  try {
+    const repo = createDriftRepo("governance-policy-json", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const result = runCliHelpCommand(["policy", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.version !== 1 || parsed.recommendedPolicyMode !== "restricted" || parsed.autonomousOperationAllowed !== false) {
+      throw new Error(`policy JSON CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-policy-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyCliUnit() {
+  try {
+    const repo = createDriftRepo("governance-policy-cli", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["policy", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2"]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Policy Recommendation") ||
+      !result.stdout.includes("Recommended policy mode:") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`policy CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-policy-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyMissingHistoryUnit() {
+  try {
+    const repo = createArchiveRepo("governance-policy-missing-history", null);
+    const result = runCliHelpCommand(["policy", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.recommendedPolicyMode !== "normal" ||
+      parsed.autonomousOperationAllowed !== true ||
+      parsed.operatorApprovalRequired !== false ||
+      parsed.ciModeRecommendation !== "normal" ||
+      parsed.reasons[0]?.code !== "GOVERNANCE_HEALTHY"
+    ) {
+      throw new Error(`missing policy history mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-policy-missing-history-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-missing-history-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyHelpUnit() {
+  const { renderMainHelp, renderPolicyHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const policyHelp = renderPolicyHelp();
+    const cliHelp = runCliHelpCommand(["policy", "--help"]);
+    const shortHelp = runCliHelpCommand(["policy", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== policyHelp || shortHelp.stdout !== policyHelp) {
+      throw new Error(`policy help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["policy      Show governance policy recommendation"]);
+    assertHelpIncludes(policyHelp, [
+      "Usage:\n  node dist/cli.js policy [options]",
+      "--window <n>                 Trend analysis window",
+      "--baseline-window <n>       Drift baseline window",
+      "--comparison-window <n>     Drift comparison window",
+      "does not enforce policies automatically"
+    ]);
+
+    console.log("PASS governance-policy-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -10692,7 +11008,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -11424,6 +11740,42 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceEscalationHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyModeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyAutonomousOperationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyOperatorApprovalUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyCiModeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyReasonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRestrictionUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicySummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyMissingHistoryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

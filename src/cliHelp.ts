@@ -15,6 +15,7 @@
     "  drift       Show governance drift detection against baselines",
     "  stability   Show governance operational stability score",
     "  escalation  Show governance operator escalation status",
+    "  policy      Show governance policy recommendation",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -29,6 +30,7 @@
     "  node dist/cli.js drift --json",
     "  node dist/cli.js stability --json",
     "  node dist/cli.js escalation --json",
+    "  node dist/cli.js policy --json",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -296,6 +298,35 @@ export function renderEscalationHelp(): string {
     "  Escalation analysis reads governance history and does not modify repair behavior.",
     "  Escalation analysis does not send notifications or call external services.",
     "  Escalation analysis does not modify .factory/archive-index.json or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderPolicyHelp(): string {
+  return [
+    "# AI Software Factory CLI - policy",
+    "",
+    "Usage:",
+    "  node dist/cli.js policy [options]",
+    "",
+    "Options:",
+    "  --repo <path>                Path to target repository",
+    "  --window <n>                 Trend analysis window",
+    "  --baseline-window <n>       Drift baseline window",
+    "  --comparison-window <n>     Drift comparison window",
+    "  --json                      Print JSON output",
+    "  --help, -h                  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js policy",
+    "  node dist/cli.js policy --window 20",
+    "  node dist/cli.js policy --baseline-window 30",
+    "  node dist/cli.js policy --comparison-window 10",
+    "  node dist/cli.js policy --json",
+    "",
+    "Read-only guarantee:",
+    "  Policy recommendation reads governance history and does not modify repair behavior.",
+    "  Policy recommendation does not enforce policies automatically.",
+    "  Policy recommendation does not modify .factory/archive-index.json or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

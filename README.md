@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.4 - Governance Escalation Layer**
+**v4.5 - Governance Policy Enforcement Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -72,6 +72,8 @@ v4.2 adds deterministic Governance Drift Detection. It compares recent governanc
 v4.3 adds deterministic Governance Stability Scoring. It combines governance trend analysis and drift detection into one operational stability score without mutating archive history, run indexes, or repair behavior.
 
 v4.4 adds deterministic Governance Escalation. It converts stability, drift, trend, volatility, and anomaly signals into an operator escalation status without sending notifications, calling external services, or changing repair behavior.
+
+v4.5 adds deterministic Governance Policy Enforcement recommendations. It converts escalation, stability, drift, trend, and anomaly signals into policy mode recommendations without enforcing policies automatically or changing repair behavior.
 
 ---
 
@@ -1899,6 +1901,84 @@ Read-only guarantee:
 * escalation analysis does not mutate source files
 * escalation analysis does not send alerts or notifications
 * escalation analysis does not call webhooks or external services
+
+## Governance Policy Enforcement Layer (v4.5)
+
+v4.5 produces deterministic governance policy recommendations from escalation, stability, drift, trend, and anomaly signals.
+
+This layer does not enforce policies automatically. It only reports the recommended operating mode for human operators, CI, and future enforcement adapters.
+
+CLI usage:
+
+```bash
+node dist/cli.js policy
+node dist/cli.js policy --window 20
+node dist/cli.js policy --baseline-window 30
+node dist/cli.js policy --comparison-window 10
+node dist/cli.js policy --json
+```
+
+Policy modes:
+
+* `normal` means normal autonomous governance operation is recommended
+* `conservative` means conservative governance operation is recommended
+* `restricted` means restricted governance operation is recommended
+* `manual-review-only` means manual-review-only governance operation is recommended
+
+Deterministic policy mapping:
+
+* escalation `none` -> `normal`
+* escalation `info` -> `normal`
+* escalation `warning` -> `conservative`
+* escalation `high-risk` -> `restricted`
+* escalation `critical` -> `manual-review-only`
+
+Hard overrides:
+
+* stability score below `40` -> `manual-review-only`
+* drift severity `critical` -> `manual-review-only`
+* two or more critical anomalies -> `manual-review-only`
+* stability level `unstable` -> at least `restricted`
+* stability level `critical` -> `manual-review-only`
+* trend health `critical` -> `manual-review-only`
+
+Autonomous operation:
+
+* `normal` and `conservative` allow autonomous operation
+* `restricted` and `manual-review-only` do not allow autonomous operation
+
+Operator approval:
+
+* `normal` does not require operator approval
+* `conservative`, `restricted`, and `manual-review-only` require operator approval
+
+CI recommendation:
+
+* `normal` -> CI mode `normal`
+* `conservative` and `restricted` -> CI mode `strict`
+* `manual-review-only` -> CI mode `restricted`
+
+Missing history behavior:
+
+* recommended policy mode is `normal`
+* autonomous operation is allowed
+* operator approval is not required
+* CI recommendation is `normal`
+* reason code is `GOVERNANCE_HEALTHY`
+
+Read-only guarantee:
+
+* policy recommendation reads `.factory/archive-index.json`
+* policy recommendation reads indexed archived `governance-insights.json` snapshots
+* policy recommendation aggregates existing trend, drift, stability, and escalation output
+* policy recommendation does not update `.factory/archive-index.json`
+* policy recommendation does not update `.factory/runs-index.json`
+* policy recommendation does not generate patches
+* policy recommendation does not retry repairs
+* policy recommendation does not mutate source files
+* policy recommendation does not enforce policies automatically
+* policy recommendation does not block execution automatically
+* policy recommendation does not downgrade repair modes automatically
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
