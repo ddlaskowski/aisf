@@ -19,6 +19,7 @@
     "  decision-matrix  Explain governance decision reasoning",
     "  evidence-pack    Export governance evidence pack",
     "  evidence-list    Show governance evidence registry",
+    "  evidence-diff    Compare governance evidence packs",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -37,6 +38,7 @@
     "  node dist/cli.js decision-matrix --json",
     "  node dist/cli.js evidence-pack --json",
     "  node dist/cli.js evidence-list --latest",
+    "  node dist/cli.js evidence-diff <A> <B>",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -431,6 +433,29 @@ export function renderEvidenceListHelp(): string {
     "  Evidence registry browsing does not modify repair behavior.",
     "  Evidence registry browsing reads .factory/evidence-index.json.",
     "  Evidence registry browsing does not modify .factory/archive-index.json or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderEvidenceDiffHelp(): string {
+  return [
+    "# AI Software Factory CLI - evidence-diff",
+    "",
+    "Usage:",
+    "  node dist/cli.js evidence-diff <evidencePackIdA> <evidencePackIdB> [options]",
+    "",
+    "Options:",
+    "  --repo <path>   Path to target repository",
+    "  --json          Print JSON output",
+    "  --help, -h      Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js evidence-diff <A> <B>",
+    "  node dist/cli.js evidence-diff <A> <B> --json",
+    "",
+    "Read-only guarantee:",
+    "  Evidence diff compares existing evidence packs and does not modify repair behavior.",
+    "  Evidence diff does not modify .factory/evidence-index.json.",
+    "  Evidence diff does not modify .factory/archive-index.json or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

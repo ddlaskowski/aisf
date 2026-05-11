@@ -92,6 +92,11 @@ import {
   type GovernanceEvidenceIndexFilterOptions
 } from "./repair/governanceEvidenceIndex.js";
 import {
+  buildGovernanceEvidenceDiff,
+  loadGovernanceEvidencePack,
+  renderGovernanceEvidenceDiffText
+} from "./repair/governanceEvidenceDiff.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -99,6 +104,7 @@ import {
   renderDriftHelp,
   renderEvidencePackHelp,
   renderEvidenceListHelp,
+  renderEvidenceDiffHelp,
   renderEscalationHelp,
   renderInsightsHelp,
   renderInvalidFlagError,
@@ -300,7 +306,7 @@ function parseDriftWindow(value: unknown, fallback: number): number | null {
   return Math.min(parsed, 100);
 }
 
-const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation", "policy", "decision-matrix", "evidence-pack", "evidence-list"] as const;
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation", "policy", "decision-matrix", "evidence-pack", "evidence-list", "evidence-diff"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
@@ -314,7 +320,8 @@ const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   policy: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
   "decision-matrix": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
   "evidence-pack": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
-  "evidence-list": new Set(["--repo", "--latest", "--limit", "--policy", "--escalation", "--json", "--help", "-h"])
+  "evidence-list": new Set(["--repo", "--latest", "--limit", "--policy", "--escalation", "--json", "--help", "-h"]),
+  "evidence-diff": new Set(["--repo", "--json", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -359,6 +366,9 @@ function renderCommandHelp(command: string): string | null {
   }
   if (command === "evidence-list") {
     return renderEvidenceListHelp();
+  }
+  if (command === "evidence-diff") {
+    return renderEvidenceDiffHelp();
   }
   return null;
 }
@@ -1376,6 +1386,43 @@ program
     }
 
     console.log(renderGovernanceEvidenceIndexText(filtered));
+  });
+
+program
+  .command("evidence-diff")
+  .description("Compare two governance evidence packs")
+  .argument("<evidencePackIdA>", "Previous evidence pack ID")
+  .argument("<evidencePackIdB>", "Current evidence pack ID")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--json", "Print machine-readable JSON")
+  .action(async (evidencePackIdA, evidencePackIdB, options) => {
+    const asJson = !!options.json;
+    const repoPath = path.resolve(options.repo);
+    const indexPath = getGovernanceEvidenceIndexPath(repoPath);
+
+    if (!(await fs.pathExists(indexPath))) {
+      console.error("No governance evidence index found.");
+      console.error("Run node dist/cli.js evidence-pack first.");
+      process.exitCode = 1;
+      return;
+    }
+
+    try {
+      const index = loadGovernanceEvidenceIndex(repoPath);
+      const previous = loadGovernanceEvidencePack(repoPath, index, evidencePackIdA);
+      const current = loadGovernanceEvidencePack(repoPath, index, evidencePackIdB);
+      const diff = buildGovernanceEvidenceDiff({ previous, current });
+
+      if (asJson) {
+        console.log(JSON.stringify(diff, null, 2));
+        return;
+      }
+
+      console.log(renderGovernanceEvidenceDiffText(diff));
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Governance evidence diff failed.");
+      process.exitCode = 1;
+    }
   });
 
 program.parseAsync(process.argv);

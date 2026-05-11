@@ -11645,6 +11645,317 @@ function runGovernanceEvidenceIndexHelpUnit() {
     return false;
   }
 }
+
+function evidencePackFixture(id, summary, options = {}) {
+  const relativePath = `.factory/evidence-packs/${id}`;
+  const manifest = sampleEvidenceManifest(id, summary);
+  const policyMode = summary.policyMode ?? "normal";
+  const escalationLevel = summary.escalationLevel ?? "none";
+  const stabilityLevel = summary.stabilityLevel ?? "stable";
+  const stabilityScore = summary.stabilityScore ?? 100;
+  const driftSeverity = summary.driftSeverity ?? "none";
+  const trendHealth = summary.trendHealth ?? "healthy";
+  const operatorApprovalRequired = options.operatorApprovalRequired ?? policyMode !== "normal";
+  const autonomousOperationAllowed = options.autonomousOperationAllowed ?? (policyMode === "normal" || policyMode === "conservative");
+  const rules = options.rules ?? ["TREND_HEALTHY", "DRIFT_WITHIN_BASELINE", "STABILITY_STABLE", "ESCALATION_NONE", "POLICY_NORMAL"];
+  return {
+    id,
+    relativePath,
+    manifest,
+    files: {
+      "manifest.json": manifest,
+      "trends.json": { version: 1, trendHealth, generatedAt: manifest.generatedAt },
+      "drift.json": { version: 1, overallSeverity: driftSeverity, generatedAt: manifest.generatedAt },
+      "stability.json": { version: 1, score: stabilityScore, level: stabilityLevel, generatedAt: manifest.generatedAt },
+      "escalation.json": { version: 1, escalationLevel, generatedAt: manifest.generatedAt },
+      "policy.json": { version: 1, recommendedPolicyMode: policyMode, operatorApprovalRequired, autonomousOperationAllowed, generatedAt: manifest.generatedAt },
+      "decision-matrix.json": {
+        version: 1,
+        finalDecision: {
+          policyMode,
+          escalationLevel,
+          stabilityLevel,
+          operatorApprovalRequired,
+          autonomousOperationAllowed
+        },
+        matrix: rules.map((ruleId) => ({ ruleId })),
+        generatedAt: manifest.generatedAt
+      }
+    }
+  };
+}
+
+function createEvidenceDiffRepo(name, packs, options = {}) {
+  const { buildGovernanceEvidenceIndexEntry, updateGovernanceEvidenceIndex } = require(path.join(projectRoot, "dist", "repair", "governanceEvidenceIndex.js"));
+  const repo = createArchiveRepo(name, null);
+  let index = { version: 1, updatedAt: "1970-01-01T00:00:00.000Z", entries: [] };
+  for (const pack of packs) {
+    ensureDir(path.join(repo, pack.relativePath));
+    for (const [fileName, content] of Object.entries(pack.files)) {
+      if (options.missingArtifact === fileName && pack.id === options.missingArtifactPackId) continue;
+      writeJson(path.join(repo, pack.relativePath, fileName), content);
+    }
+    const entry = buildGovernanceEvidenceIndexEntry({
+      manifest: pack.manifest,
+      evidencePack: {
+        evidencePackId: pack.id,
+        outputDirectory: pack.relativePath,
+        manifestPath: `${pack.relativePath}/manifest.json`,
+        generatedFiles: Object.keys(pack.files).map((fileName) => `${pack.relativePath}/${fileName}`)
+      }
+    });
+    index = updateGovernanceEvidenceIndex(index, entry);
+  }
+  writeEvidenceIndex(repo, index);
+  return repo;
+}
+
+function directEvidenceDiff(previousPack, currentPack) {
+  const { buildGovernanceEvidenceDiff, loadGovernanceEvidencePack } = require(path.join(projectRoot, "dist", "repair", "governanceEvidenceDiff.js"));
+  const repo = createEvidenceDiffRepo(`governance-evidence-diff-direct-${previousPack.id}-${currentPack.id}`, [previousPack, currentPack]);
+  const index = readJson(path.join(repo, ".factory", "evidence-index.json"));
+  return buildGovernanceEvidenceDiff({
+    previous: loadGovernanceEvidencePack(repo, index, previousPack.id),
+    current: loadGovernanceEvidencePack(repo, index, currentPack.id),
+    generatedAt: "2026-05-11T22:00:00.000Z"
+  });
+}
+
+function runGovernanceEvidenceDiffUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "conservative", escalationLevel: "warning", stabilityLevel: "caution", stabilityScore: 73, driftSeverity: "low", trendHealth: "warning" }, {
+      operatorApprovalRequired: true,
+      autonomousOperationAllowed: true,
+      rules: ["TREND_WARNING", "DRIFT_DETECTED", "STABILITY_CAUTION", "ESCALATION_WARNING", "POLICY_CONSERVATIVE"]
+    });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "restricted", escalationLevel: "high-risk", stabilityLevel: "unstable", stabilityScore: 81, driftSeverity: "high", trendHealth: "warning" }, {
+      operatorApprovalRequired: true,
+      autonomousOperationAllowed: false,
+      rules: ["TREND_WARNING", "HIGH_DRIFT", "STABILITY_UNSTABLE", "ESCALATION_HIGH_RISK", "POLICY_RESTRICTED"]
+    });
+    const diff = directEvidenceDiff(previous, current);
+    if (diff.version !== 1 || diff.status !== "mixed" || diff.fields.policyMode.direction !== "degraded" || diff.fields.stabilityScore.direction !== "improved") {
+      throw new Error(`evidence diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-evidence-diff-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffImprovedUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "restricted", escalationLevel: "high-risk", stabilityLevel: "unstable", stabilityScore: 51, driftSeverity: "high", trendHealth: "warning" }, { operatorApprovalRequired: true, autonomousOperationAllowed: false });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "normal", escalationLevel: "none", stabilityLevel: "stable", stabilityScore: 100, driftSeverity: "none", trendHealth: "healthy" }, { operatorApprovalRequired: false, autonomousOperationAllowed: true });
+    const diff = directEvidenceDiff(previous, current);
+    if (diff.status !== "improved" || !diff.insights.some((insight) => insight.code === "AUTONOMOUS_OPERATION_RESTORED")) {
+      throw new Error(`improved evidence diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-evidence-diff-improved-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-improved-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffDegradedUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "normal", escalationLevel: "none", stabilityLevel: "stable", stabilityScore: 100, driftSeverity: "none", trendHealth: "healthy" }, { operatorApprovalRequired: false, autonomousOperationAllowed: true });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "manual-review-only", escalationLevel: "critical", stabilityLevel: "critical", stabilityScore: 22, driftSeverity: "critical", trendHealth: "critical" }, { operatorApprovalRequired: true, autonomousOperationAllowed: false });
+    const diff = directEvidenceDiff(previous, current);
+    if (diff.status !== "degraded" || !diff.insights.some((insight) => insight.code === "POLICY_MODE_DEGRADED") || !diff.insights.some((insight) => insight.code === "AUTONOMOUS_OPERATION_RESTRICTED")) {
+      throw new Error(`degraded evidence diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-evidence-diff-degraded-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-degraded-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffMixedUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "conservative", escalationLevel: "warning", stabilityLevel: "caution", stabilityScore: 73, driftSeverity: "low", trendHealth: "warning" });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "restricted", escalationLevel: "high-risk", stabilityLevel: "caution", stabilityScore: 81, driftSeverity: "low", trendHealth: "warning" });
+    const diff = directEvidenceDiff(previous, current);
+    if (diff.status !== "mixed") {
+      throw new Error(`mixed evidence diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-evidence-diff-mixed-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-mixed-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffStableUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "normal", escalationLevel: "none", stabilityLevel: "stable", stabilityScore: 100, driftSeverity: "none", trendHealth: "healthy" });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "normal", escalationLevel: "none", stabilityLevel: "stable", stabilityScore: 100, driftSeverity: "none", trendHealth: "healthy" });
+    const diff = directEvidenceDiff(previous, current);
+    if (diff.status !== "stable" || diff.insights[0]?.code !== "EVIDENCE_STABLE") {
+      throw new Error(`stable evidence diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-evidence-diff-stable-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-stable-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffUnknownUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", {});
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", {});
+    previous.manifest.governanceSummary = {};
+    current.manifest.governanceSummary = {};
+    previous.files = { "manifest.json": previous.manifest };
+    current.files = { "manifest.json": current.manifest };
+    const diff = directEvidenceDiff(previous, current);
+    if (diff.status !== "unknown" || diff.insights[0]?.code !== "MISSING_EVIDENCE_ARTIFACT") {
+      throw new Error(`unknown evidence diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-evidence-diff-unknown-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-unknown-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffDecisionMatrixUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "conservative" }, { rules: ["A_RULE", "B_RULE"] });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "restricted" }, { rules: ["B_RULE", "C_RULE"] });
+    const diff = directEvidenceDiff(previous, current);
+    if (diff.decisionMatrix.addedRules.join(",") !== "C_RULE" || diff.decisionMatrix.removedRules.join(",") !== "A_RULE" || diff.decisionMatrix.unchangedRules.join(",") !== "B_RULE") {
+      throw new Error(`decision matrix evidence diff mismatch: ${JSON.stringify(diff)}`);
+    }
+
+    console.log("PASS governance-evidence-diff-decision-matrix-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-decision-matrix-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffJsonUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "normal", escalationLevel: "none", stabilityLevel: "stable", stabilityScore: 100 });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "restricted", escalationLevel: "high-risk", stabilityLevel: "unstable", stabilityScore: 51 }, { autonomousOperationAllowed: false });
+    const repo = createEvidenceDiffRepo("governance-evidence-diff-json", [previous, current]);
+    const result = runCliHelpCommand(["evidence-diff", "--repo", repo, previous.id, current.id, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.version !== 1 || parsed.status !== "degraded" || parsed.fields.policyMode.direction !== "degraded") {
+      throw new Error(`evidence diff JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-evidence-diff-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffCliUnit() {
+  try {
+    const previous = evidencePackFixture("2026-05-11T20-01-12-552Z", { policyMode: "normal", escalationLevel: "none", stabilityLevel: "stable", stabilityScore: 100 });
+    const current = evidencePackFixture("2026-05-11T21-55-33-120Z", { policyMode: "restricted", escalationLevel: "high-risk", stabilityLevel: "unstable", stabilityScore: 51 }, { autonomousOperationAllowed: false });
+    const repo = createEvidenceDiffRepo("governance-evidence-diff-cli", [previous, current]);
+    const evidenceIndexPath = path.join(repo, ".factory", "evidence-index.json");
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeEvidenceIndex = fs.readFileSync(evidenceIndexPath, "utf8");
+    const beforeArchiveIndex = fs.existsSync(archiveIndexPath) ? fs.readFileSync(archiveIndexPath, "utf8") : "";
+    const beforeRunsIndex = fs.existsSync(runsIndexPath) ? fs.readFileSync(runsIndexPath, "utf8") : "";
+    const result = runCliHelpCommand(["evidence-diff", "--repo", repo, previous.id, current.id]);
+    const afterEvidenceIndex = fs.readFileSync(evidenceIndexPath, "utf8");
+    const afterArchiveIndex = fs.existsSync(archiveIndexPath) ? fs.readFileSync(archiveIndexPath, "utf8") : "";
+    const afterRunsIndex = fs.existsSync(runsIndexPath) ? fs.readFileSync(runsIndexPath, "utf8") : "";
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Evidence Diff") ||
+      !result.stdout.includes("POLICY_MODE_DEGRADED") ||
+      beforeEvidenceIndex !== afterEvidenceIndex ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`evidence diff CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-evidence-diff-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffMissingIndexUnit() {
+  try {
+    const repo = createArchiveRepo("governance-evidence-diff-missing-index", null);
+    const result = runCliHelpCommand(["evidence-diff", "--repo", repo, "A", "B"]);
+    if (result.status !== 1 || !result.stderr.includes("No governance evidence index found.") || !result.stderr.includes("Run node dist/cli.js evidence-pack first.")) {
+      throw new Error(`missing evidence diff index mismatch: status=${result.status} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-evidence-diff-missing-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-missing-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidenceDiffHelpUnit() {
+  const { renderMainHelp, renderEvidenceDiffHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const diffHelp = renderEvidenceDiffHelp();
+    const cliHelp = runCliHelpCommand(["evidence-diff", "--help"]);
+    const shortHelp = runCliHelpCommand(["evidence-diff", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== diffHelp || shortHelp.stdout !== diffHelp) {
+      throw new Error(`evidence diff help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["evidence-diff    Compare governance evidence packs"]);
+    assertHelpIncludes(diffHelp, [
+      "Usage:\n  node dist/cli.js evidence-diff <evidencePackIdA> <evidencePackIdB> [options]",
+      "Evidence diff compares existing evidence packs and does not modify repair behavior.",
+      "does not modify .factory/evidence-index.json"
+    ]);
+
+    console.log("PASS governance-evidence-diff-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-diff-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -11800,7 +12111,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"], ["evidence-pack", "--help"], ["evidence-list", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"], ["evidence-pack", "--help"], ["evidence-list", "--help"], ["evidence-diff", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -12658,6 +12969,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceEvidenceIndexHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffImprovedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffDegradedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffMixedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffStableUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffUnknownUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffDecisionMatrixUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffMissingIndexUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidenceDiffHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

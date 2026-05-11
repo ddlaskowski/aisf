@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.8 - Governance Evidence Manifest Index Layer**
+**v4.9 - Governance Evidence Diff Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -80,6 +80,8 @@ v4.6 adds deterministic Governance Decision Matrix explainability. It traces tre
 v4.7 adds deterministic Governance Evidence Packs. It exports trend, drift, stability, escalation, policy, and decision-matrix artifacts into portable audit-ready bundles under `.factory/evidence-packs` without changing governance decisions, indexes, or repair behavior.
 
 v4.8 adds a deterministic Governance Evidence Manifest Index. It registers generated evidence packs in `.factory/evidence-index.json` and adds a read-only `evidence-list` CLI for browsing evidence lineage without changing governance decisions, archive history, run indexes, or repair behavior.
+
+v4.9 adds deterministic Governance Evidence Diff. It compares two registered evidence packs and reports policy, escalation, stability, drift, trend, operator approval, autonomous-operation, and decision-matrix rule changes without mutating evidence packs or indexes.
 
 ---
 
@@ -2262,6 +2264,66 @@ Read-only registry guarantee:
 * `evidence-list` does not mutate source files
 * `evidence-list` does not change governance decisions
 * `evidence-list` does not change orchestration behavior
+
+## Governance Evidence Diff Layer (v4.9)
+
+v4.9 compares two registered governance evidence packs and reports how governance evidence changed.
+
+This layer is read-only. It resolves packs through `.factory/evidence-index.json`, loads known JSON artifacts from the registered evidence pack paths, and never updates evidence packs or indexes.
+
+CLI usage:
+
+```bash
+node dist/cli.js evidence-diff <A> <B>
+node dist/cli.js evidence-diff <A> <B> --json
+```
+
+Compared fields:
+
+* `policyMode`
+* `escalationLevel`
+* `stabilityLevel`
+* `stabilityScore`
+* `driftSeverity`
+* `trendHealth`
+* `operatorApprovalRequired`
+* `autonomousOperationAllowed`
+
+Decision matrix diffing:
+
+* compares decision matrix rule IDs
+* reports added rules
+* reports removed rules
+* reports unchanged rules
+* sorts rule arrays alphabetically
+
+Diff statuses:
+
+* `improved` means comparable signals improved and none degraded
+* `degraded` means comparable signals degraded and none improved
+* `mixed` means both improvements and degradations were detected
+* `stable` means comparable fields did not meaningfully change
+* `unknown` means insufficient comparable evidence was available
+
+Missing artifact behavior:
+
+* missing artifacts are reported as deterministic warning insights
+* comparison continues where possible
+* evidence index is not modified
+
+Read-only guarantee:
+
+* evidence diff reads `.factory/evidence-index.json`
+* evidence diff reads registered evidence pack artifacts
+* evidence diff does not update `.factory/evidence-index.json`
+* evidence diff does not update `.factory/archive-index.json`
+* evidence diff does not update `.factory/runs-index.json`
+* evidence diff does not generate patches
+* evidence diff does not retry repairs
+* evidence diff does not mutate source files
+* evidence diff does not change governance decisions
+* evidence diff does not change policy recommendations
+* evidence diff does not change orchestration behavior
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
