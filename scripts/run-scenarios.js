@@ -13121,6 +13121,287 @@ function runGovernanceConfigExampleReadonlyIndexesUnit() {
     return false;
   }
 }
+
+function directGovernanceConfigValidationObject(config) {
+  const { validateGovernanceConfigObject } = require(path.join(projectRoot, "dist", "repair", "governanceConfigValidator.js"));
+  return validateGovernanceConfigObject(config);
+}
+
+function directGovernanceConfigValidation(repo) {
+  const { validateGovernanceConfig } = require(path.join(projectRoot, "dist", "repair", "governanceConfigValidator.js"));
+  return validateGovernanceConfig(repo);
+}
+
+function withProjectGovernanceConfig(content, callback) {
+  const configPath = path.join(projectRoot, ".factory", "governance.config.json");
+  const hadConfig = fs.existsSync(configPath);
+  const previous = hadConfig ? fs.readFileSync(configPath, "utf8") : null;
+  try {
+    if (content === null) {
+      fs.rmSync(configPath, { force: true });
+    } else {
+      ensureDir(path.dirname(configPath));
+      fs.writeFileSync(configPath, content, "utf8");
+    }
+    return callback(configPath);
+  } finally {
+    if (hadConfig) {
+      ensureDir(path.dirname(configPath));
+      fs.writeFileSync(configPath, previous, "utf8");
+    } else {
+      fs.rmSync(configPath, { force: true });
+    }
+  }
+}
+
+function runGovernanceConfigValidationUnit() {
+  try {
+    const result = directGovernanceConfigValidationObject(directGovernanceConfigExample());
+    const { renderGovernanceConfigValidationMarkdown } = require(path.join(projectRoot, "dist", "repair", "governanceConfigValidator.js"));
+    const rendered = renderGovernanceConfigValidationMarkdown(result);
+    if (
+      result.version !== 1 ||
+      result.status !== "valid" ||
+      result.applied !== false ||
+      result.generatedAt !== "1970-01-01T00:00:00.000Z" ||
+      result.issues[0]?.code !== "CONFIG_VALID" ||
+      !rendered.includes("Governance Config Validation")
+    ) {
+      throw new Error(`config validation unit mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-validation-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-validation-missing");
+    const direct = directGovernanceConfigValidation(repo);
+    if (direct.status !== "missing" || direct.issues[0]?.code !== "CONFIG_MISSING" || direct.applied !== false) {
+      throw new Error(`missing direct validation mismatch: ${JSON.stringify(direct)}`);
+    }
+    const cli = withProjectGovernanceConfig(null, () => runCliHelpCommand(["governance", "config", "validate", "--json"]));
+    const parsed = JSON.parse(cli.stdout);
+    if (cli.status !== 0 || parsed.status !== "missing" || parsed.issues[0].code !== "CONFIG_MISSING") {
+      throw new Error(`missing CLI validation mismatch: status=${cli.status} stdout=${cli.stdout} stderr=${cli.stderr}`);
+    }
+
+    console.log("PASS governance-config-validation-missing-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-missing-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationValidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-validation-valid");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), directGovernanceConfigExample());
+    const result = directGovernanceConfigValidation(repo);
+    if (result.status !== "valid" || result.summary !== "Governance config is valid but not applied." || result.issues[0]?.code !== "CONFIG_VALID") {
+      throw new Error(`valid config validation mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-validation-valid-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-valid-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationMalformedJsonUnit() {
+  try {
+    const cli = withProjectGovernanceConfig("{", () => runCliHelpCommand(["governance", "config", "validate", "--json"]));
+    const parsed = JSON.parse(cli.stderr);
+    if (cli.status !== 1 || parsed.status !== "invalid" || parsed.issues[0].code !== "CONFIG_MALFORMED_JSON" || parsed.applied !== false) {
+      throw new Error(`malformed config validation mismatch: status=${cli.status} stdout=${cli.stdout} stderr=${cli.stderr}`);
+    }
+
+    console.log("PASS governance-config-validation-malformed-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-malformed-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationRequiredFieldsUnit() {
+  try {
+    const result = directGovernanceConfigValidationObject({ version: 1 });
+    if (
+      result.status !== "invalid" ||
+      !result.issues.some((issue) => issue.code === "MISSING_REQUIRED_FIELD" && issue.path === "defaultPolicyProfile") ||
+      result.summary !== "Governance config is invalid and was not applied."
+    ) {
+      throw new Error(`required field validation mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-validation-required-fields-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-required-fields-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationThresholdUnit() {
+  try {
+    const config = directGovernanceConfigExample();
+    config.policyProfiles.balanced.thresholds.highBlockedRatePercent = "bad";
+    const result = directGovernanceConfigValidationObject(config);
+    if (
+      result.status !== "invalid" ||
+      !result.issues.some((issue) => issue.code === "INVALID_THRESHOLD_VALUE" && issue.path === "policyProfiles.balanced.thresholds.highBlockedRatePercent")
+    ) {
+      throw new Error(`threshold validation mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-validation-threshold-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-threshold-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationRuntimeOptionsUnit() {
+  try {
+    const config = directGovernanceConfigExample();
+    config.futureRuntimeOptions.allowAutomaticEnforcement = true;
+    const result = directGovernanceConfigValidationObject(config);
+    if (
+      result.status !== "invalid" ||
+      !result.issues.some((issue) => issue.code === "UNSAFE_RUNTIME_OPTION_ENABLED" && issue.path === "futureRuntimeOptions.allowAutomaticEnforcement")
+    ) {
+      throw new Error(`runtime option validation mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-validation-runtime-options-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-runtime-options-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationJsonUnit() {
+  try {
+    const content = `${JSON.stringify(directGovernanceConfigExample(), null, 2)}\n`;
+    const cli = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "validate", "--json"]));
+    const parsed = JSON.parse(cli.stdout);
+    if (
+      cli.status !== 0 ||
+      parsed.status !== "valid" ||
+      parsed.configPath !== ".factory/governance.config.json" ||
+      parsed.applied !== false ||
+      parsed.issues[0].message !== "Governance config file is valid but not applied."
+    ) {
+      throw new Error(`validation JSON mismatch: status=${cli.status} stdout=${cli.stdout} stderr=${cli.stderr}`);
+    }
+
+    console.log("PASS governance-config-validation-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationCliUnit() {
+  try {
+    const content = `${JSON.stringify(directGovernanceConfigExample(), null, 2)}\n`;
+    const cli = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "validate"]));
+    if (
+      cli.status !== 0 ||
+      !cli.stdout.includes("Governance Config Validation") ||
+      !cli.stdout.includes("Status:\nvalid") ||
+      !cli.stdout.includes("Applied:\nfalse")
+    ) {
+      throw new Error(`validation CLI mismatch: status=${cli.status} stdout=${cli.stdout} stderr=${cli.stderr}`);
+    }
+    const preview = runCliHelpCommand(["governance", "config", "--json"]);
+    const example = runCliHelpCommand(["governance", "config", "example", "--json"]);
+    if (preview.status !== 0 || JSON.parse(preview.stdout).defaultPolicyProfile !== "balanced" || example.status !== 0 || JSON.parse(example.stdout).configStatus !== "example-only") {
+      throw new Error(`existing config commands failed after validate: preview=${preview.stdout} example=${example.stdout}`);
+    }
+
+    console.log("PASS governance-config-validation-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationHelpUnit() {
+  const { renderGovernanceConfigValidateHelp, renderGovernanceConfigHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const direct = renderGovernanceConfigValidateHelp();
+    const helpResult = runCliHelpCommand(["governance", "config", "validate", "--help"]);
+    const shortResult = runCliHelpCommand(["governance", "config", "validate", "-h"]);
+    if (helpResult.status !== 0 || shortResult.status !== 0 || helpResult.stdout !== direct || shortResult.stdout !== direct) {
+      throw new Error(`validation help mismatch: stdout=${helpResult.stdout} short=${shortResult.stdout}`);
+    }
+    assertHelpIncludes(direct, [
+      "Usage:\n  node dist/cli.js governance config validate [options]",
+      "Validation-only guarantee:",
+      "This command validates .factory/governance.config.json but does not apply it."
+    ]);
+    assertHelpIncludes(renderGovernanceConfigHelp(), ["node dist/cli.js governance config validate"]);
+
+    console.log("PASS governance-config-validation-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigValidationNoApplyUnit() {
+  try {
+    const repo = createControlPlaneRepo("governance-config-validation-no-apply", repeatedDriftValues(7, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }), passCiIndex(), sampleEvidenceIndex());
+    ensureDir(path.join(repo, ".factory"));
+    const config = directGovernanceConfigExample();
+    config.defaultPolicyProfile = "experimental";
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const before = readGovernanceIndexSnapshots(repo);
+    const result = directGovernanceConfigValidation(repo);
+    const after = readGovernanceIndexSnapshots(repo);
+    assertGovernanceIndexSnapshotsEqual(before, after, "governance config validate");
+    if (result.status !== "valid" || result.applied !== false) {
+      throw new Error(`validation no-apply mismatch: ${JSON.stringify(result)}`);
+    }
+    const preview = directGovernanceConfigPreview();
+    if (preview.defaultPolicyProfile !== "balanced") {
+      throw new Error(`validation loaded runtime config unexpectedly: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-validation-no-apply-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-validation-no-apply-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -14279,6 +14560,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceConfigExampleReadonlyIndexesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationValidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationMalformedJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationRequiredFieldsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationThresholdUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationRuntimeOptionsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigValidationNoApplyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

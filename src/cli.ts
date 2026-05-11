@@ -110,6 +110,10 @@ import {
   writeGovernanceConfigExample
 } from "./repair/governanceConfigExample.js";
 import {
+  renderGovernanceConfigValidationText,
+  validateGovernanceConfig
+} from "./repair/governanceConfigValidator.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -120,6 +124,7 @@ import {
   renderEvidenceDiffHelp,
   renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
+  renderGovernanceConfigValidateHelp,
   renderGovernanceHelp,
   renderEscalationHelp,
   renderInsightsHelp,
@@ -468,6 +473,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "config") {
+    if (args[2] === "validate") {
+      const allowed = new Set(["--json", "--help", "-h"]);
+      for (const arg of args.slice(3)) {
+        if (!arg.startsWith("-")) {
+          continue;
+        }
+        const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+        if (!allowed.has(flag)) {
+          printAndExit(renderInvalidFlagError("governance config validate", flag), 1);
+        }
+      }
+
+      if (args.includes("--help") || args.includes("-h")) {
+        printAndExit(renderGovernanceConfigValidateHelp(), 0);
+      }
+
+      const result = validateGovernanceConfig(process.cwd());
+      const exitCode = result.status === "invalid" ? 1 : 0;
+      if (args.includes("--json")) {
+        printAndExit(JSON.stringify(result, null, 2), exitCode);
+      }
+      printAndExit(renderGovernanceConfigValidationText(result), exitCode);
+    }
+
     if (args[2] === "example") {
       const allowed = new Set(["--json", "--write", "--help", "-h"]);
       for (const arg of args.slice(3)) {

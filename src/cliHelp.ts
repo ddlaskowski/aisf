@@ -91,10 +91,32 @@ export function renderGovernanceConfigHelp(): string {
     "  node dist/cli.js governance config",
     "  node dist/cli.js governance config --json",
     "  node dist/cli.js governance config example",
+    "  node dist/cli.js governance config validate",
     "",
     "Read-only guarantee:",
     "  Governance config preview does not modify repair behavior or governance indexes.",
     "  Governance config preview does not load, create, or enforce .factory/governance.config.json."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceConfigValidateHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance config validate",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance config validate [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance config validate",
+    "  node dist/cli.js governance config validate --json",
+    "",
+    "Validation-only guarantee:",
+    "  This command validates .factory/governance.config.json but does not apply it.",
+    "  This command does not create, overwrite, load, or enforce runtime governance configuration."
   ].join("\n") + "\n";
 }
 

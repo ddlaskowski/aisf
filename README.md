@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.3 - Governance Config Schema Draft Layer**
+**v5.4 - Governance Config Validation Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -90,6 +90,8 @@ v5.1 hardens the governance control-plane CLI surface. It standardizes help cove
 v5.2 adds deterministic Governance Config Preview. It reports current static policy profiles, thresholds, command write boundaries, governance data paths, and the reserved future config path without loading configuration from disk or changing runtime behavior.
 
 v5.3 adds a deterministic Governance Config Schema Draft. It prints and optionally writes an example-only `.factory/governance.config.example.json` for future policy-as-code support without activating runtime configuration.
+
+v5.4 adds deterministic Governance Config Validation. It validates `.factory/governance.config.json` structure and safety flags without loading, applying, creating, or enforcing runtime configuration.
 
 ---
 
@@ -2596,6 +2598,72 @@ v5.3 deterministic checks:
 * governance-config-example-no-runtime-load-unit
 * governance-config-example-no-active-config-write-unit
 * governance-config-example-readonly-indexes-unit
+
+## Governance Config Validation Layer (v5.4)
+
+v5.4 adds validation-only checks for the future active governance config file.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance config validate
+node dist/cli.js governance config validate --json
+node dist/cli.js governance config validate --help
+```
+
+Validated path:
+
+```text
+.factory/governance.config.json
+```
+
+Validation statuses:
+
+* `missing` means `.factory/governance.config.json` was not found
+* `valid` means the config shape is valid but not applied
+* `invalid` means malformed JSON or invalid structure was detected
+
+Exit codes:
+
+* `missing`: 0
+* `valid`: 0
+* `invalid`: 1
+
+Validation rules:
+
+* `version` must be `1`
+* `configStatus` must be `example-only` or `draft`
+* `defaultPolicyProfile` must be `conservative`, `balanced`, or `experimental`
+* `policyProfiles` must include `conservative`, `balanced`, and `experimental`
+* threshold values must be finite numbers
+* command policy boundaries must be arrays
+* future runtime options must be booleans
+* future runtime options must all remain `false` in v5.4
+
+Validation-only guarantee:
+
+* v5.4 does not load `.factory/governance.config.json` into runtime behavior
+* v5.4 does not apply config values
+* v5.4 does not change policy thresholds
+* v5.4 does not create or overwrite `.factory/governance.config.json`
+* v5.4 does not mutate `.factory/runs-index.json`
+* v5.4 does not mutate `.factory/archive-index.json`
+* v5.4 does not mutate `.factory/evidence-index.json`
+* validation results always include `applied: false`
+
+v5.4 deterministic checks:
+
+* governance-config-validation-unit
+* governance-config-validation-missing-unit
+* governance-config-validation-valid-unit
+* governance-config-validation-malformed-json-unit
+* governance-config-validation-required-fields-unit
+* governance-config-validation-threshold-unit
+* governance-config-validation-runtime-options-unit
+* governance-config-validation-json-unit
+* governance-config-validation-cli-unit
+* governance-config-validation-help-unit
+* governance-config-validation-no-apply-unit
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
