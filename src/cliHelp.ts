@@ -14,6 +14,7 @@
     "  trends      Show governance trend analysis over archives",
     "  drift       Show governance drift detection against baselines",
     "  stability   Show governance operational stability score",
+    "  escalation  Show governance operator escalation status",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -27,6 +28,7 @@
     "  node dist/cli.js trends --window 20",
     "  node dist/cli.js drift --json",
     "  node dist/cli.js stability --json",
+    "  node dist/cli.js escalation --json",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -265,6 +267,35 @@ export function renderStabilityHelp(): string {
     "Read-only guarantee:",
     "  Stability scoring reads governance history and does not modify repair behavior.",
     "  Stability scoring does not modify .factory/archive-index.json or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderEscalationHelp(): string {
+  return [
+    "# AI Software Factory CLI - escalation",
+    "",
+    "Usage:",
+    "  node dist/cli.js escalation [options]",
+    "",
+    "Options:",
+    "  --repo <path>                Path to target repository",
+    "  --window <n>                 Trend analysis window",
+    "  --baseline-window <n>       Drift baseline window",
+    "  --comparison-window <n>     Drift comparison window",
+    "  --json                      Print JSON output",
+    "  --help, -h                  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js escalation",
+    "  node dist/cli.js escalation --window 20",
+    "  node dist/cli.js escalation --baseline-window 30",
+    "  node dist/cli.js escalation --comparison-window 10",
+    "  node dist/cli.js escalation --json",
+    "",
+    "Read-only guarantee:",
+    "  Escalation analysis reads governance history and does not modify repair behavior.",
+    "  Escalation analysis does not send notifications or call external services.",
+    "  Escalation analysis does not modify .factory/archive-index.json or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

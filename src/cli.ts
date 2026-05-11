@@ -66,10 +66,15 @@ import {
   renderGovernanceStabilityScoreText
 } from "./repair/governanceStabilityScore.js";
 import {
+  buildGovernanceEscalation,
+  renderGovernanceEscalationText
+} from "./repair/governanceEscalation.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
   renderDriftHelp,
+  renderEscalationHelp,
   renderInsightsHelp,
   renderInvalidFlagError,
   renderMainHelp,
@@ -269,7 +274,7 @@ function parseDriftWindow(value: unknown, fallback: number): number | null {
   return Math.min(parsed, 100);
 }
 
-const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability"] as const;
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
@@ -278,7 +283,8 @@ const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   archive: new Set(["--repo", "--latest", "--kind", "--limit", "--json", "--help", "-h"]),
   trends: new Set(["--repo", "--kind", "--window", "--json", "--help", "-h"]),
   drift: new Set(["--repo", "--kind", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
-  stability: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"])
+  stability: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
+  escalation: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -308,6 +314,9 @@ function renderCommandHelp(command: string): string | null {
   }
   if (command === "stability") {
     return renderStabilityHelp();
+  }
+  if (command === "escalation") {
+    return renderEscalationHelp();
   }
   return null;
 }
@@ -913,6 +922,87 @@ program
     }
 
     console.log(renderGovernanceStabilityScoreText(stability));
+  });
+
+program
+  .command("escalation")
+  .description("Show read-only governance operator escalation status")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--window <n>", "Trend analysis window")
+  .option("--baseline-window <n>", "Drift baseline window")
+  .option("--comparison-window <n>", "Drift comparison window")
+  .option("--json", "Print machine-readable JSON")
+  .action(async (options) => {
+    const asJson = !!options.json;
+    const repoPath = path.resolve(options.repo);
+
+    const windowSize = parseTrendWindow(options.window);
+    if (windowSize === null) {
+      console.error(`Invalid window value: ${options.window}`);
+      console.error("Window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js escalation --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const baselineWindowSize = parseDriftWindow(options.baselineWindow, 20);
+    if (baselineWindowSize === null) {
+      console.error(`Invalid baseline window value: ${options.baselineWindow}`);
+      console.error("Baseline window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js escalation --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const comparisonWindowSize = parseDriftWindow(options.comparisonWindow, 5);
+    if (comparisonWindowSize === null) {
+      console.error(`Invalid comparison window value: ${options.comparisonWindow}`);
+      console.error("Comparison window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js escalation --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const indexPath = getGovernanceArchiveIndexPath(repoPath);
+    const index = (await fs.pathExists(indexPath)) ? loadGovernanceArchiveIndex(repoPath) : null;
+    const trendSnapshots = index
+      ? loadGovernanceTrendSnapshots({
+          projectRoot: repoPath,
+          index,
+          kind: "governance-insights",
+          windowSize
+        })
+      : [];
+    const driftSnapshots = index
+      ? loadGovernanceDriftSnapshots({
+          projectRoot: repoPath,
+          index,
+          kind: "governance-insights",
+          maxSnapshots: baselineWindowSize + comparisonWindowSize
+        })
+      : [];
+    const totalSnapshots = index?.archives.filter((entry) => entry.kind === "governance-insights").length ?? 0;
+    const trend = buildGovernanceTrendAnalysis({
+      snapshots: trendSnapshots,
+      analyzedKind: "governance-insights",
+      windowSize,
+      totalSnapshots
+    });
+    const drift = buildGovernanceDriftDetection({
+      snapshots: driftSnapshots,
+      analyzedKind: "governance-insights",
+      baselineWindowSize,
+      comparisonWindowSize
+    });
+    const stability = buildGovernanceStabilityScore({ trend, drift });
+    const escalation = buildGovernanceEscalation({ stability });
+
+    if (asJson) {
+      console.log(JSON.stringify(escalation, null, 2));
+      return;
+    }
+
+    console.log(renderGovernanceEscalationText(escalation));
   });
 
 program.parseAsync(process.argv);

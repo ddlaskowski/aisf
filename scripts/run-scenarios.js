@@ -10261,6 +10261,282 @@ function runGovernanceStabilityHelpUnit() {
     return false;
   }
 }
+
+function directEscalation(stabilityOverrides = {}) {
+  const { buildGovernanceEscalation } = require(path.join(projectRoot, "dist", "repair", "governanceEscalation.js"));
+  const stability = {
+    version: 1,
+    score: 100,
+    level: "stable",
+    summary: "Governance operations appear stable and within acceptable ranges.",
+    contributingFactors: [],
+    metrics: {
+      trendHealth: "healthy",
+      driftSeverity: "none",
+      governanceVolatilityScore: 0,
+      trustVolatilityScore: 0,
+      validationVolatilityScore: 0,
+      blockedRate: 10,
+      validationSuccessRate: 90,
+      averageTrustScore: 80,
+      readyRate: 75
+    },
+    anomalies: [],
+    generatedAt: "2026-05-11T10:00:00.000Z",
+    ...stabilityOverrides
+  };
+  return buildGovernanceEscalation({ stability });
+}
+
+function runGovernanceEscalationUnit() {
+  try {
+    const escalation = directEscalation();
+    if (escalation.version !== 1 || escalation.escalationLevel !== "none" || escalation.requiresOperatorAttention !== false || escalation.triggers[0]?.code !== "NO_ESCALATION") {
+      throw new Error(`escalation mismatch: ${JSON.stringify(escalation)}`);
+    }
+
+    console.log("PASS governance-escalation-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationLevelUnit() {
+  try {
+    const warning = directEscalation({ score: 74, level: "caution" });
+    const highRisk = directEscalation({ score: 51, level: "unstable" });
+    const critical = directEscalation({ score: 22, level: "critical" });
+    const driftCritical = directEscalation({ score: 92, level: "stable", metrics: { ...directStability().metrics, driftSeverity: "critical" } });
+    const driftHigh = directEscalation({ score: 92, level: "stable", metrics: { ...directStability().metrics, driftSeverity: "high" } });
+    if (
+      warning.escalationLevel !== "warning" ||
+      highRisk.escalationLevel !== "high-risk" ||
+      critical.escalationLevel !== "critical" ||
+      driftCritical.escalationLevel !== "critical" ||
+      driftHigh.escalationLevel !== "high-risk"
+    ) {
+      throw new Error(`escalation level mismatch: ${JSON.stringify({ warning, highRisk, critical, driftCritical, driftHigh })}`);
+    }
+
+    console.log("PASS governance-escalation-level-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-level-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationOperatorAttentionUnit() {
+  try {
+    const none = directEscalation({ level: "stable" });
+    const warning = directEscalation({ level: "caution" });
+    const highRisk = directEscalation({ level: "unstable" });
+    const critical = directEscalation({ level: "critical" });
+    if (none.requiresOperatorAttention !== false || warning.requiresOperatorAttention !== true || highRisk.requiresOperatorAttention !== true || critical.requiresOperatorAttention !== true) {
+      throw new Error(`operator attention mismatch: ${JSON.stringify({ none, warning, highRisk, critical })}`);
+    }
+
+    console.log("PASS governance-escalation-operator-attention-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-operator-attention-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationTriggerUnit() {
+  try {
+    const escalation = directEscalation({
+      score: 52,
+      level: "unstable",
+      metrics: {
+        ...directStability().metrics,
+        driftSeverity: "high",
+        trendHealth: "warning",
+        governanceVolatilityScore: 18,
+        trustVolatilityScore: 28,
+        validationVolatilityScore: 9
+      },
+      anomalies: [{ severity: "critical", code: "CRITICAL_TEST_ANOMALY", message: "Critical test anomaly." }]
+    });
+    const codes = escalation.triggers.map((trigger) => trigger.code);
+    if (
+      escalation.escalationLevel !== "high-risk" ||
+      !codes.includes("STABILITY_UNSTABLE") ||
+      !codes.includes("HIGH_GOVERNANCE_DRIFT") ||
+      !codes.includes("TREND_HEALTH_WARNING") ||
+      !codes.includes("HIGH_TRUST_VOLATILITY") ||
+      !codes.includes("CRITICAL_ANOMALY")
+    ) {
+      throw new Error(`trigger mismatch: ${JSON.stringify(escalation)}`);
+    }
+
+    console.log("PASS governance-escalation-trigger-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-trigger-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationActionUnit() {
+  try {
+    const none = directEscalation();
+    const warning = directEscalation({ score: 74, level: "caution" });
+    const highRisk = directEscalation({ score: 51, level: "unstable" });
+    const critical = directEscalation({ score: 22, level: "critical" });
+    if (
+      none.recommendedActions[0] !== "No operator action required." ||
+      !warning.recommendedActions.includes("Inspect recent trend and drift reports.") ||
+      !highRisk.recommendedActions.includes("Pause high-risk autonomous workflows until reviewed.") ||
+      !critical.recommendedActions.includes("Immediately review governance stability and drift reports.")
+    ) {
+      throw new Error(`action mismatch: ${JSON.stringify({ none, warning, highRisk, critical })}`);
+    }
+
+    console.log("PASS governance-escalation-action-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-action-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationSummaryUnit() {
+  try {
+    const none = directEscalation();
+    const warning = directEscalation({ score: 74, level: "caution" });
+    const highRisk = directEscalation({ score: 51, level: "unstable" });
+    const critical = directEscalation({ score: 22, level: "critical" });
+    if (
+      none.summary !== "No governance escalation is required." ||
+      warning.summary !== "Governance warning detected. Operator review is recommended." ||
+      highRisk.summary !== "High-risk governance condition detected. Operator attention is required." ||
+      critical.summary !== "Critical governance condition detected. Immediate operator intervention is recommended."
+    ) {
+      throw new Error(`summary mismatch: ${JSON.stringify({ none, warning, highRisk, critical })}`);
+    }
+
+    console.log("PASS governance-escalation-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationJsonUnit() {
+  try {
+    const repo = createDriftRepo("governance-escalation-json", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const result = runCliHelpCommand(["escalation", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.version !== 1 || parsed.escalationLevel !== "high-risk" || parsed.requiresOperatorAttention !== true) {
+      throw new Error(`escalation JSON CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-escalation-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationCliUnit() {
+  try {
+    const repo = createDriftRepo("governance-escalation-cli", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["escalation", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2"]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Escalation") ||
+      !result.stdout.includes("Escalation level:") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`escalation CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-escalation-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationMissingHistoryUnit() {
+  try {
+    const repo = createArchiveRepo("governance-escalation-missing-history", null);
+    const result = runCliHelpCommand(["escalation", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.escalationLevel !== "none" ||
+      parsed.requiresOperatorAttention !== false ||
+      parsed.triggers[0]?.code !== "NO_ESCALATION" ||
+      parsed.summary !== "No governance escalation is required."
+    ) {
+      throw new Error(`missing escalation history mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-escalation-missing-history-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-missing-history-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEscalationHelpUnit() {
+  const { renderMainHelp, renderEscalationHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const escalationHelp = renderEscalationHelp();
+    const cliHelp = runCliHelpCommand(["escalation", "--help"]);
+    const shortHelp = runCliHelpCommand(["escalation", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== escalationHelp || shortHelp.stdout !== escalationHelp) {
+      throw new Error(`escalation help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["escalation  Show governance operator escalation status"]);
+    assertHelpIncludes(escalationHelp, [
+      "Usage:\n  node dist/cli.js escalation [options]",
+      "--window <n>                 Trend analysis window",
+      "--baseline-window <n>       Drift baseline window",
+      "--comparison-window <n>     Drift comparison window",
+      "does not send notifications"
+    ]);
+
+    console.log("PASS governance-escalation-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-escalation-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -10416,7 +10692,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -11118,6 +11394,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceStabilityHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationLevelUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationOperatorAttentionUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationTriggerUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationActionUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationMissingHistoryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEscalationHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

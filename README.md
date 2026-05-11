@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.3 - Governance Stability Scoring Layer**
+**v4.4 - Governance Escalation Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -70,6 +70,8 @@ v4.1 adds deterministic Governance Trend Analysis across multiple archived gover
 v4.2 adds deterministic Governance Drift Detection. It compares recent governance-insights snapshots against historical baseline windows to detect blocked-rate drift, trust degradation, validation-success drift, and baseline instability without mutating archive history, run indexes, or repair behavior.
 
 v4.3 adds deterministic Governance Stability Scoring. It combines governance trend analysis and drift detection into one operational stability score without mutating archive history, run indexes, or repair behavior.
+
+v4.4 adds deterministic Governance Escalation. It converts stability, drift, trend, volatility, and anomaly signals into an operator escalation status without sending notifications, calling external services, or changing repair behavior.
 
 ---
 
@@ -1820,6 +1822,83 @@ Read-only guarantee:
 * stability scoring does not generate patches
 * stability scoring does not retry repairs
 * stability scoring does not mutate source files
+
+## Governance Escalation Layer (v4.4)
+
+v4.4 converts governance stability, drift, trend, volatility, and anomaly signals into one deterministic operator escalation status.
+
+CLI usage:
+
+```bash
+node dist/cli.js escalation
+node dist/cli.js escalation --window 20
+node dist/cli.js escalation --baseline-window 30
+node dist/cli.js escalation --comparison-window 10
+node dist/cli.js escalation --json
+```
+
+Escalation levels:
+
+* `none` means no governance escalation is required
+* `info` means informational signals exist only
+* `warning` means operator review is recommended
+* `high-risk` means operator attention is required
+* `critical` means immediate operator intervention is recommended
+
+Operator attention:
+
+* `none` and `info` do not require operator attention
+* `warning`, `high-risk`, and `critical` require operator attention
+
+Deterministic escalation rules:
+
+* stability level `stable` -> `none`
+* stability level `caution` -> `warning`
+* stability level `unstable` -> `high-risk`
+* stability level `critical` -> `critical`
+* stability score below `40` -> `critical`
+* drift severity `critical` -> `critical`
+* drift severity `high` -> at least `high-risk`
+* trend health `critical` -> `critical`
+* two or more critical anomalies -> `critical`
+* one critical anomaly -> at least `high-risk`
+* governance, trust, or validation volatility above `25` -> at least `warning`
+
+Trigger examples:
+
+* `STABILITY_CAUTION`
+* `STABILITY_UNSTABLE`
+* `STABILITY_CRITICAL`
+* `HIGH_GOVERNANCE_DRIFT`
+* `CRITICAL_GOVERNANCE_DRIFT`
+* `TREND_HEALTH_WARNING`
+* `TREND_HEALTH_CRITICAL`
+* `HIGH_GOVERNANCE_VOLATILITY`
+* `HIGH_TRUST_VOLATILITY`
+* `HIGH_VALIDATION_VOLATILITY`
+* `NO_ESCALATION`
+
+Recommended actions are deterministic and depend only on the final escalation level.
+
+Missing history behavior:
+
+* escalation level is `none`
+* operator attention is `false`
+* trigger code is `NO_ESCALATION`
+* summary is `No governance escalation is required.`
+
+Read-only guarantee:
+
+* escalation analysis reads `.factory/archive-index.json`
+* escalation analysis reads indexed archived `governance-insights.json` snapshots
+* escalation analysis aggregates existing trend, drift, and stability scoring output
+* escalation analysis does not update `.factory/archive-index.json`
+* escalation analysis does not update `.factory/runs-index.json`
+* escalation analysis does not generate patches
+* escalation analysis does not retry repairs
+* escalation analysis does not mutate source files
+* escalation analysis does not send alerts or notifications
+* escalation analysis does not call webhooks or external services
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
