@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.2 - Governance Config Preview Layer**
+**v5.3 - Governance Config Schema Draft Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -88,6 +88,8 @@ v5.0 adds a deterministic Governance Control Plane. It summarizes stability, esc
 v5.1 hardens the governance control-plane CLI surface. It standardizes help coverage, invalid-option behavior, missing-data behavior, read-only boundary checks, and consolidated governance CLI documentation without changing governance algorithms, policy recommendations, or repair behavior.
 
 v5.2 adds deterministic Governance Config Preview. It reports current static policy profiles, thresholds, command write boundaries, governance data paths, and the reserved future config path without loading configuration from disk or changing runtime behavior.
+
+v5.3 adds a deterministic Governance Config Schema Draft. It prints and optionally writes an example-only `.factory/governance.config.example.json` for future policy-as-code support without activating runtime configuration.
 
 ---
 
@@ -2525,6 +2527,75 @@ v5.2 deterministic checks:
 * governance-config-preview-help-unit
 * governance-config-preview-readonly-unit
 * governance-config-preview-no-runtime-config-unit
+
+## Governance Config Schema Draft Layer (v5.3)
+
+v5.3 introduces a deterministic example-only governance config draft for future policy-as-code support.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance config example
+node dist/cli.js governance config example --json
+node dist/cli.js governance config example --write
+node dist/cli.js governance config example --json --write
+node dist/cli.js governance config example --help
+```
+
+Generated example file:
+
+```text
+.factory/governance.config.example.json
+```
+
+Important distinction:
+
+* `.factory/governance.config.example.json` is an example-only draft that can be generated in v5.3
+* `.factory/governance.config.json` is reserved for future active runtime configuration
+* v5.3 does not create `.factory/governance.config.json`
+* v5.3 does not load `.factory/governance.config.json`
+* v5.3 does not enforce config values
+
+The example config contains:
+
+* `version: 1`
+* `configStatus: example-only`
+* `defaultPolicyProfile: balanced`
+* static policy profile thresholds for `conservative`, `balanced`, and `experimental`
+* command policy boundaries matching v5.2
+* future runtime options with all active behavior disabled
+* notes explaining that runtime config is not active yet
+
+Write behavior:
+
+* `--write` creates `.factory` if missing
+* `--write` writes only `.factory/governance.config.example.json`
+* `--write` overwrites the example file deterministically
+* `--json --write` prints deterministic write-result JSON
+* no governance indexes are modified
+
+Read-only/runtime guarantee:
+
+* v5.3 does not introduce active config loading
+* v5.3 does not change policy thresholds
+* v5.3 does not change governance calculations
+* v5.3 does not change repair behavior
+* v5.3 does not mutate `.factory/runs-index.json`
+* v5.3 does not mutate `.factory/archive-index.json`
+* v5.3 does not mutate `.factory/evidence-index.json`
+
+v5.3 deterministic checks:
+
+* governance-config-example-unit
+* governance-config-example-thresholds-unit
+* governance-config-example-command-boundaries-unit
+* governance-config-example-json-unit
+* governance-config-example-cli-unit
+* governance-config-example-write-unit
+* governance-config-example-help-unit
+* governance-config-example-no-runtime-load-unit
+* governance-config-example-no-active-config-write-unit
+* governance-config-example-readonly-indexes-unit
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

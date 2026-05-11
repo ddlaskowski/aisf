@@ -105,6 +105,11 @@ import {
   renderGovernanceConfigPreviewText
 } from "./repair/governanceConfigPreview.js";
 import {
+  buildGovernanceConfigExample,
+  renderGovernanceConfigExampleMarkdown,
+  writeGovernanceConfigExample
+} from "./repair/governanceConfigExample.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -113,6 +118,7 @@ import {
   renderEvidencePackHelp,
   renderEvidenceListHelp,
   renderEvidenceDiffHelp,
+  renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
   renderGovernanceHelp,
   renderEscalationHelp,
@@ -462,6 +468,39 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "config") {
+    if (args[2] === "example") {
+      const allowed = new Set(["--json", "--write", "--help", "-h"]);
+      for (const arg of args.slice(3)) {
+        if (!arg.startsWith("-")) {
+          continue;
+        }
+        const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+        if (!allowed.has(flag)) {
+          printAndExit(renderInvalidFlagError("governance config example", flag), 1);
+        }
+      }
+
+      if (args.includes("--help") || args.includes("-h")) {
+        printAndExit(renderGovernanceConfigExampleHelp(), 0);
+      }
+
+      const asJson = args.includes("--json");
+      const shouldWrite = args.includes("--write");
+      const example = buildGovernanceConfigExample();
+      if (shouldWrite) {
+        const result = writeGovernanceConfigExample(process.cwd());
+        if (asJson) {
+          printAndExit(JSON.stringify(result, null, 2), 0);
+        }
+        printAndExit(`Wrote governance config example:\n- ${result.path}\n`, 0);
+      }
+
+      if (asJson) {
+        printAndExit(JSON.stringify(example, null, 2), 0);
+      }
+      printAndExit(renderGovernanceConfigExampleMarkdown(example), 0);
+    }
+
     const allowed = new Set(["--json", "--help", "-h"]);
     for (const arg of args.slice(2)) {
       if (!arg.startsWith("-")) {

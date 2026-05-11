@@ -90,10 +90,35 @@ export function renderGovernanceConfigHelp(): string {
     "Examples:",
     "  node dist/cli.js governance config",
     "  node dist/cli.js governance config --json",
+    "  node dist/cli.js governance config example",
     "",
     "Read-only guarantee:",
     "  Governance config preview does not modify repair behavior or governance indexes.",
     "  Governance config preview does not load, create, or enforce .factory/governance.config.json."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceConfigExampleHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance config example",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance config example [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --write     Write .factory/governance.config.example.json",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance config example",
+    "  node dist/cli.js governance config example --json",
+    "  node dist/cli.js governance config example --write",
+    "",
+    "Read-only/runtime guarantee:",
+    "  This command does not load or enforce runtime governance configuration.",
+    "  This command does not create .factory/governance.config.json.",
+    "  The --write option writes only .factory/governance.config.example.json."
   ].join("\n") + "\n";
 }
 
