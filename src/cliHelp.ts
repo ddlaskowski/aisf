@@ -17,6 +17,7 @@
     "  escalation  Show governance operator escalation status",
     "  policy      Show governance policy recommendation",
     "  decision-matrix  Explain governance decision reasoning",
+    "  evidence-pack    Export governance evidence pack",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -33,6 +34,7 @@
     "  node dist/cli.js escalation --json",
     "  node dist/cli.js policy --json",
     "  node dist/cli.js decision-matrix --json",
+    "  node dist/cli.js evidence-pack --json",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -356,6 +358,33 @@ export function renderDecisionMatrixHelp(): string {
     "  Decision matrix analysis explains governance decisions and does not modify repair behavior.",
     "  Decision matrix analysis does not change governance decisions or policy recommendations.",
     "  Decision matrix analysis does not modify .factory/archive-index.json or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderEvidencePackHelp(): string {
+  return [
+    "# AI Software Factory CLI - evidence-pack",
+    "",
+    "Usage:",
+    "  node dist/cli.js evidence-pack [options]",
+    "",
+    "Options:",
+    "  --repo <path>                Path to target repository",
+    "  --window <n>                 Trend analysis window",
+    "  --baseline-window <n>       Drift baseline window",
+    "  --comparison-window <n>     Drift comparison window",
+    "  --json                      Print JSON output",
+    "  --help, -h                  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js evidence-pack",
+    "  node dist/cli.js evidence-pack --window 20",
+    "  node dist/cli.js evidence-pack --json",
+    "",
+    "Read-only guarantee:",
+    "  Evidence pack export does not modify repair behavior.",
+    "  Evidence pack export does not change governance decisions or policy recommendations.",
+    "  Evidence pack export does not modify .factory/archive-index.json or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

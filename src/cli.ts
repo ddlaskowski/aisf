@@ -77,12 +77,14 @@ import {
   buildGovernanceDecisionMatrix,
   renderGovernanceDecisionMatrixText
 } from "./repair/governanceDecisionMatrix.js";
+import { buildGovernanceEvidencePack } from "./repair/governanceEvidencePack.js";
 import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
   renderDecisionMatrixHelp,
   renderDriftHelp,
+  renderEvidencePackHelp,
   renderEscalationHelp,
   renderInsightsHelp,
   renderInvalidFlagError,
@@ -284,7 +286,7 @@ function parseDriftWindow(value: unknown, fallback: number): number | null {
   return Math.min(parsed, 100);
 }
 
-const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation", "policy", "decision-matrix"] as const;
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation", "policy", "decision-matrix", "evidence-pack"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
@@ -296,7 +298,8 @@ const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   stability: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
   escalation: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
   policy: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
-  "decision-matrix": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"])
+  "decision-matrix": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
+  "evidence-pack": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -335,6 +338,9 @@ function renderCommandHelp(command: string): string | null {
   }
   if (command === "decision-matrix") {
     return renderDecisionMatrixHelp();
+  }
+  if (command === "evidence-pack") {
+    return renderEvidencePackHelp();
   }
   return null;
 }
@@ -1186,6 +1192,104 @@ program
     }
 
     console.log(renderGovernanceDecisionMatrixText(decisionMatrix));
+  });
+
+program
+  .command("evidence-pack")
+  .description("Export deterministic governance evidence pack")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--window <n>", "Trend analysis window")
+  .option("--baseline-window <n>", "Drift baseline window")
+  .option("--comparison-window <n>", "Drift comparison window")
+  .option("--json", "Print machine-readable JSON")
+  .action(async (options) => {
+    const asJson = !!options.json;
+    const repoPath = path.resolve(options.repo);
+
+    const windowSize = parseTrendWindow(options.window);
+    if (windowSize === null) {
+      console.error(`Invalid window value: ${options.window}`);
+      console.error("Window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js evidence-pack --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const baselineWindowSize = parseDriftWindow(options.baselineWindow, 20);
+    if (baselineWindowSize === null) {
+      console.error(`Invalid baseline window value: ${options.baselineWindow}`);
+      console.error("Baseline window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js evidence-pack --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const comparisonWindowSize = parseDriftWindow(options.comparisonWindow, 5);
+    if (comparisonWindowSize === null) {
+      console.error(`Invalid comparison window value: ${options.comparisonWindow}`);
+      console.error("Comparison window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js evidence-pack --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const indexPath = getGovernanceArchiveIndexPath(repoPath);
+    const index = (await fs.pathExists(indexPath)) ? loadGovernanceArchiveIndex(repoPath) : null;
+    const trendSnapshots = index
+      ? loadGovernanceTrendSnapshots({
+          projectRoot: repoPath,
+          index,
+          kind: "governance-insights",
+          windowSize
+        })
+      : [];
+    const driftSnapshots = index
+      ? loadGovernanceDriftSnapshots({
+          projectRoot: repoPath,
+          index,
+          kind: "governance-insights",
+          maxSnapshots: baselineWindowSize + comparisonWindowSize
+        })
+      : [];
+    const totalSnapshots = index?.archives.filter((entry) => entry.kind === "governance-insights").length ?? 0;
+    const trend = buildGovernanceTrendAnalysis({
+      snapshots: trendSnapshots,
+      analyzedKind: "governance-insights",
+      windowSize,
+      totalSnapshots
+    });
+    const drift = buildGovernanceDriftDetection({
+      snapshots: driftSnapshots,
+      analyzedKind: "governance-insights",
+      baselineWindowSize,
+      comparisonWindowSize
+    });
+    const stability = buildGovernanceStabilityScore({ trend, drift });
+    const escalation = buildGovernanceEscalation({ stability });
+    const policy = buildGovernancePolicyEnforcement({ escalation });
+    const decisionMatrix = buildGovernanceDecisionMatrix({ trend, drift, stability, escalation, policy });
+    const evidencePack = buildGovernanceEvidencePack({
+      projectRoot: repoPath,
+      trend,
+      drift,
+      stability,
+      escalation,
+      policy,
+      decisionMatrix
+    });
+
+    if (asJson) {
+      console.log(JSON.stringify(evidencePack, null, 2));
+      return;
+    }
+
+    console.log("Generated governance evidence pack:");
+    console.log(`Evidence pack ID: ${evidencePack.evidencePackId}`);
+    console.log(`Output directory: ${evidencePack.outputDirectory}`);
+    console.log("Generated files:");
+    for (const file of evidencePack.generatedFiles) {
+      console.log(`- ${file}`);
+    }
   });
 
 program.parseAsync(process.argv);

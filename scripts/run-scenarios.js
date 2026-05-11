@@ -11104,6 +11104,283 @@ function runGovernanceDecisionMatrixHelpUnit() {
     return false;
   }
 }
+
+function directEvidencePackArtifacts(kind = "restricted") {
+  const trend = stabilityTrend({ trendHealth: kind === "normal" ? "healthy" : "warning" });
+  const drift = stabilityDrift({ overallSeverity: kind === "manual-review-only" ? "critical" : kind === "restricted" ? "high" : "none" });
+  const stability = kind === "manual-review-only"
+    ? directStability({ trendHealth: "critical" }, { overallSeverity: "critical" })
+    : kind === "restricted"
+      ? directStability({ trendHealth: "warning" }, { overallSeverity: "high" })
+      : kind === "conservative"
+        ? directStability({ trendHealth: "warning" }, { overallSeverity: "none" })
+        : directStability();
+  const escalation = kind === "manual-review-only"
+    ? directEscalation({ score: stability.score, level: stability.level, metrics: { ...stability.metrics, driftSeverity: "critical", trendHealth: "critical" } })
+    : kind === "restricted"
+      ? directEscalation({ score: stability.score, level: stability.level, metrics: { ...stability.metrics, driftSeverity: "high", trendHealth: "warning" } })
+      : kind === "conservative"
+        ? directEscalation({ score: stability.score, level: stability.level, metrics: { ...stability.metrics, trendHealth: "warning" } })
+        : directEscalation({ score: stability.score, level: stability.level, metrics: stability.metrics });
+  const policy = directPolicy({ escalationLevel: escalation.escalationLevel, sourceSignals: escalation.sourceSignals });
+  const { buildGovernanceDecisionMatrix } = require(path.join(projectRoot, "dist", "repair", "governanceDecisionMatrix.js"));
+  const decisionMatrix = buildGovernanceDecisionMatrix({ trend, drift, stability, escalation, policy });
+  return { trend, drift, stability, escalation, policy, decisionMatrix };
+}
+
+function buildDirectEvidencePack(repoName = "governance-evidence-pack-unit", kind = "restricted") {
+  const { buildGovernanceEvidencePack } = require(path.join(projectRoot, "dist", "repair", "governanceEvidencePack.js"));
+  const repo = path.join(projectRoot, ".scenario-unit", repoName);
+  fs.rmSync(repo, { recursive: true, force: true });
+  ensureDir(repo);
+  const artifacts = directEvidencePackArtifacts(kind);
+  const result = buildGovernanceEvidencePack({
+    projectRoot: repo,
+    ...artifacts,
+    date: new Date("2026-05-11T21:55:33.120Z")
+  });
+  return { repo, artifacts, result };
+}
+
+function runGovernanceEvidencePackUnit() {
+  try {
+    const { result } = buildDirectEvidencePack("governance-evidence-pack-unit", "restricted");
+    if (
+      result.evidencePackId !== "2026-05-11T21-55-33-120Z" ||
+      result.outputDirectory !== ".factory/evidence-packs/2026-05-11T21-55-33-120Z" ||
+      result.manifestPath !== ".factory/evidence-packs/2026-05-11T21-55-33-120Z/manifest.json" ||
+      result.generatedFiles.length !== 14
+    ) {
+      throw new Error(`evidence pack mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-evidence-pack-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackIdUnit() {
+  const { createGovernanceEvidencePackId } = require(path.join(projectRoot, "dist", "repair", "governanceEvidencePack.js"));
+  try {
+    const id = createGovernanceEvidencePackId(new Date("2026-05-11T21:55:33.120Z"));
+    if (id !== "2026-05-11T21-55-33-120Z") {
+      throw new Error(`evidence pack ID mismatch: ${id}`);
+    }
+
+    console.log("PASS governance-evidence-pack-id-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-id-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackManifestUnit() {
+  try {
+    const { repo, result } = buildDirectEvidencePack("governance-evidence-pack-manifest", "restricted");
+    const manifest = readJson(path.join(repo, result.manifestPath));
+    if (
+      manifest.version !== 1 ||
+      manifest.evidencePackId !== result.evidencePackId ||
+      manifest.generatedAt !== "2026-05-11T21:55:33.120Z" ||
+      manifest.governanceSummary.policyMode !== "restricted" ||
+      manifest.governanceSummary.escalationLevel !== "high-risk" ||
+      manifest.governanceSummary.stabilityLevel !== "unstable"
+    ) {
+      throw new Error(`manifest mismatch: ${JSON.stringify(manifest)}`);
+    }
+
+    console.log("PASS governance-evidence-pack-manifest-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-manifest-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackSummaryUnit() {
+  try {
+    const { repo, result } = buildDirectEvidencePack("governance-evidence-pack-summary", "restricted");
+    const summary = fs.readFileSync(path.join(repo, result.outputDirectory, "summary.md"), "utf8");
+    if (
+      !summary.includes("# AI Software Factory - Governance Evidence Pack") ||
+      !summary.includes("Evidence Pack ID:\n2026-05-11T21-55-33-120Z") ||
+      !summary.includes("* policy mode: restricted") ||
+      !summary.includes("* escalation level: high-risk") ||
+      !summary.includes("* decision-matrix.md")
+    ) {
+      throw new Error(`summary mismatch: ${summary}`);
+    }
+
+    console.log("PASS governance-evidence-pack-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackOrderUnit() {
+  try {
+    const { repo, result } = buildDirectEvidencePack("governance-evidence-pack-order", "restricted");
+    const manifest = readJson(path.join(repo, result.manifestPath));
+    const names = manifest.includedArtifacts.map((artifact) => artifact.name).join(",");
+    const expected = "summary.md,trends.md,drift.md,stability.md,escalation.md,policy.md,decision-matrix.md,trends.json,drift.json,stability.json,escalation.json,policy.json,decision-matrix.json";
+    if (names !== expected) {
+      throw new Error(`manifest order mismatch: ${names}`);
+    }
+
+    console.log("PASS governance-evidence-pack-order-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-order-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackJsonUnit() {
+  try {
+    const repo = createDriftRepo("governance-evidence-pack-json", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const result = runCliHelpCommand(["evidence-pack", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      !parsed.evidencePackId ||
+      !parsed.outputDirectory.startsWith(".factory/evidence-packs/") ||
+      parsed.generatedFiles.length !== 14 ||
+      !fs.existsSync(path.join(repo, parsed.manifestPath))
+    ) {
+      throw new Error(`evidence pack JSON CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-evidence-pack-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackCliUnit() {
+  try {
+    const repo = createDriftRepo("governance-evidence-pack-cli", [
+      ...repeatedDriftValues(5, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }),
+      ...repeatedDriftValues(2, { blockedRate: 12, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 })
+    ]);
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["evidence-pack", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2"]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Generated governance evidence pack:") ||
+      !result.stdout.includes("manifest.json") ||
+      !result.stdout.includes("decision-matrix.json") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`evidence pack CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-evidence-pack-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackFilesUnit() {
+  try {
+    const { repo, result } = buildDirectEvidencePack("governance-evidence-pack-files", "restricted");
+    for (const file of result.generatedFiles) {
+      if (!fs.existsSync(path.join(repo, file))) {
+        throw new Error(`missing evidence pack file: ${file}`);
+      }
+    }
+    const policyJson = readJson(path.join(repo, result.outputDirectory, "policy.json"));
+    const decisionMarkdown = fs.readFileSync(path.join(repo, result.outputDirectory, "decision-matrix.md"), "utf8");
+    if (policyJson.recommendedPolicyMode !== "restricted" || !decisionMarkdown.includes("Governance Decision Matrix")) {
+      throw new Error("evidence pack file content mismatch");
+    }
+
+    console.log("PASS governance-evidence-pack-files-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-files-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackMissingHistoryUnit() {
+  try {
+    const repo = createArchiveRepo("governance-evidence-pack-missing-history", null);
+    const result = runCliHelpCommand(["evidence-pack", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    const manifest = readJson(path.join(repo, parsed.manifestPath));
+    const matrix = readJson(path.join(repo, parsed.outputDirectory, "decision-matrix.json"));
+    if (
+      result.status !== 0 ||
+      manifest.governanceSummary.policyMode !== "normal" ||
+      manifest.governanceSummary.escalationLevel !== "none" ||
+      manifest.governanceSummary.stabilityLevel !== "stable" ||
+      matrix.matrix[0]?.ruleId !== "NO_HISTORY"
+    ) {
+      throw new Error(`missing history evidence pack mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-evidence-pack-missing-history-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-missing-history-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceEvidencePackHelpUnit() {
+  const { renderMainHelp, renderEvidencePackHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const evidenceHelp = renderEvidencePackHelp();
+    const cliHelp = runCliHelpCommand(["evidence-pack", "--help"]);
+    const shortHelp = runCliHelpCommand(["evidence-pack", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== evidenceHelp || shortHelp.stdout !== evidenceHelp) {
+      throw new Error(`evidence pack help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["evidence-pack    Export governance evidence pack"]);
+    assertHelpIncludes(evidenceHelp, [
+      "Usage:\n  node dist/cli.js evidence-pack [options]",
+      "--window <n>                 Trend analysis window",
+      "Evidence pack export does not modify repair behavior.",
+      "does not change governance decisions"
+    ]);
+
+    console.log("PASS governance-evidence-pack-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-evidence-pack-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -11259,7 +11536,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"], ["evidence-pack", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -12057,6 +12334,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceDecisionMatrixHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackIdUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackManifestUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackOrderUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackFilesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackMissingHistoryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceEvidencePackHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

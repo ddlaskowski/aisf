@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.6 - Governance Decision Matrix Layer**
+**v4.7 - Governance Evidence Pack Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -76,6 +76,8 @@ v4.4 adds deterministic Governance Escalation. It converts stability, drift, tre
 v4.5 adds deterministic Governance Policy Enforcement recommendations. It converts escalation, stability, drift, trend, and anomaly signals into policy mode recommendations without enforcing policies automatically or changing repair behavior.
 
 v4.6 adds deterministic Governance Decision Matrix explainability. It traces trend, drift, stability, escalation, and policy rules into an ordered decision matrix without changing any governance decision or repair behavior.
+
+v4.7 adds deterministic Governance Evidence Packs. It exports trend, drift, stability, escalation, policy, and decision-matrix artifacts into portable audit-ready bundles under `.factory/evidence-packs` without changing governance decisions, indexes, or repair behavior.
 
 ---
 
@@ -2070,6 +2072,116 @@ Read-only guarantee:
 * decision matrix analysis does not mutate source files
 * decision matrix analysis does not change governance decisions
 * decision matrix analysis does not change policy recommendations
+
+## Governance Evidence Pack Layer (v4.7)
+
+v4.7 exports deterministic governance evidence bundles for audit, compliance review, CI evidence, and operator handoff.
+
+This layer does not change governance decisions. It packages the already-derived trend, drift, stability, escalation, policy, and decision-matrix outputs into a portable evidence directory.
+
+CLI usage:
+
+```bash
+node dist/cli.js evidence-pack
+node dist/cli.js evidence-pack --window 20
+node dist/cli.js evidence-pack --baseline-window 30
+node dist/cli.js evidence-pack --comparison-window 10
+node dist/cli.js evidence-pack --json
+```
+
+Evidence pack structure:
+
+```txt
+.factory/evidence-packs/<evidencePackId>/
+  manifest.json
+  summary.md
+  trends.md
+  drift.md
+  stability.md
+  escalation.md
+  policy.md
+  decision-matrix.md
+  trends.json
+  drift.json
+  stability.json
+  escalation.json
+  policy.json
+  decision-matrix.json
+```
+
+Evidence pack ID format:
+
+* UTC timestamp
+* Windows-safe path format
+* millisecond precision
+* example: `2026-05-11T21-55-33-120Z`
+
+Manifest behavior:
+
+* `manifest.json` records the evidence pack ID
+* `manifest.json` records generation time
+* `manifest.json` records included artifacts
+* `manifest.json` records governance summary signals
+* artifact ordering is deterministic
+
+Artifact ordering:
+
+1. `summary.md`
+2. `trends.md`
+3. `drift.md`
+4. `stability.md`
+5. `escalation.md`
+6. `policy.md`
+7. `decision-matrix.md`
+8. `trends.json`
+9. `drift.json`
+10. `stability.json`
+11. `escalation.json`
+12. `policy.json`
+13. `decision-matrix.json`
+
+Summary artifact:
+
+* evidence pack ID
+* generated timestamp
+* recommended policy mode
+* escalation level
+* stability level
+* stability score
+* drift severity
+* trend health
+* included Markdown artifacts
+
+JSON mode:
+
+```bash
+node dist/cli.js evidence-pack --json
+```
+
+prints:
+
+* `evidencePackId`
+* `outputDirectory`
+* `manifestPath`
+* `generatedFiles`
+
+Missing history behavior:
+
+* evidence pack is still generated
+* healthy defaults are used by downstream governance layers
+* decision matrix includes the deterministic `NO_HISTORY` informational rule
+
+Export-only guarantee:
+
+* evidence pack export writes only under `.factory/evidence-packs`
+* evidence pack export does not update `.factory/archive-index.json`
+* evidence pack export does not update `.factory/runs-index.json`
+* evidence pack export does not generate patches
+* evidence pack export does not retry repairs
+* evidence pack export does not mutate source files
+* evidence pack export does not change governance decisions
+* evidence pack export does not change policy recommendations
+* evidence pack export does not change orchestration behavior
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
