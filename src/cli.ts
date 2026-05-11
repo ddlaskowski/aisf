@@ -114,6 +114,10 @@ import {
   validateGovernanceConfig
 } from "./repair/governanceConfigValidator.js";
 import {
+  buildGovernanceConfigEffectivePreview,
+  renderGovernanceConfigEffectivePreviewText
+} from "./repair/governanceConfigEffectivePreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -122,6 +126,7 @@ import {
   renderEvidencePackHelp,
   renderEvidenceListHelp,
   renderEvidenceDiffHelp,
+  renderGovernanceConfigEffectiveHelp,
   renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
   renderGovernanceConfigValidateHelp,
@@ -473,6 +478,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "config") {
+    if (args[2] === "effective") {
+      const allowed = new Set(["--json", "--help", "-h"]);
+      for (const arg of args.slice(3)) {
+        if (!arg.startsWith("-")) {
+          continue;
+        }
+        const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+        if (!allowed.has(flag)) {
+          printAndExit(renderInvalidFlagError("governance config effective", flag), 1);
+        }
+      }
+
+      if (args.includes("--help") || args.includes("-h")) {
+        printAndExit(renderGovernanceConfigEffectiveHelp(), 0);
+      }
+
+      const preview = buildGovernanceConfigEffectivePreview(process.cwd());
+      if (args.includes("--json")) {
+        printAndExit(JSON.stringify(preview, null, 2), 0);
+      }
+      printAndExit(renderGovernanceConfigEffectivePreviewText(preview), 0);
+    }
+
     if (args[2] === "validate") {
       const allowed = new Set(["--json", "--help", "-h"]);
       for (const arg of args.slice(3)) {

@@ -13402,6 +13402,258 @@ function runGovernanceConfigValidationNoApplyUnit() {
     return false;
   }
 }
+
+function directGovernanceConfigEffectivePreview(repo) {
+  const { buildGovernanceConfigEffectivePreview } = require(path.join(projectRoot, "dist", "repair", "governanceConfigEffectivePreview.js"));
+  return buildGovernanceConfigEffectivePreview(repo);
+}
+
+function createValidGovernanceConfigWithOverrides() {
+  const config = directGovernanceConfigExample();
+  config.defaultPolicyProfile = "conservative";
+  config.policyProfiles.balanced.thresholds.highBlockedRatePercent = 20;
+  return config;
+}
+
+function runGovernanceConfigEffectivePreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-effective-preview-unit");
+    const preview = directGovernanceConfigEffectivePreview(repo);
+    const { renderGovernanceConfigEffectivePreviewMarkdown } = require(path.join(projectRoot, "dist", "repair", "governanceConfigEffectivePreview.js"));
+    const rendered = renderGovernanceConfigEffectivePreviewMarkdown(preview);
+    if (
+      preview.version !== 1 ||
+      preview.applied !== false ||
+      preview.runtimeConfigLoadingEnabled !== false ||
+      preview.activeDefaults.defaultPolicyProfile !== "balanced" ||
+      preview.generatedAt !== "1970-01-01T00:00:00.000Z" ||
+      !rendered.includes("Governance Effective Config Preview")
+    ) {
+      throw new Error(`effective preview unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-effective-preview-missing");
+    const preview = directGovernanceConfigEffectivePreview(repo);
+    const cli = withProjectGovernanceConfig(null, () => runCliHelpCommand(["governance", "config", "effective", "--json"]));
+    const parsed = JSON.parse(cli.stdout);
+    if (
+      preview.configStatus !== "missing" ||
+      preview.effectiveSource !== "static-defaults-config-missing" ||
+      preview.candidateOverrides.length !== 0 ||
+      preview.validationIssues[0]?.code !== "CONFIG_MISSING" ||
+      cli.status !== 0 ||
+      parsed.configStatus !== "missing"
+    ) {
+      throw new Error(`effective missing mismatch: direct=${JSON.stringify(preview)} cli=${cli.stdout}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-missing-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-missing-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewValidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-effective-preview-valid");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), directGovernanceConfigExample());
+    const preview = directGovernanceConfigEffectivePreview(repo);
+    if (
+      preview.configStatus !== "valid" ||
+      preview.effectiveSource !== "static-defaults-with-valid-config-present" ||
+      preview.applied !== false ||
+      preview.summary !== "Static governance defaults are active. A valid governance config file is present but not applied." ||
+      preview.validationIssues[0]?.code !== "CONFIG_VALID"
+    ) {
+      throw new Error(`effective valid mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-valid-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-valid-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewInvalidUnit() {
+  try {
+    const cli = withProjectGovernanceConfig("{", () => runCliHelpCommand(["governance", "config", "effective", "--json"]));
+    const parsed = JSON.parse(cli.stdout);
+    if (
+      cli.status !== 0 ||
+      parsed.configStatus !== "invalid" ||
+      parsed.effectiveSource !== "static-defaults-with-invalid-config-present" ||
+      parsed.candidateOverrides.length !== 0 ||
+      parsed.validationIssues[0].code !== "CONFIG_MALFORMED_JSON"
+    ) {
+      throw new Error(`effective invalid mismatch: status=${cli.status} stdout=${cli.stdout} stderr=${cli.stderr}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-invalid-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-invalid-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewOverridesUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-effective-preview-overrides");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const preview = directGovernanceConfigEffectivePreview(repo);
+    const paths = preview.candidateOverrides.map((override) => `${override.path}:${override.staticValue}->${override.configValue}:${override.applied}`).join(",");
+    if (
+      preview.configStatus !== "valid" ||
+      paths !== "defaultPolicyProfile:balanced->conservative:false,policyProfiles.balanced.thresholds.highBlockedRatePercent:25->20:false"
+    ) {
+      throw new Error(`effective overrides mismatch: ${paths} ${JSON.stringify(preview.candidateOverrides)}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-overrides-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-overrides-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewJsonUnit() {
+  try {
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const cli = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "effective", "--json"]));
+    const parsed = JSON.parse(cli.stdout);
+    if (
+      cli.status !== 0 ||
+      parsed.configStatus !== "valid" ||
+      parsed.activeDefaults.defaultPolicyProfile !== "balanced" ||
+      parsed.candidateOverrides.length !== 2 ||
+      parsed.runtimeConfigLoadingEnabled !== false
+    ) {
+      throw new Error(`effective JSON mismatch: status=${cli.status} stdout=${cli.stdout} stderr=${cli.stderr}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewCliUnit() {
+  try {
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const cli = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "effective"]));
+    if (
+      cli.status !== 0 ||
+      !cli.stdout.includes("Governance Effective Config Preview") ||
+      !cli.stdout.includes("Config status:\nvalid") ||
+      !cli.stdout.includes("| defaultPolicyProfile | balanced | conservative | true | false |") ||
+      !cli.stdout.includes("Runtime config loading enabled:\nfalse")
+    ) {
+      throw new Error(`effective CLI mismatch: status=${cli.status} stdout=${cli.stdout} stderr=${cli.stderr}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewHelpUnit() {
+  const { renderGovernanceConfigEffectiveHelp, renderGovernanceConfigHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const direct = renderGovernanceConfigEffectiveHelp();
+    const helpResult = runCliHelpCommand(["governance", "config", "effective", "--help"]);
+    const shortResult = runCliHelpCommand(["governance", "config", "effective", "-h"]);
+    if (helpResult.status !== 0 || shortResult.status !== 0 || helpResult.stdout !== direct || shortResult.stdout !== direct) {
+      throw new Error(`effective help mismatch: stdout=${helpResult.stdout} short=${shortResult.stdout}`);
+    }
+    assertHelpIncludes(direct, [
+      "Usage:\n  node dist/cli.js governance config effective [options]",
+      "Preview-only guarantee:",
+      "This command previews effective governance config but does not apply it."
+    ]);
+    assertHelpIncludes(renderGovernanceConfigHelp(), ["node dist/cli.js governance config effective"]);
+
+    console.log("PASS governance-config-effective-preview-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewNoApplyUnit() {
+  try {
+    const repo = createControlPlaneRepo("governance-config-effective-preview-no-apply", repeatedDriftValues(7, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }), passCiIndex(), sampleEvidenceIndex());
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const before = readGovernanceIndexSnapshots(repo);
+    const preview = directGovernanceConfigEffectivePreview(repo);
+    const after = readGovernanceIndexSnapshots(repo);
+    assertGovernanceIndexSnapshotsEqual(before, after, "governance config effective");
+    if (preview.applied !== false || preview.runtimeConfigLoadingEnabled !== false || preview.activeDefaults.defaultPolicyProfile !== "balanced") {
+      throw new Error(`effective no-apply mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-no-apply-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-no-apply-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigEffectivePreviewValidateExitCodeUnit() {
+  try {
+    const result = withProjectGovernanceConfig("{", () => ({
+      validate: runCliHelpCommand(["governance", "config", "validate", "--json"]),
+      effective: runCliHelpCommand(["governance", "config", "effective", "--json"])
+    }));
+    if (result.validate.status !== 1 || result.effective.status !== 0) {
+      throw new Error(`validate/effective exit mismatch: validate=${result.validate.status} effective=${result.effective.status}`);
+    }
+    const effective = JSON.parse(result.effective.stdout);
+    if (effective.configStatus !== "invalid" || effective.applied !== false) {
+      throw new Error(`effective invalid output mismatch: ${result.effective.stdout}`);
+    }
+
+    console.log("PASS governance-config-effective-preview-validate-exit-code-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-effective-preview-validate-exit-code-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -14593,6 +14845,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceConfigValidationNoApplyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewValidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewInvalidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewOverridesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewNoApplyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigEffectivePreviewValidateExitCodeUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

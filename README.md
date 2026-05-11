@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.4 - Governance Config Validation Layer**
+**v5.5 - Governance Config Effective Preview Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -92,6 +92,8 @@ v5.2 adds deterministic Governance Config Preview. It reports current static pol
 v5.3 adds a deterministic Governance Config Schema Draft. It prints and optionally writes an example-only `.factory/governance.config.example.json` for future policy-as-code support without activating runtime configuration.
 
 v5.4 adds deterministic Governance Config Validation. It validates `.factory/governance.config.json` structure and safety flags without loading, applying, creating, or enforcing runtime configuration.
+
+v5.5 adds deterministic Governance Config Effective Preview. It shows static defaults, config validation status, and candidate overrides while keeping runtime config loading disabled and `applied: false`.
 
 ---
 
@@ -2664,6 +2666,71 @@ v5.4 deterministic checks:
 * governance-config-validation-cli-unit
 * governance-config-validation-help-unit
 * governance-config-validation-no-apply-unit
+
+## Governance Config Effective Preview Layer (v5.5)
+
+v5.5 adds a dry-run preview of the effective governance config surface.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance config effective
+node dist/cli.js governance config effective --json
+node dist/cli.js governance config effective --help
+```
+
+The effective preview answers:
+
+* whether `.factory/governance.config.json` is `missing`, `valid`, or `invalid`
+* which static defaults are currently active
+* whether a valid config file contains candidate overrides
+* which values would be overridden in a future runtime-config version
+* whether runtime config loading is enabled
+* whether any config values were applied
+
+Effective source behavior:
+
+* missing config uses `static-defaults-config-missing`
+* valid config uses `static-defaults-with-valid-config-present`
+* invalid config uses `static-defaults-with-invalid-config-present`
+* static governance defaults remain the active source of truth in every case
+
+Candidate overrides:
+
+* `defaultPolicyProfile`
+* `policyProfiles.conservative.thresholds.*`
+* `policyProfiles.balanced.thresholds.*`
+* `policyProfiles.experimental.thresholds.*`
+* `futureRuntimeOptions.*`
+
+Guarantees:
+
+* `applied` is always `false`
+* `runtimeConfigLoadingEnabled` is always `false`
+* invalid config exits `0` for effective preview because static defaults still apply
+* `governance config validate` still exits `1` for invalid config
+* v5.5 does not load, apply, create, or overwrite `.factory/governance.config.json`
+* v5.5 does not mutate `.factory/runs-index.json`, `.factory/archive-index.json`, or `.factory/evidence-index.json`
+* v5.5 does not change governance thresholds, calculations, policy behavior, or repair behavior
+
+Difference from validation:
+
+* `governance config validate` answers whether the config file is structurally valid
+* `governance config effective` answers what would be different if future config loading existed
+* neither command applies runtime configuration in v5.5
+
+v5.5 deterministic checks:
+
+* governance-config-effective-preview-unit
+* governance-config-effective-preview-missing-unit
+* governance-config-effective-preview-valid-unit
+* governance-config-effective-preview-invalid-unit
+* governance-config-effective-preview-overrides-unit
+* governance-config-effective-preview-json-unit
+* governance-config-effective-preview-cli-unit
+* governance-config-effective-preview-help-unit
+* governance-config-effective-preview-no-apply-unit
+* governance-config-effective-preview-validate-exit-code-unit
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
