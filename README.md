@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.0 - Governance Archive Diff Layer**
+**v4.1 - Governance Trend Analysis Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -64,6 +64,8 @@ v3.8 adds optional governance snapshot archiving for export outputs. It preserve
 v3.9 adds a deterministic Governance Archive Index Layer. It records compact metadata for archived governance snapshots in `.factory/archive-index.json` and adds a read-only `archive` CLI dashboard for browsing archive history.
 
 v4.0 adds a deterministic Governance Archive Diff Layer. It compares existing archive snapshots to report governance improvements, regressions, stable metrics, and mixed changes without modifying repair behavior, archive history, or run indexes.
+
+v4.1 adds deterministic Governance Trend Analysis across multiple archived governance-insights snapshots. It reports metric directions, volatility, trend health, and fixed insight codes without mutating archive history, run indexes, or repair behavior.
 
 ---
 
@@ -1615,6 +1617,83 @@ v4.0 deterministic checks:
 * governance-archive-diff-invalid-kind-unit
 * governance-archive-diff-missing-archive-unit
 * governance-archive-diff-help-unit
+---
+
+## Governance Trend Analysis Layer (v4.1)
+
+v4.1 analyzes governance archive history across multiple snapshots and reports deterministic operational trends.
+
+Supported archive kind:
+
+* `governance-insights`
+
+CLI usage:
+
+```bash
+node dist/cli.js trends
+node dist/cli.js trends --window 20
+node dist/cli.js trends --kind governance-insights
+node dist/cli.js trends --json
+```
+
+Trend analysis compares:
+
+* blocked rate
+* human-review rate
+* validation success rate
+* average trust score
+* ready rate
+
+Trend health meanings:
+
+* `healthy` means improving or stable metrics dominate with no major degradation
+* `warning` means some degradation or medium/high volatility was detected
+* `critical` means blocked rate is worsening together with validation or trust degradation
+* `unknown` means there is insufficient comparable archive history
+
+Volatility:
+
+* volatility is the average absolute delta between consecutive snapshots
+* low volatility is below `5`
+* medium volatility is `5` through `15`
+* high volatility is above `15`
+* volatility is reported as raw deterministic numeric values only
+
+Deterministic insight rules include:
+
+* blocked rate improving -> `BLOCKED_RATE_IMPROVING`
+* blocked rate worsening -> `BLOCKED_RATE_WORSENING`
+* trust score improving -> `TRUST_TREND_IMPROVING`
+* trust score degrading -> `TRUST_TREND_DEGRADING`
+* high volatility -> `HIGH_GOVERNANCE_VOLATILITY`
+* all comparable metrics stable -> `GOVERNANCE_STABLE`
+* missing archive history -> `NO_ARCHIVE_HISTORY`
+
+Read-only guarantee:
+
+* trend analysis reads `.factory/archive-index.json`
+* trend analysis reads indexed archived `governance-insights.json` snapshots
+* trend analysis does not update `.factory/archive-index.json`
+* trend analysis does not update `.factory/runs-index.json`
+* trend analysis does not generate patches
+* trend analysis does not retry repairs
+* trend analysis does not mutate source files
+* trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
+* trend analysis does not bypass any safety gate
+
+v4.1 deterministic checks:
+
+* governance-trend-analysis-unit
+* governance-trend-analysis-improving-unit
+* governance-trend-analysis-worsening-unit
+* governance-trend-analysis-stable-unit
+* governance-trend-analysis-health-unit
+* governance-trend-analysis-volatility-unit
+* governance-trend-analysis-json-unit
+* governance-trend-analysis-cli-unit
+* governance-trend-analysis-missing-index-unit
+* governance-trend-analysis-invalid-kind-unit
+* governance-trend-analysis-help-unit
 ---
 
 ## 🚀 Usage

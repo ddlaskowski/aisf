@@ -11,6 +11,7 @@
     "  insights    Show governance insights over indexed runs",
     "  ci-summary  Show CI-friendly governance summary",
     "  archive     Show governance archive snapshot history",
+    "  trends      Show governance trend analysis over archives",
     "",
     "Global options:",
     "  --help, -h   Show help",
@@ -21,6 +22,7 @@
     "  node dist/cli.js ci-summary --profile balanced",
     "  node dist/cli.js runs --export all",
     "  node dist/cli.js archive --latest",
+    "  node dist/cli.js trends --window 20",
     "",
     "Governance commands are read-only and do not modify repair behavior."
   ].join("\n") + "\n";
@@ -172,6 +174,35 @@ export function renderArchiveHelp(): string {
     "Read-only guarantee:",
     "  This command reads .factory/archive-index.json and does not modify repair behavior.",
     "  Archive diff does not modify repair behavior or archive data."
+  ].join("\n") + "\n";
+}
+
+export function renderTrendsHelp(): string {
+  return [
+    "# AI Software Factory CLI - trends",
+    "",
+    "Usage:",
+    "  node dist/cli.js trends [options]",
+    "",
+    "Options:",
+    "  --repo <path>   Path to target repository",
+    "  --kind <kind>   Archive kind to analyze",
+    "  --window <n>    Snapshot window size",
+    "  --json          Print JSON output",
+    "  --help, -h      Show help",
+    "",
+    "Supported kinds:",
+    "  governance-insights",
+    "",
+    "Examples:",
+    "  node dist/cli.js trends",
+    "  node dist/cli.js trends --window 20",
+    "  node dist/cli.js trends --kind governance-insights",
+    "  node dist/cli.js trends --json",
+    "",
+    "Read-only guarantee:",
+    "  Trend analysis reads archive history and does not modify repair behavior.",
+    "  Trend analysis does not modify .factory/archive-index.json or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

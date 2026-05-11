@@ -52,6 +52,11 @@ import {
   renderGovernanceArchiveDiffText
 } from "./repair/governanceArchiveDiff.js";
 import {
+  buildGovernanceTrendAnalysis,
+  loadGovernanceTrendSnapshots,
+  renderGovernanceTrendAnalysisText
+} from "./repair/governanceTrendAnalysis.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -59,6 +64,7 @@ import {
   renderInvalidFlagError,
   renderMainHelp,
   renderRunsHelp,
+  renderTrendsHelp,
   renderUnknownCommandError
 } from "./cliHelp.js";
 
@@ -230,14 +236,26 @@ function parseGovernancePolicyProfileOption(value: unknown): GovernancePolicyPro
   return typeof value === "string" && isGovernancePolicyProfileName(value) ? value : null;
 }
 
+function parseTrendWindow(value: unknown): number | null {
+  if (value === undefined) {
+    return 10;
+  }
+  const parsed = parsePositiveInteger(value);
+  if (parsed === null) {
+    return null;
+  }
+  return Math.min(parsed, 100);
+}
 
-const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive"] as const;
+
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
   insights: new Set(["--repo", "--profile", "--profiles", "--json", "--export", "--archive", "--help", "-h"]),
   "ci-summary": new Set(["--repo", "--profile", "--json", "--export", "--archive", "--help", "-h"]),
-  archive: new Set(["--repo", "--latest", "--kind", "--limit", "--json", "--help", "-h"])
+  archive: new Set(["--repo", "--latest", "--kind", "--limit", "--json", "--help", "-h"]),
+  trends: new Set(["--repo", "--kind", "--window", "--json", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -258,6 +276,9 @@ function renderCommandHelp(command: string): string | null {
   }
   if (command === "archive") {
     return renderArchiveHelp();
+  }
+  if (command === "trends") {
+    return renderTrendsHelp();
   }
   return null;
 }
@@ -662,6 +683,62 @@ program
     }
 
     console.log(renderGovernanceArchiveDashboardText(result));
+  });
+
+program
+  .command("trends")
+  .description("Show read-only governance trend analysis from archive history")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--kind <kind>", "Archive kind to analyze", "governance-insights")
+  .option("--window <n>", "Snapshot window size")
+  .option("--json", "Print machine-readable JSON")
+  .action(async (options) => {
+    const asJson = !!options.json;
+    const repoPath = path.resolve(options.repo);
+    const kind = options.kind ?? "governance-insights";
+
+    if (kind !== "governance-insights") {
+      console.error("Governance trend analysis currently supports:");
+      console.error("- governance-insights");
+      console.error("Run:\n  node dist/cli.js trends --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const windowSize = parseTrendWindow(options.window);
+    if (windowSize === null) {
+      console.error(`Invalid window value: ${options.window}`);
+      console.error("Window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js trends --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const indexPath = getGovernanceArchiveIndexPath(repoPath);
+    const index = (await fs.pathExists(indexPath)) ? loadGovernanceArchiveIndex(repoPath) : null;
+    const snapshots = index
+      ? loadGovernanceTrendSnapshots({
+          projectRoot: repoPath,
+          index,
+          kind,
+          windowSize
+        })
+      : [];
+
+    const totalSnapshots = index?.archives.filter((entry) => entry.kind === kind).length ?? 0;
+    const analysis = buildGovernanceTrendAnalysis({
+      snapshots,
+      analyzedKind: kind,
+      windowSize,
+      totalSnapshots
+    });
+
+    if (asJson) {
+      console.log(JSON.stringify(analysis, null, 2));
+      return;
+    }
+
+    console.log(renderGovernanceTrendAnalysisText(analysis));
   });
 
 program.parseAsync(process.argv);

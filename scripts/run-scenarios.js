@@ -9348,6 +9348,302 @@ function runGovernanceArchiveDiffHelpUnit() {
     return false;
   }
 }
+
+function trendSnapshot(archiveId, values) {
+  return {
+    archiveId,
+    createdAt: archiveCreatedAt(archiveId),
+    kind: "governance-insights",
+    data: governanceInsightsSnapshot(values)
+  };
+}
+
+function trendSnapshots(valueList) {
+  return valueList.map((values, index) => {
+    const day = String(index + 1).padStart(2, "0");
+    return trendSnapshot(`2026-05-${day}T10-00-00-000Z`, values);
+  });
+}
+
+function directTrend(valueList, windowSize = 10) {
+  const { buildGovernanceTrendAnalysis } = require(path.join(projectRoot, "dist", "repair", "governanceTrendAnalysis.js"));
+  return buildGovernanceTrendAnalysis({
+    snapshots: trendSnapshots(valueList),
+    windowSize,
+    totalSnapshots: valueList.length
+  });
+}
+
+function createTrendRepo(name, valueList, includeRunsIndex = true) {
+  const repo = createArchiveRepo(name, includeRunsIndex ? warnCiIndex() : null);
+  const archives = [];
+  for (let index = 0; index < valueList.length; index += 1) {
+    const day = String(index + 1).padStart(2, "0");
+    const archiveId = `2026-05-${day}T10-00-00-000Z`;
+    const entry = archiveDiffEntry("governance-insights", archiveId);
+    archives.push(entry);
+    const filePath = path.join(repo, entry.files[0]);
+    ensureDir(path.dirname(filePath));
+    fs.writeFileSync(filePath, `${JSON.stringify(governanceInsightsSnapshot(valueList[index]), null, 2)}\n`, "utf8");
+  }
+  writeArchiveIndex(repo, {
+    version: 1,
+    updatedAt: "2026-05-11T10:00:00.000Z",
+    totalArchives: archives.length,
+    archives: archives.slice().reverse()
+  });
+  return repo;
+}
+
+function runGovernanceTrendAnalysisUnit() {
+  try {
+    const analysis = directTrend([
+      { blockedRate: 20, humanReviewRate: 30, validationSuccessRate: 70, averageTrustScore: 60, readyRate: 40 },
+      { blockedRate: 10, humanReviewRate: 20, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }
+    ]);
+    if (
+      analysis.version !== 1 ||
+      analysis.analyzedKind !== "governance-insights" ||
+      analysis.analyzedSnapshots !== 2 ||
+      analysis.metrics.blockedRate.direction !== "down" ||
+      analysis.metrics.validationSuccessRate.direction !== "up" ||
+      analysis.metrics.averageTrustScore.absoluteDelta !== 20
+    ) {
+      throw new Error(`trend analysis mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-trend-analysis-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisImprovingUnit() {
+  try {
+    const analysis = directTrend([
+      { blockedRate: 30, humanReviewRate: 25, validationSuccessRate: 70, averageTrustScore: 60, readyRate: 40 },
+      { blockedRate: 27, humanReviewRate: 22, validationSuccessRate: 73, averageTrustScore: 63, readyRate: 43 },
+      { blockedRate: 24, humanReviewRate: 19, validationSuccessRate: 76, averageTrustScore: 66, readyRate: 46 }
+    ]);
+    const codes = analysis.insights.map((insight) => insight.code);
+    if (analysis.trendHealth !== "healthy" || !codes.includes("BLOCKED_RATE_IMPROVING") || !codes.includes("TRUST_TREND_IMPROVING")) {
+      throw new Error(`improving trend mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-trend-analysis-improving-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-improving-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisWorseningUnit() {
+  try {
+    const analysis = directTrend([
+      { blockedRate: 5, humanReviewRate: 5, validationSuccessRate: 95, averageTrustScore: 90, readyRate: 85 },
+      { blockedRate: 20, humanReviewRate: 15, validationSuccessRate: 80, averageTrustScore: 75, readyRate: 60 },
+      { blockedRate: 40, humanReviewRate: 30, validationSuccessRate: 60, averageTrustScore: 50, readyRate: 35 }
+    ]);
+    const codes = analysis.insights.map((insight) => insight.code);
+    if (analysis.trendHealth !== "critical" || !codes.includes("BLOCKED_RATE_WORSENING") || !codes.includes("TRUST_TREND_DEGRADING")) {
+      throw new Error(`worsening trend mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-trend-analysis-worsening-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-worsening-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisStableUnit() {
+  try {
+    const analysis = directTrend([
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }
+    ]);
+    if (analysis.trendHealth !== "healthy" || analysis.metrics.blockedRate.direction !== "stable" || analysis.insights[0]?.code !== "GOVERNANCE_STABLE") {
+      throw new Error(`stable trend mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-trend-analysis-stable-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-stable-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisHealthUnit() {
+  try {
+    const unknown = directTrend([]);
+    const warning = directTrend([
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 },
+      { blockedRate: 10, humanReviewRate: 20, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }
+    ]);
+    if (unknown.trendHealth !== "unknown" || unknown.insights[0]?.code !== "NO_ARCHIVE_HISTORY" || warning.trendHealth !== "warning") {
+      throw new Error(`trend health mismatch: unknown=${JSON.stringify(unknown)} warning=${JSON.stringify(warning)}`);
+    }
+
+    console.log("PASS governance-trend-analysis-health-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-health-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisVolatilityUnit() {
+  try {
+    const analysis = directTrend([
+      { blockedRate: 0, humanReviewRate: 0, validationSuccessRate: 60, averageTrustScore: 40, readyRate: 20 },
+      { blockedRate: 30, humanReviewRate: 30, validationSuccessRate: 90, averageTrustScore: 90, readyRate: 80 },
+      { blockedRate: 0, humanReviewRate: 0, validationSuccessRate: 60, averageTrustScore: 40, readyRate: 20 }
+    ]);
+    if (
+      analysis.volatility.governanceVolatilityScore !== 40 ||
+      analysis.volatility.trustVolatilityScore !== 50 ||
+      analysis.volatility.validationVolatilityScore !== 30 ||
+      !analysis.insights.some((insight) => insight.code === "HIGH_GOVERNANCE_VOLATILITY")
+    ) {
+      throw new Error(`volatility trend mismatch: ${JSON.stringify(analysis)}`);
+    }
+
+    console.log("PASS governance-trend-analysis-volatility-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-volatility-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisJsonUnit() {
+  try {
+    const repo = createTrendRepo("governance-trend-json", [
+      { blockedRate: 20, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 50 },
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }
+    ]);
+    const result = runCliHelpCommand(["trends", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.analyzedSnapshots !== 2 || parsed.metrics.blockedRate.direction !== "down") {
+      throw new Error(`trend JSON CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-trend-analysis-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisCliUnit() {
+  try {
+    const repo = createTrendRepo("governance-trend-cli", [
+      { blockedRate: 20, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 50 },
+      { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 70 }
+    ]);
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["trends", "--repo", repo]);
+    const afterArchiveIndex = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterRunsIndex = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Trend Analysis") ||
+      !result.stdout.includes("Trend health:") ||
+      beforeArchiveIndex !== afterArchiveIndex ||
+      beforeRunsIndex !== afterRunsIndex
+    ) {
+      throw new Error(`trend CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-trend-analysis-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisMissingIndexUnit() {
+  try {
+    const repo = createArchiveRepo("governance-trend-missing-index", null);
+    const result = runCliHelpCommand(["trends", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.trendHealth !== "unknown" || parsed.insights[0]?.code !== "NO_ARCHIVE_HISTORY") {
+      throw new Error(`missing trend index mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-trend-analysis-missing-index-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-missing-index-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisInvalidKindUnit() {
+  try {
+    const repo = createTrendRepo("governance-trend-invalid-kind", [
+      { blockedRate: 20, humanReviewRate: 20, validationSuccessRate: 80, averageTrustScore: 70, readyRate: 50 }
+    ]);
+    const result = runCliHelpCommand(["trends", "--repo", repo, "--kind", "governance-ci-summary"]);
+    if (result.status !== 1 || !result.stderr.includes("Governance trend analysis currently supports:") || !result.stderr.includes("- governance-insights")) {
+      throw new Error(`invalid trend kind mismatch: status=${result.status} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-trend-analysis-invalid-kind-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-invalid-kind-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceTrendAnalysisHelpUnit() {
+  const { renderMainHelp, renderTrendsHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const trendsHelp = renderTrendsHelp();
+    const cliHelp = runCliHelpCommand(["trends", "--help"]);
+    const shortHelp = runCliHelpCommand(["trends", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== trendsHelp || shortHelp.stdout !== trendsHelp) {
+      throw new Error(`trend help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["trends      Show governance trend analysis over archives"]);
+    assertHelpIncludes(trendsHelp, [
+      "Usage:\n  node dist/cli.js trends [options]",
+      "--window <n>    Snapshot window size",
+      "Supported kinds:",
+      "Read-only guarantee:"
+    ]);
+
+    console.log("PASS governance-trend-analysis-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-trend-analysis-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -9503,7 +9799,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"]];
+    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -10106,6 +10402,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceArchiveDiffHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisImprovingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisWorseningUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisStableUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisHealthUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisVolatilityUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisMissingIndexUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisInvalidKindUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceTrendAnalysisHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
