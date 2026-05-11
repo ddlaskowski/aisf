@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v4.9 - Governance Evidence Diff Layer**
+**v5.0 - Governance Control Plane Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -82,6 +82,8 @@ v4.7 adds deterministic Governance Evidence Packs. It exports trend, drift, stab
 v4.8 adds a deterministic Governance Evidence Manifest Index. It registers generated evidence packs in `.factory/evidence-index.json` and adds a read-only `evidence-list` CLI for browsing evidence lineage without changing governance decisions, archive history, run indexes, or repair behavior.
 
 v4.9 adds deterministic Governance Evidence Diff. It compares two registered evidence packs and reports policy, escalation, stability, drift, trend, operator approval, autonomous-operation, and decision-matrix rule changes without mutating evidence packs or indexes.
+
+v5.0 adds a deterministic Governance Control Plane. It summarizes stability, escalation, policy, CI status, latest archive snapshot, and latest evidence-pack state in one read-only operator view without generating archives, generating evidence packs, or changing repair behavior.
 
 ---
 
@@ -2324,6 +2326,81 @@ Read-only guarantee:
 * evidence diff does not change governance decisions
 * evidence diff does not change policy recommendations
 * evidence diff does not change orchestration behavior
+
+## Governance Control Plane Layer (v5.0)
+
+v5.0 adds one high-level read-only governance entry point for operators.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance
+node dist/cli.js governance --window 20
+node dist/cli.js governance --json
+```
+
+The control plane summarizes:
+
+* current stability score and stability level
+* current escalation level and operator-attention state
+* recommended policy mode and autonomous-operation allowance
+* CI governance status
+* latest archive snapshot from `.factory/archive-index.json`
+* latest evidence pack from `.factory/evidence-index.json`
+* deterministic warnings and recommended next commands
+
+Control-plane statuses:
+
+* `healthy` means governance is stable, escalation is none, policy is normal, and CI status is pass
+* `watch` means governance has caution, warning, conservative policy, or CI warn signals
+* `attention-required` means governance has high-risk escalation, restricted policy, operator approval, or unstable stability signals
+* `critical` means escalation is critical, policy is manual-review-only, or CI status is fail
+* `unknown` means required governance context is incomplete
+
+Recommended next commands:
+
+* healthy: `node dist/cli.js runs`, `node dist/cli.js insights`
+* watch: `node dist/cli.js stability`, `node dist/cli.js escalation`, `node dist/cli.js policy`
+* attention-required: `node dist/cli.js drift`, `node dist/cli.js decision-matrix`, `node dist/cli.js evidence-pack`
+* critical: `node dist/cli.js escalation`, `node dist/cli.js policy`, `node dist/cli.js decision-matrix`, `node dist/cli.js evidence-pack`
+* unknown: `node dist/cli.js runs`, `node dist/cli.js archive`, `node dist/cli.js evidence-list`
+
+Missing data behavior:
+
+* missing `.factory/archive-index.json` adds `No governance archive index found.`
+* missing `.factory/evidence-index.json` adds `No governance evidence index found.`
+* missing archive or evidence indexes produce `status: unknown`
+* the command exits `0` and does not crash
+
+Read-only guarantee:
+
+* governance control plane reads governance history and run-index data
+* governance control plane does not generate archive snapshots
+* governance control plane does not generate evidence packs
+* governance control plane does not update `.factory/archive-index.json`
+* governance control plane does not update `.factory/evidence-index.json`
+* governance control plane does not update `.factory/runs-index.json`
+* governance control plane does not generate patches
+* governance control plane does not retry repairs
+* governance control plane does not mutate source files
+* governance control plane does not change governance decisions
+* governance control plane does not change policy recommendations
+* governance control plane does not change orchestration behavior
+
+v5.0 deterministic checks:
+
+* governance-control-plane-unit
+* governance-control-plane-status-unit
+* governance-control-plane-summary-unit
+* governance-control-plane-recommendation-unit
+* governance-control-plane-warning-unit
+* governance-control-plane-latest-archive-unit
+* governance-control-plane-latest-evidence-unit
+* governance-control-plane-json-unit
+* governance-control-plane-cli-unit
+* governance-control-plane-missing-data-unit
+* governance-control-plane-help-unit
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

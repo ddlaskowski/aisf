@@ -97,6 +97,10 @@ import {
   renderGovernanceEvidenceDiffText
 } from "./repair/governanceEvidenceDiff.js";
 import {
+  buildGovernanceControlPlane,
+  renderGovernanceControlPlaneText
+} from "./repair/governanceControlPlane.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -105,6 +109,7 @@ import {
   renderEvidencePackHelp,
   renderEvidenceListHelp,
   renderEvidenceDiffHelp,
+  renderGovernanceHelp,
   renderEscalationHelp,
   renderInsightsHelp,
   renderInvalidFlagError,
@@ -306,7 +311,52 @@ function parseDriftWindow(value: unknown, fallback: number): number | null {
   return Math.min(parsed, 100);
 }
 
-const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation", "policy", "decision-matrix", "evidence-pack", "evidence-list", "evidence-diff"] as const;
+async function buildGovernanceSignalBundle(repoPath: string, windowSize: number, baselineWindowSize: number, comparisonWindowSize: number) {
+  const archiveIndexPath = getGovernanceArchiveIndexPath(repoPath);
+  const archiveIndex = (await fs.pathExists(archiveIndexPath)) ? loadGovernanceArchiveIndex(repoPath) : null;
+  const trendSnapshots = archiveIndex
+    ? loadGovernanceTrendSnapshots({
+        projectRoot: repoPath,
+        index: archiveIndex,
+        kind: "governance-insights",
+        windowSize
+      })
+    : [];
+  const driftSnapshots = archiveIndex
+    ? loadGovernanceDriftSnapshots({
+        projectRoot: repoPath,
+        index: archiveIndex,
+        kind: "governance-insights",
+        maxSnapshots: baselineWindowSize + comparisonWindowSize
+      })
+    : [];
+  const totalSnapshots = archiveIndex?.archives.filter((entry) => entry.kind === "governance-insights").length ?? 0;
+  const trend = buildGovernanceTrendAnalysis({
+    snapshots: trendSnapshots,
+    analyzedKind: "governance-insights",
+    windowSize,
+    totalSnapshots
+  });
+  const drift = buildGovernanceDriftDetection({
+    snapshots: driftSnapshots,
+    analyzedKind: "governance-insights",
+    baselineWindowSize,
+    comparisonWindowSize
+  });
+  const stability = buildGovernanceStabilityScore({ trend, drift });
+  const escalation = buildGovernanceEscalation({ stability });
+  const policy = buildGovernancePolicyEnforcement({ escalation });
+  return {
+    archiveIndex,
+    trend,
+    drift,
+    stability,
+    escalation,
+    policy
+  };
+}
+
+const GOVERNANCE_COMMANDS = ["runs", "insights", "ci-summary", "archive", "trends", "drift", "stability", "escalation", "policy", "decision-matrix", "evidence-pack", "evidence-list", "evidence-diff", "governance"] as const;
 const KNOWN_COMMANDS = new Set(["run", ...GOVERNANCE_COMMANDS]);
 const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   runs: new Set(["--repo", "--limit", "--status", "--blocked", "--human-review", "--latest", "--json", "--export", "--archive", "--help", "-h"]),
@@ -321,7 +371,8 @@ const GOVERNANCE_COMMAND_FLAGS: Record<string, Set<string>> = {
   "decision-matrix": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
   "evidence-pack": new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"]),
   "evidence-list": new Set(["--repo", "--latest", "--limit", "--policy", "--escalation", "--json", "--help", "-h"]),
-  "evidence-diff": new Set(["--repo", "--json", "--help", "-h"])
+  "evidence-diff": new Set(["--repo", "--json", "--help", "-h"]),
+  governance: new Set(["--repo", "--window", "--baseline-window", "--comparison-window", "--json", "--help", "-h"])
 };
 
 function printAndExit(message: string, exitCode: number): void {
@@ -369,6 +420,9 @@ function renderCommandHelp(command: string): string | null {
   }
   if (command === "evidence-diff") {
     return renderEvidenceDiffHelp();
+  }
+  if (command === "governance") {
+    return renderGovernanceHelp();
   }
   return null;
 }
@@ -1423,6 +1477,71 @@ program
       console.error(error instanceof Error ? error.message : "Governance evidence diff failed.");
       process.exitCode = 1;
     }
+  });
+
+program
+  .command("governance")
+  .description("Show unified governance control plane summary")
+  .option("--repo <path>", "Path to target repository", process.cwd())
+  .option("--window <n>", "Trend analysis window")
+  .option("--baseline-window <n>", "Drift baseline window")
+  .option("--comparison-window <n>", "Drift comparison window")
+  .option("--json", "Print machine-readable JSON")
+  .action(async (options) => {
+    const asJson = !!options.json;
+    const repoPath = path.resolve(options.repo);
+
+    const windowSize = parseTrendWindow(options.window);
+    if (windowSize === null) {
+      console.error(`Invalid window value: ${options.window}`);
+      console.error("Window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js governance --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const baselineWindowSize = parseDriftWindow(options.baselineWindow, 20);
+    if (baselineWindowSize === null) {
+      console.error(`Invalid baseline window value: ${options.baselineWindow}`);
+      console.error("Baseline window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js governance --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const comparisonWindowSize = parseDriftWindow(options.comparisonWindow, 5);
+    if (comparisonWindowSize === null) {
+      console.error(`Invalid comparison window value: ${options.comparisonWindow}`);
+      console.error("Comparison window must be a positive integer.");
+      console.error("Run:\n  node dist/cli.js governance --help\n\nfor usage.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const signals = await buildGovernanceSignalBundle(repoPath, windowSize, baselineWindowSize, comparisonWindowSize);
+    const ciSummary = buildGovernanceCiSummary(loadGovernanceInsights(repoPath));
+    const archiveIndexPath = getGovernanceArchiveIndexPath(repoPath);
+    const evidenceIndexPath = getGovernanceEvidenceIndexPath(repoPath);
+    const archiveIndexExists = await fs.pathExists(archiveIndexPath);
+    const evidenceIndexExists = await fs.pathExists(evidenceIndexPath);
+    const evidenceIndex = evidenceIndexExists ? loadGovernanceEvidenceIndex(repoPath) : null;
+    const controlPlane = buildGovernanceControlPlane({
+      stability: signals.stability,
+      escalation: signals.escalation,
+      policy: signals.policy,
+      ciSummary,
+      latestArchive: signals.archiveIndex?.archives[0],
+      latestEvidencePack: evidenceIndex?.entries[0],
+      missingArchiveIndex: !archiveIndexExists,
+      missingEvidenceIndex: !evidenceIndexExists
+    });
+
+    if (asJson) {
+      console.log(JSON.stringify(controlPlane, null, 2));
+      return;
+    }
+
+    console.log(renderGovernanceControlPlaneText(controlPlane));
   });
 
 program.parseAsync(process.argv);

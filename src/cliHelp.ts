@@ -7,6 +7,7 @@
     "",
     "Commands:",
     "  run         Execute a repair task",
+    "  governance  Show unified governance control plane summary",
     "  runs        Show historical governance run dashboard",
     "  insights    Show governance insights over indexed runs",
     "  ci-summary  Show CI-friendly governance summary",
@@ -25,6 +26,7 @@
     "  --help, -h   Show help",
     "",
     "Examples:",
+    "  node dist/cli.js governance",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -41,6 +43,33 @@
     "  node dist/cli.js evidence-diff <A> <B>",
     "",
     "Governance commands are read-only and do not modify repair behavior."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance [options]",
+    "",
+    "Options:",
+    "  --repo <path>                Path to target repository",
+    "  --window <n>                 Trend analysis window",
+    "  --baseline-window <n>       Drift baseline window",
+    "  --comparison-window <n>     Drift comparison window",
+    "  --json                      Print JSON output",
+    "  --help, -h                  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance",
+    "  node dist/cli.js governance --window 20",
+    "  node dist/cli.js governance --json",
+    "",
+    "Read-only guarantee:",
+    "  Governance control plane reads governance data and does not modify repair behavior.",
+    "  Governance control plane does not generate evidence packs or archives automatically.",
+    "  Governance control plane does not modify .factory/archive-index.json, .factory/evidence-index.json, or .factory/runs-index.json."
   ].join("\n") + "\n";
 }
 

@@ -11956,6 +11956,341 @@ function runGovernanceEvidenceDiffHelpUnit() {
     return false;
   }
 }
+
+function directControlPlane(overrides = {}) {
+  const { buildGovernanceControlPlane } = require(path.join(projectRoot, "dist", "repair", "governanceControlPlane.js"));
+  const stability = {
+    version: 1,
+    score: 100,
+    level: "stable",
+    summary: "Governance operations appear stable and within acceptable ranges.",
+    metrics: {},
+    anomalies: [],
+    generatedAt: "2026-05-11T10:00:00.000Z",
+    ...(overrides.stability ?? {})
+  };
+  const escalation = {
+    version: 1,
+    escalationLevel: "none",
+    requiresOperatorAttention: false,
+    sourceSignals: {},
+    triggers: [],
+    recommendedActions: [],
+    generatedAt: "2026-05-11T10:00:00.000Z",
+    ...(overrides.escalation ?? {})
+  };
+  const policy = {
+    version: 1,
+    recommendedPolicyMode: "normal",
+    autonomousOperationAllowed: true,
+    operatorApprovalRequired: false,
+    ciModeRecommendation: "normal",
+    reasons: [],
+    recommendedRestrictions: [],
+    sourceSignals: {},
+    generatedAt: "2026-05-11T10:00:00.000Z",
+    ...(overrides.policy ?? {})
+  };
+  const ciSummary = {
+    version: 1,
+    status: "pass",
+    metrics: {},
+    insightCounts: { info: 0, warning: 0, critical: 0 },
+    triggeringInsights: [],
+    recommendations: [],
+    generatedAt: "2026-05-11T10:00:00.000Z",
+    ...(overrides.ciSummary ?? {})
+  };
+  return buildGovernanceControlPlane({
+    stability,
+    escalation,
+    policy,
+    ciSummary,
+    latestArchive: overrides.latestArchive,
+    latestEvidencePack: overrides.latestEvidencePack,
+    missingArchiveIndex: overrides.missingArchiveIndex,
+    missingEvidenceIndex: overrides.missingEvidenceIndex,
+    generatedAt: "2026-05-11T10:00:00.000Z"
+  });
+}
+
+function runGovernanceControlPlaneUnit() {
+  try {
+    const control = directControlPlane();
+    if (control.version !== 1 || control.status !== "healthy" || control.currentState.recommendedPolicyMode !== "normal") {
+      throw new Error(`control plane mismatch: ${JSON.stringify(control)}`);
+    }
+
+    console.log("PASS governance-control-plane-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneStatusUnit() {
+  try {
+    const healthy = directControlPlane();
+    const watch = directControlPlane({
+      stability: { level: "caution", score: 75 },
+      escalation: { escalationLevel: "warning" },
+      policy: { recommendedPolicyMode: "conservative", operatorApprovalRequired: false },
+      ciSummary: { status: "warn" }
+    });
+    const attention = directControlPlane({
+      stability: { level: "unstable", score: 51 },
+      escalation: { escalationLevel: "high-risk", requiresOperatorAttention: true },
+      policy: { recommendedPolicyMode: "restricted", autonomousOperationAllowed: false, operatorApprovalRequired: true }
+    });
+    const critical = directControlPlane({
+      escalation: { escalationLevel: "critical", requiresOperatorAttention: true },
+      policy: { recommendedPolicyMode: "manual-review-only", autonomousOperationAllowed: false, operatorApprovalRequired: true },
+      ciSummary: { status: "fail" }
+    });
+    const unknown = directControlPlane({ missingArchiveIndex: true, missingEvidenceIndex: true });
+    if (healthy.status !== "healthy" || watch.status !== "watch" || attention.status !== "attention-required" || critical.status !== "critical" || unknown.status !== "unknown") {
+      throw new Error(`control status mismatch: ${JSON.stringify({ healthy, watch, attention, critical, unknown })}`);
+    }
+
+    console.log("PASS governance-control-plane-status-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-status-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneSummaryUnit() {
+  try {
+    const summaries = [
+      directControlPlane().summary,
+      directControlPlane({ escalation: { escalationLevel: "warning" }, policy: { recommendedPolicyMode: "conservative", operatorApprovalRequired: false } }).summary,
+      directControlPlane({ escalation: { escalationLevel: "high-risk" }, policy: { recommendedPolicyMode: "restricted", operatorApprovalRequired: true } }).summary,
+      directControlPlane({ escalation: { escalationLevel: "critical" }, policy: { recommendedPolicyMode: "manual-review-only" } }).summary,
+      directControlPlane({ missingArchiveIndex: true }).summary
+    ];
+    const expected = [
+      "Governance control plane reports healthy autonomous operation.",
+      "Governance control plane reports watch-level conditions.",
+      "Governance control plane requires operator attention.",
+      "Governance control plane reports critical governance conditions.",
+      "Governance control plane could not determine complete governance state."
+    ];
+    if (summaries.join("|") !== expected.join("|")) {
+      throw new Error(`control summaries mismatch: ${JSON.stringify(summaries)}`);
+    }
+
+    console.log("PASS governance-control-plane-summary-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-summary-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneRecommendationUnit() {
+  try {
+    const healthy = directControlPlane();
+    const critical = directControlPlane({ escalation: { escalationLevel: "critical" }, policy: { recommendedPolicyMode: "manual-review-only" } });
+    const unknown = directControlPlane({ missingArchiveIndex: true, missingEvidenceIndex: true });
+    if (
+      healthy.recommendedNextCommands.join(",") !== "node dist/cli.js runs,node dist/cli.js insights" ||
+      !critical.recommendedNextCommands.includes("node dist/cli.js evidence-pack") ||
+      unknown.recommendedNextCommands.join(",") !== "node dist/cli.js runs,node dist/cli.js archive,node dist/cli.js evidence-list"
+    ) {
+      throw new Error(`control recommendations mismatch: ${JSON.stringify({ healthy, critical, unknown })}`);
+    }
+
+    console.log("PASS governance-control-plane-recommendation-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-recommendation-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneWarningUnit() {
+  try {
+    const control = directControlPlane({
+      missingArchiveIndex: true,
+      missingEvidenceIndex: true,
+      ciSummary: { status: "fail" },
+      policy: { autonomousOperationAllowed: false, operatorApprovalRequired: true }
+    });
+    for (const warning of [
+      "No governance archive index found.",
+      "No governance evidence index found.",
+      "CI governance summary is failing.",
+      "Operator approval is required by current policy recommendation.",
+      "Autonomous operation is not currently recommended."
+    ]) {
+      if (!control.warnings.includes(warning)) {
+        throw new Error(`missing control warning ${warning}: ${JSON.stringify(control)}`);
+      }
+    }
+
+    console.log("PASS governance-control-plane-warning-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-warning-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneLatestArchiveUnit() {
+  try {
+    const latestArchive = sampleArchiveIndex().archives[0];
+    const control = directControlPlane({ latestArchive });
+    if (control.latestArchive?.archiveId !== latestArchive.archiveId || control.latestArchive?.kind !== "governance-insights") {
+      throw new Error(`latest archive mismatch: ${JSON.stringify(control)}`);
+    }
+
+    console.log("PASS governance-control-plane-latest-archive-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-latest-archive-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneLatestEvidenceUnit() {
+  try {
+    const latestEvidencePack = sampleEvidenceIndex().entries[0];
+    const control = directControlPlane({ latestEvidencePack });
+    if (control.latestEvidencePack?.evidencePackId !== latestEvidencePack.evidencePackId || control.latestEvidencePack?.policyMode !== "restricted") {
+      throw new Error(`latest evidence mismatch: ${JSON.stringify(control)}`);
+    }
+
+    console.log("PASS governance-control-plane-latest-evidence-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-latest-evidence-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function createControlPlaneRepo(name, values, runsIndex = passCiIndex(), evidenceIndex = sampleEvidenceIndex()) {
+  const repo = createDriftRepo(name, values, false);
+  if (runsIndex) {
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    ensureDir(path.dirname(runsIndexPath));
+    writeJson(runsIndexPath, runsIndex);
+  }
+  if (evidenceIndex) {
+    writeEvidenceIndex(repo, evidenceIndex);
+  }
+  return repo;
+}
+
+function runGovernanceControlPlaneJsonUnit() {
+  try {
+    const repo = createControlPlaneRepo("governance-control-plane-json", repeatedDriftValues(7, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }));
+    const result = runCliHelpCommand(["governance", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.version !== 1 || parsed.status !== "healthy" || parsed.latestArchive.archiveId !== "2026-05-07T10-00-00-000Z" || !parsed.latestEvidencePack.evidencePackId) {
+      throw new Error(`control JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-control-plane-json-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-json-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneCliUnit() {
+  try {
+    const repo = createControlPlaneRepo("governance-control-plane-cli", repeatedDriftValues(7, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }));
+    const archiveIndexPath = path.join(repo, ".factory", "archive-index.json");
+    const evidenceIndexPath = path.join(repo, ".factory", "evidence-index.json");
+    const runsIndexPath = path.join(repo, ".factory", "runs-index.json");
+    const beforeArchive = fs.readFileSync(archiveIndexPath, "utf8");
+    const beforeEvidence = fs.readFileSync(evidenceIndexPath, "utf8");
+    const beforeRuns = fs.readFileSync(runsIndexPath, "utf8");
+    const result = runCliHelpCommand(["governance", "--repo", repo, "--window", "7", "--baseline-window", "5", "--comparison-window", "2"]);
+    const afterArchive = fs.readFileSync(archiveIndexPath, "utf8");
+    const afterEvidence = fs.readFileSync(evidenceIndexPath, "utf8");
+    const afterRuns = fs.readFileSync(runsIndexPath, "utf8");
+    if (
+      result.status !== 0 ||
+      !result.stdout.includes("Governance Control Plane") ||
+      !result.stdout.includes("Status:\nhealthy") ||
+      beforeArchive !== afterArchive ||
+      beforeEvidence !== afterEvidence ||
+      beforeRuns !== afterRuns
+    ) {
+      throw new Error(`control CLI mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-control-plane-cli-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-cli-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneMissingDataUnit() {
+  try {
+    const repo = createArchiveRepo("governance-control-plane-missing-data", null);
+    const result = runCliHelpCommand(["governance", "--repo", repo, "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.status !== "unknown" ||
+      !parsed.warnings.includes("No governance archive index found.") ||
+      !parsed.warnings.includes("No governance evidence index found.") ||
+      parsed.recommendedNextCommands.join(",") !== "node dist/cli.js runs,node dist/cli.js archive,node dist/cli.js evidence-list"
+    ) {
+      throw new Error(`control missing data mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+
+    console.log("PASS governance-control-plane-missing-data-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-missing-data-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceControlPlaneHelpUnit() {
+  const { renderMainHelp, renderGovernanceHelp } = require(path.join(projectRoot, "dist", "cliHelp.js"));
+  try {
+    const mainHelp = renderMainHelp();
+    const governanceHelp = renderGovernanceHelp();
+    const cliHelp = runCliHelpCommand(["governance", "--help"]);
+    const shortHelp = runCliHelpCommand(["governance", "-h"]);
+    if (cliHelp.status !== 0 || shortHelp.status !== 0 || cliHelp.stdout !== governanceHelp || shortHelp.stdout !== governanceHelp) {
+      throw new Error(`governance help mismatch: stdout=${cliHelp.stdout} short=${shortHelp.stdout}`);
+    }
+    assertHelpIncludes(mainHelp, ["governance  Show unified governance control plane summary"]);
+    assertHelpIncludes(governanceHelp, [
+      "Usage:\n  node dist/cli.js governance [options]",
+      "--window <n>                 Trend analysis window",
+      "Governance control plane reads governance data and does not modify repair behavior.",
+      "does not generate evidence packs or archives automatically"
+    ]);
+
+    console.log("PASS governance-control-plane-help-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-control-plane-help-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -12111,7 +12446,7 @@ function runCliHelpReadonlyGuaranteeUnit() {
     const repo = path.join(projectRoot, ".scenario-unit", "cli-help-readonly");
     fs.rmSync(repo, { recursive: true, force: true });
     ensureDir(repo);
-    const commands = [["--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"], ["evidence-pack", "--help"], ["evidence-list", "--help"], ["evidence-diff", "--help"]];
+    const commands = [["--help"], ["governance", "--help"], ["runs", "--help"], ["insights", "--help"], ["ci-summary", "--help"], ["archive", "--help"], ["trends", "--help"], ["drift", "--help"], ["stability", "--help"], ["escalation", "--help"], ["policy", "--help"], ["decision-matrix", "--help"], ["evidence-pack", "--help"], ["evidence-list", "--help"], ["evidence-diff", "--help"]];
     for (const args of commands) {
       const result = runCliHelpCommand(args);
       const hasReadonly = /read.?only/i.test(result.stdout);
@@ -13002,6 +13337,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceEvidenceDiffHelpUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneStatusUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneRecommendationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneWarningUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneLatestArchiveUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneLatestEvidenceUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneJsonUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneCliUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneMissingDataUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceControlPlaneHelpUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
