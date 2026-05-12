@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.7 - Governance Simulation Mode Preview**
+**v6.8 - Guarded Policy Activation Candidates Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -118,6 +118,8 @@ v6.5 adds deterministic GitHub PR Governance Summary Preview. It converts CI gov
 v6.6 adds deterministic Governance Exception Review Preview. It collects potential exception candidates from the preview chain and separates reviewable from non-reviewable candidates without approving exceptions, allowing bypasses, enforcing governance, or changing runtime behavior.
 
 v6.7 adds deterministic Governance Simulation Mode Preview. It simulates future governance outcomes from the exception review chain without applying simulation results, enforcing governance, approving exceptions, or changing runtime behavior.
+
+v6.8 adds deterministic Guarded Policy Activation Candidates Preview. It identifies future guarded policy activation candidates from the simulation chain without activating policies, enforcing governance, enabling guarded activation, or changing runtime behavior.
 
 ---
 
@@ -3772,6 +3774,114 @@ v6.7 deterministic checks:
 * governance-simulation-preview-no-application
 * governance-simulation-preview-no-enforcement
 * governance-simulation-preview-no-outcome-change
+
+## Guarded Policy Activation Candidates Preview (v6.8)
+
+v6.8 identifies which preview-only governance policies could theoretically become future guarded activation candidates.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance policy activation-candidates-preview
+node dist/cli.js governance policy activation-candidates-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/guarded-policy-activation-candidates-preview.json
+.factory/governance/guarded-policy-activation-candidates-preview.md
+```
+
+The guarded activation candidates preview:
+
+* reuses deterministic governance simulation preview logic
+* classifies policy candidates as `eligible`, `review-required`, `blocked`, or `permanently-non-activatable`
+* keeps unsafe governance capabilities permanently non-activatable
+* assigns deterministic candidate IDs such as `gov-activation-candidate-001`
+* explains why each candidate belongs to its classification
+* does not activate policies
+* does not enforce governance
+* does not enable guarded activation
+* does not apply simulation outcomes
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Activation candidate conclusion:
+review-required-preview
+
+Activation candidate applied:
+false
+
+Policy activated:
+false
+
+Guarded activation enabled:
+false
+
+Activation enforced:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceSimulationStatus`
+* `activationCandidateConclusion`
+* `activationCandidateApplied`
+* `policyActivated`
+* `guardedActivationEnabled`
+* `activationEnforced`
+* `candidates`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown summary shape:
+
+```markdown
+# AI Software Factory - Guarded Policy Activation Candidates Preview
+
+## Activation Candidates
+
+## Preview-Only Guarantees
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `activationCandidateApplied` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `simulationApplied` is always `false`
+* `simulationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* `autonomyEnabled` is always `false`
+
+v6.8 deterministic checks:
+
+* governance-activation-candidates-preview-unit
+* governance-activation-candidates-preview-missing
+* governance-activation-candidates-preview-eligible
+* governance-activation-candidates-preview-review-required
+* governance-activation-candidates-preview-blocked
+* governance-activation-candidates-preview-permanently-non-activatable
+* governance-activation-candidates-preview-json-output
+* governance-activation-candidates-preview-artifact
+* governance-activation-candidates-preview-no-activation
+* governance-activation-candidates-preview-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

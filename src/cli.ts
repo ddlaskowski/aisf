@@ -178,6 +178,11 @@ import {
   writeGovernanceSimulationPreviewArtifacts
 } from "./governance/governanceSimulationPreview.js";
 import {
+  buildGovernanceGuardedPolicyActivationCandidatesPreview,
+  renderGovernanceGuardedPolicyActivationCandidatesPreviewText,
+  writeGovernanceGuardedPolicyActivationCandidatesPreviewArtifacts
+} from "./governance/guardedPolicyActivationCandidatesPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -197,6 +202,7 @@ import {
   renderGovernanceExceptionReviewPreviewHelp,
   renderGovernanceGithubPrSummaryPreviewHelp,
   renderGovernanceSimulationPreviewHelp,
+  renderGovernanceGuardedPolicyActivationCandidatesPreviewHelp,
   renderGovernanceProfileInheritancePreviewHelp,
   renderGovernanceRepoClassificationPreviewHelp,
   renderGovernancePolicyRuntimePreviewHelp,
@@ -938,6 +944,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceSimulationPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "policy" && args[2] === "activation-candidates-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance policy activation-candidates-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceGuardedPolicyActivationCandidatesPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceGuardedPolicyActivationCandidatesPreview(process.cwd());
+    writeGovernanceGuardedPolicyActivationCandidatesPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceGuardedPolicyActivationCandidatesPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

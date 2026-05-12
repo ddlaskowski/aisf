@@ -36,6 +36,7 @@
     "  node dist/cli.js governance github pr-summary-preview",
     "  node dist/cli.js governance exception review-preview",
     "  node dist/cli.js governance simulation preview",
+    "  node dist/cli.js governance policy activation-candidates-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -84,6 +85,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance github pr-summary-preview",
     "  node dist/cli.js governance exception review-preview",
     "  node dist/cli.js governance simulation preview",
+    "  node dist/cli.js governance policy activation-candidates-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -194,6 +196,27 @@ export function renderGovernanceSimulationPreviewHelp(): string {
     "Simulation preview-only guarantee:",
     "  This command simulates future governance behavior locally without applying outcomes.",
     "  It does not enforce governance, approve exceptions, allow bypasses, fail builds, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceGuardedPolicyActivationCandidatesPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance policy activation-candidates-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance policy activation-candidates-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance policy activation-candidates-preview",
+    "  node dist/cli.js governance policy activation-candidates-preview --json",
+    "",
+    "Activation candidate preview-only guarantee:",
+    "  This command identifies future guarded policy activation candidates only.",
+    "  It does not activate policies, enforce governance, enable guarded activation, apply profiles, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 
