@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.0 - Policy-as-Code Governance Runtime Preview**
+**v6.1 - Governance Profile Inheritance Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -104,6 +104,8 @@ v5.8 adds deterministic Governance Config Snapshot Locks. It converts a valid lo
 v5.9 adds deterministic Governance Config Audit Trails. It records snapshot-lock history, detects fingerprint drift, and identifies stable repeated config candidates without applying config or changing runtime behavior.
 
 v6.0 adds deterministic Policy-as-Code Governance Runtime Preview. It projects a stable config audit candidate into a preview-only policy model while keeping policies inactive, unenforced, and unable to change runtime behavior.
+
+v6.1 adds deterministic Governance Profile Inheritance Preview. It resolves built-in profile candidates over policy-runtime-preview outputs without applying profiles, enforcing policies, activating config, or changing runtime behavior.
 
 ---
 
@@ -3054,6 +3056,82 @@ v6.0 deterministic checks:
 * governance-policy-runtime-preview-json-output
 * governance-policy-runtime-preview-artifact
 * governance-policy-runtime-preview-no-enforcement
+
+## Governance Profile Inheritance Preview (v6.1)
+
+v6.1 resolves deterministic built-in governance profile candidates over preview-only policy runtime candidates.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance profile inheritance-preview
+node dist/cli.js governance profile inheritance-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/profile-inheritance-preview.json
+.factory/governance/profile-inheritance-preview.md
+```
+
+The profile inheritance preview:
+
+* requires a created, preview-only policy runtime preview
+* defines built-in `default`, `strict`, `enterprise`, and `experimental-preview` profiles
+* resolves inheritance chains deterministically
+* reports inherited policy keys and preview-only candidate overrides
+* reports conflicts using `last-profile-wins-preview-only`
+* blocks unsafe profile options such as autonomous actions
+* does not apply profiles or enforce policies
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Profile applied:
+false
+
+Policy runtime mode:
+preview-only
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourcePolicyRuntimePreviewStatus`
+* `profiles`
+* `resolvedProfiles`
+* `blockedProfileOptions`
+* `warnings`
+* `recommendedNextStage`
+
+Safety guarantees:
+
+* `profileApplied` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* no runtime profile switching is introduced
+* no config is activated
+* no policy is enforced
+
+v6.1 deterministic checks:
+
+* governance-profile-inheritance-preview-unit
+* governance-profile-inheritance-preview-missing
+* governance-profile-inheritance-preview-created
+* governance-profile-inheritance-preview-blocked-source
+* governance-profile-inheritance-preview-conflicts
+* governance-profile-inheritance-preview-blocks-unsafe-options
+* governance-profile-inheritance-preview-json-output
+* governance-profile-inheritance-preview-artifact
+* governance-profile-inheritance-preview-no-application
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

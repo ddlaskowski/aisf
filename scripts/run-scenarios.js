@@ -14792,6 +14792,249 @@ function runGovernancePolicyRuntimePreviewNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceProfileInheritancePreview(repo) {
+  const { buildGovernanceProfileInheritancePreview } = require(path.join(projectRoot, "dist", "governance", "profileInheritancePreview.js"));
+  return buildGovernanceProfileInheritancePreview(repo);
+}
+
+function cleanupProjectProfileInheritancePreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "profile-inheritance-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "profile-inheritance-preview.md"), { force: true });
+}
+
+function assertProfileInheritancePreviewSafety(preview, label) {
+  if (
+    preview.profileApplied !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false
+  ) {
+    throw new Error(`${label} changed runtime behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function createProfileInheritanceReadyRepo(name) {
+  const repo = createGovernanceHardeningEmptyRepo(name);
+  ensureDir(path.join(repo, ".factory"));
+  writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+  writeStableAuditTrail(repo);
+  return repo;
+}
+
+function runGovernanceProfileInheritancePreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-profile-inheritance-preview-unit");
+    const preview = directGovernanceProfileInheritancePreview(repo);
+    const { renderGovernanceProfileInheritancePreviewText } = require(path.join(projectRoot, "dist", "governance", "profileInheritancePreview.js"));
+    const rendered = renderGovernanceProfileInheritancePreviewText(preview);
+    assertProfileInheritancePreviewSafety(preview, "profile inheritance unit");
+    if (preview.schemaVersion !== 1 || !rendered.includes("Governance Profile Inheritance Preview")) {
+      throw new Error(`profile inheritance unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-profile-inheritance-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-profile-inheritance-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceProfileInheritancePreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-profile-inheritance-preview-missing");
+    const preview = directGovernanceProfileInheritancePreview(repo);
+    assertProfileInheritancePreviewSafety(preview, "profile inheritance missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourcePolicyRuntimePreviewStatus !== "not-created" ||
+      preview.resolvedProfiles.length !== 0 ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`profile inheritance missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-profile-inheritance-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-profile-inheritance-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceProfileInheritancePreviewCreatedUnit() {
+  try {
+    const repo = createProfileInheritanceReadyRepo("governance-profile-inheritance-preview-created");
+    const preview = directGovernanceProfileInheritancePreview(repo);
+    assertProfileInheritancePreviewSafety(preview, "profile inheritance created");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourcePolicyRuntimePreviewStatus !== "created" ||
+      preview.profiles.length !== 4 ||
+      preview.resolvedProfiles.length !== 4 ||
+      preview.recommendedNextStage !== "prepare-repo-classification" ||
+      !preview.resolvedProfiles.some((profile) => profile.name === "enterprise" && profile.inheritanceChain.join(">") === "default>strict>enterprise")
+    ) {
+      throw new Error(`profile inheritance created mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-profile-inheritance-preview-created");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-profile-inheritance-preview-created");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceProfileInheritancePreviewBlockedSourceUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-profile-inheritance-preview-blocked-source");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.runtimeExecution = true;
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const preview = directGovernanceProfileInheritancePreview(repo);
+    assertProfileInheritancePreviewSafety(preview, "profile inheritance blocked source");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.sourcePolicyRuntimePreviewStatus !== "blocked" ||
+      preview.resolvedProfiles.length !== 0 ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`profile inheritance blocked source mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-profile-inheritance-preview-blocked-source");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-profile-inheritance-preview-blocked-source");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceProfileInheritancePreviewConflictsUnit() {
+  try {
+    const repo = createProfileInheritanceReadyRepo("governance-profile-inheritance-preview-conflicts");
+    const preview = directGovernanceProfileInheritancePreview(repo);
+    const enterprise = preview.resolvedProfiles.find((profile) => profile.name === "enterprise");
+    if (enterprise === undefined || enterprise.conflicts.length === 0 || enterprise.conflicts[0].resolution !== "last-profile-wins-preview-only") {
+      throw new Error(`profile inheritance conflicts mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-profile-inheritance-preview-conflicts");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-profile-inheritance-preview-conflicts");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceProfileInheritancePreviewBlocksUnsafeOptionsUnit() {
+  try {
+    const repo = createProfileInheritanceReadyRepo("governance-profile-inheritance-preview-blocks-unsafe-options");
+    const preview = directGovernanceProfileInheritancePreview(repo);
+    if (!preview.blockedProfileOptions.some((blocked) => blocked.profile === "experimental-preview" && blocked.key === "allowAutonomousActions")) {
+      throw new Error(`profile inheritance blocked options mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-profile-inheritance-preview-blocks-unsafe-options");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-profile-inheritance-preview-blocks-unsafe-options");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceProfileInheritancePreviewJsonOutputUnit() {
+  try {
+    cleanupProjectProfileInheritancePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "profile", "inheritance-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.previewStatus !== "created" ||
+      parsed.profileApplied !== false ||
+      parsed.applied !== false ||
+      parsed.enforced !== false ||
+      parsed.policyRuntimeMode !== "preview-only" ||
+      parsed.resolvedProfiles.length !== 4
+    ) {
+      throw new Error(`profile inheritance JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectProfileInheritancePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+
+    console.log("PASS governance-profile-inheritance-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectProfileInheritancePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    console.log("FAIL governance-profile-inheritance-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceProfileInheritancePreviewArtifactUnit() {
+  try {
+    cleanupProjectProfileInheritancePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "profile", "inheritance-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "profile-inheritance-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "profile-inheritance-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`profile inheritance artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (artifact.previewStatus !== "created" || !fs.readFileSync(markdownPath, "utf8").includes("Governance Profile Inheritance Preview")) {
+      throw new Error(`profile inheritance artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectProfileInheritancePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+
+    console.log("PASS governance-profile-inheritance-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectProfileInheritancePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    console.log("FAIL governance-profile-inheritance-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceProfileInheritancePreviewNoApplicationUnit() {
+  try {
+    const repo = createProfileInheritanceReadyRepo("governance-profile-inheritance-preview-no-application");
+    const preview = directGovernanceProfileInheritancePreview(repo);
+    assertProfileInheritancePreviewSafety(preview, "profile inheritance no application");
+    if (!preview.profiles.every((profile) => profile.profileApplied === false && profile.previewOnly === true)) {
+      throw new Error(`profile inheritance application mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-profile-inheritance-preview-no-application");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-profile-inheritance-preview-no-application");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -16133,6 +16376,33 @@ async function main() {
     failed += 1;
   }
   if (!runGovernancePolicyRuntimePreviewNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewCreatedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewBlockedSourceUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewConflictsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewBlocksUnsafeOptionsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceProfileInheritancePreviewNoApplicationUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

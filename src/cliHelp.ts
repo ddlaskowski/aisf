@@ -29,6 +29,7 @@
     "  node dist/cli.js governance",
     "  node dist/cli.js governance config",
     "  node dist/cli.js governance policy runtime-preview",
+    "  node dist/cli.js governance profile inheritance-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -70,11 +71,33 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance --json",
     "  node dist/cli.js governance config",
     "  node dist/cli.js governance policy runtime-preview",
+    "  node dist/cli.js governance profile inheritance-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
     "  Governance control plane does not generate evidence packs or archives automatically.",
     "  Governance control plane does not modify .factory/archive-index.json, .factory/evidence-index.json, or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceProfileInheritancePreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance profile inheritance-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance profile inheritance-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance profile inheritance-preview",
+    "  node dist/cli.js governance profile inheritance-preview --json",
+    "",
+    "Preview-only guarantee:",
+    "  This command resolves governance profile inheritance in preview-only mode.",
+    "  It does not apply profiles, enforce policies, activate config, or change runtime behavior."
   ].join("\n") + "\n";
 }
 

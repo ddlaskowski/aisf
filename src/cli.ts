@@ -143,6 +143,11 @@ import {
   writeGovernancePolicyRuntimePreviewArtifacts
 } from "./governance/policyRuntimePreview.js";
 import {
+  buildGovernanceProfileInheritancePreview,
+  renderGovernanceProfileInheritancePreviewText,
+  writeGovernanceProfileInheritancePreviewArtifacts
+} from "./governance/profileInheritancePreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -157,6 +162,7 @@ import {
   renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
   renderGovernanceConfigLoadPreviewHelp,
+  renderGovernanceProfileInheritancePreviewHelp,
   renderGovernancePolicyRuntimePreviewHelp,
   renderGovernanceConfigSnapshotLockHelp,
   renderGovernanceConfigValidateHelp,
@@ -728,6 +734,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernancePolicyRuntimePreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "profile" && args[2] === "inheritance-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance profile inheritance-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProfileInheritancePreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceProfileInheritancePreview(process.cwd());
+    writeGovernanceProfileInheritancePreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceProfileInheritancePreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);
