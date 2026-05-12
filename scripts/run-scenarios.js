@@ -17725,6 +17725,431 @@ function runGovernanceRuntimeActivationGatesPreviewNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceAutonomyReadiness(repo) {
+  const { buildGovernanceAutonomyReadiness } = require(path.join(projectRoot, "dist", "governance", "autonomyReadiness.js"));
+  return buildGovernanceAutonomyReadiness(repo);
+}
+
+function directGovernanceAutonomyReadinessFromActivationGates(source) {
+  const { buildGovernanceAutonomyReadinessFromActivationGates } = require(path.join(projectRoot, "dist", "governance", "autonomyReadiness.js"));
+  return buildGovernanceAutonomyReadinessFromActivationGates(source);
+}
+
+function cleanupProjectGovernanceAutonomyReadinessArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-readiness.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-readiness.md"), { force: true });
+}
+
+function cleanupProjectGovernanceAutonomyReadinessChainArtifacts() {
+  cleanupProjectGovernanceAutonomyReadinessArtifacts();
+  cleanupProjectGovernanceRuntimeActivationGatesPreviewChainArtifacts();
+}
+
+function createSyntheticRuntimeActivationGates(overrides = {}) {
+  return {
+    schemaVersion: 1,
+    previewStatus: "created",
+    sourceActivationCandidatesStatus: "created",
+    activationGateConclusion: "structurally-ready-preview",
+    activationGatePassed: false,
+    runtimeActivationEnabled: false,
+    policyActivated: false,
+    guardedActivationEnabled: false,
+    activationEnforced: false,
+    activationCandidateApplied: false,
+    simulationApplied: false,
+    simulationEnforced: false,
+    simulationChangedOutcome: false,
+    exceptionApproved: false,
+    exceptionApplied: false,
+    governanceBypassAllowed: false,
+    ciEnforced: false,
+    buildFailedByGovernance: false,
+    githubPublished: false,
+    prCommentCreated: false,
+    githubApiCalled: false,
+    attestationApplied: false,
+    attestationEnforced: false,
+    classificationApplied: false,
+    boundariesEnforced: false,
+    profileApplied: false,
+    applied: false,
+    enforced: false,
+    policyRuntimeMode: "preview-only",
+    runtimeBehaviorChanged: false,
+    governanceDecisionsChanged: false,
+    repairOrchestrationChanged: false,
+    safePatchEngineOnly: true,
+    autonomyEnabled: false,
+    gates: [
+      {
+        id: "gov-runtime-gate-001",
+        name: "Plugin execution",
+        category: "unsafe-capabilities",
+        gateStatus: "permanently-non-passable",
+        source: "derived",
+        reason: "Plugin execution must remain non-passable.",
+        previewOnly: true,
+        activationGatePassed: false,
+        runtimeActivationEnabled: false,
+        enforced: false
+      },
+      {
+        id: "gov-runtime-gate-002",
+        name: "Policy runtime preview-only integrity",
+        category: "policy-runtime",
+        gateStatus: "satisfied",
+        source: "policy-runtime-preview",
+        reason: "Policy runtime remains preview-only.",
+        previewOnly: true,
+        activationGatePassed: false,
+        runtimeActivationEnabled: false,
+        enforced: false
+      }
+    ],
+    summary: {
+      totalGates: 2,
+      satisfiedGates: 1,
+      warningStateGates: 0,
+      blockedGates: 0,
+      permanentlyNonPassableGates: 1,
+      structurallyReady: true
+    },
+    warnings: ["Runtime activation gates are preview-only."],
+    recommendedNextStage: "prepare-v7-autonomy-readiness",
+    ...overrides
+  };
+}
+
+function assertGovernanceAutonomyReadinessSafety(readiness, label) {
+  if (
+    readiness.autonomyEnabled !== false ||
+    readiness.autonomousActionsAllowed !== false ||
+    readiness.autonomyApplied !== false ||
+    readiness.autonomyEnforced !== false ||
+    readiness.activationGatePassed !== false ||
+    readiness.runtimeActivationEnabled !== false ||
+    readiness.policyActivated !== false ||
+    readiness.guardedActivationEnabled !== false ||
+    readiness.activationEnforced !== false ||
+    readiness.governanceBypassAllowed !== false ||
+    readiness.applied !== false ||
+    readiness.enforced !== false ||
+    readiness.policyRuntimeMode !== "preview-only" ||
+    readiness.runtimeBehaviorChanged !== false ||
+    readiness.governanceDecisionsChanged !== false ||
+    readiness.repairOrchestrationChanged !== false ||
+    readiness.safePatchEngineOnly !== true
+  ) {
+    throw new Error(`${label} changed autonomy or runtime behavior: ${JSON.stringify(readiness)}`);
+  }
+}
+
+function assertGovernanceAutonomyReadinessOrdering(readiness) {
+  const lists = [
+    ["gov-autonomy-check", readiness.readinessChecks, "key"],
+    ["gov-autonomy-blocker", readiness.blockers, "key"],
+    ["gov-autonomy-review-gate", readiness.humanReviewGates, "key"],
+    ["gov-autonomy-forbidden", readiness.permanentlyForbiddenCapabilities, "key"]
+  ];
+  for (const [prefix, list, key] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`autonomy readiness id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(list[index - 1][key]).localeCompare(String(list[index][key])) > 0) {
+        throw new Error(`autonomy readiness ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceAutonomyReadinessUnit() {
+  try {
+    const readiness = directGovernanceAutonomyReadinessFromActivationGates(createSyntheticRuntimeActivationGates());
+    const { renderGovernanceAutonomyReadinessText } = require(path.join(projectRoot, "dist", "governance", "autonomyReadiness.js"));
+    const rendered = renderGovernanceAutonomyReadinessText(readiness);
+    assertGovernanceAutonomyReadinessSafety(readiness, "autonomy readiness unit");
+    assertGovernanceAutonomyReadinessOrdering(readiness);
+    if (readiness.schemaVersion !== 1 || !rendered.includes("Controlled Autonomy Readiness")) {
+      throw new Error(`autonomy readiness unit mismatch: ${JSON.stringify(readiness)}`);
+    }
+
+    console.log("PASS governance-autonomy-readiness-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-autonomy-readiness-missing");
+    const readiness = directGovernanceAutonomyReadiness(repo);
+    assertGovernanceAutonomyReadinessSafety(readiness, "autonomy readiness missing");
+    if (
+      readiness.readinessStatus !== "not-ready" ||
+      readiness.autonomyStage !== "disabled" ||
+      readiness.sourceActivationGatesStatus !== "not-created" ||
+      readiness.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy readiness missing mismatch: ${JSON.stringify(readiness)}`);
+    }
+
+    console.log("PASS governance-autonomy-readiness-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessNotReadyUnit() {
+  try {
+    const source = createSyntheticRuntimeActivationGates({
+      activationGateConclusion: "warning-preview",
+      summary: {
+        totalGates: 2,
+        satisfiedGates: 1,
+        warningStateGates: 1,
+        blockedGates: 0,
+        permanentlyNonPassableGates: 1,
+        structurallyReady: false
+      },
+      recommendedNextStage: "continue-preview-only"
+    });
+    const readiness = directGovernanceAutonomyReadinessFromActivationGates(source);
+    assertGovernanceAutonomyReadinessSafety(readiness, "autonomy readiness not ready");
+    if (
+      readiness.readinessStatus !== "not-ready" ||
+      readiness.autonomyStage !== "readiness-preview" ||
+      readiness.summary.blockerCount === 0 ||
+      readiness.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy readiness not ready mismatch: ${JSON.stringify(readiness)}`);
+    }
+
+    console.log("PASS governance-autonomy-readiness-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessReadyForDesignReviewUnit() {
+  try {
+    const readiness = directGovernanceAutonomyReadinessFromActivationGates(createSyntheticRuntimeActivationGates());
+    assertGovernanceAutonomyReadinessSafety(readiness, "autonomy readiness ready");
+    assertGovernanceAutonomyReadinessOrdering(readiness);
+    if (
+      readiness.readinessStatus !== "ready-for-design-review" ||
+      readiness.autonomyStage !== "readiness-preview" ||
+      readiness.summary.structurallyReadyForDesignReview !== true ||
+      readiness.summary.failedReadinessChecks !== 0 ||
+      readiness.recommendedNextStage !== "prepare-controlled-autonomy-design-review"
+    ) {
+      throw new Error(`autonomy readiness ready mismatch: ${JSON.stringify(readiness)}`);
+    }
+
+    console.log("PASS governance-autonomy-readiness-ready-for-design-review");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-ready-for-design-review");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessBlockedUnit() {
+  try {
+    const source = createSyntheticRuntimeActivationGates({
+      previewStatus: "blocked",
+      activationGateConclusion: "blocked-preview",
+      summary: {
+        totalGates: 2,
+        satisfiedGates: 0,
+        warningStateGates: 0,
+        blockedGates: 1,
+        permanentlyNonPassableGates: 1,
+        structurallyReady: false
+      },
+      recommendedNextStage: "blocked"
+    });
+    const readiness = directGovernanceAutonomyReadinessFromActivationGates(source);
+    assertGovernanceAutonomyReadinessSafety(readiness, "autonomy readiness blocked");
+    if (
+      readiness.readinessStatus !== "blocked" ||
+      readiness.autonomyStage !== "disabled" ||
+      readiness.sourceActivationGatesStatus !== "blocked" ||
+      readiness.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`autonomy readiness blocked mismatch: ${JSON.stringify(readiness)}`);
+    }
+
+    console.log("PASS governance-autonomy-readiness-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessForbiddenCapabilitiesUnit() {
+  try {
+    const readiness = directGovernanceAutonomyReadinessFromActivationGates(createSyntheticRuntimeActivationGates());
+    assertGovernanceAutonomyReadinessSafety(readiness, "autonomy readiness forbidden");
+    assertGovernanceAutonomyReadinessOrdering(readiness);
+    if (
+      readiness.summary.permanentlyForbiddenCapabilityCount < 12 ||
+      !readiness.permanentlyForbiddenCapabilities.some((item) => item.key === "bypassing-safe-patch-engine") ||
+      !readiness.permanentlyForbiddenCapabilities.some((item) => item.key === "uncontrolled-multi-agent-orchestration")
+    ) {
+      throw new Error(`autonomy readiness forbidden mismatch: ${JSON.stringify(readiness)}`);
+    }
+
+    console.log("PASS governance-autonomy-readiness-forbidden-capabilities");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-forbidden-capabilities");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessHumanReviewGatesUnit() {
+  try {
+    const readiness = directGovernanceAutonomyReadinessFromActivationGates(createSyntheticRuntimeActivationGates());
+    assertGovernanceAutonomyReadinessSafety(readiness, "autonomy readiness review gates");
+    assertGovernanceAutonomyReadinessOrdering(readiness);
+    if (
+      readiness.summary.humanReviewGateCount < 9 ||
+      !readiness.humanReviewGates.every((item) => item.required === true) ||
+      !readiness.humanReviewGates.some((item) => item.key === "enable-controlled-autonomy-mode") ||
+      !readiness.humanReviewGates.some((item) => item.key === "change-repair-orchestration-behavior")
+    ) {
+      throw new Error(`autonomy readiness review gates mismatch: ${JSON.stringify(readiness)}`);
+    }
+
+    console.log("PASS governance-autonomy-readiness-human-review-gates");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-human-review-gates");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyReadinessChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.autonomyEnabled !== false ||
+      parsed.autonomousActionsAllowed !== false ||
+      parsed.autonomyApplied !== false ||
+      parsed.autonomyEnforced !== false ||
+      !parsed.readinessChecks.every((item) => item.id.startsWith("gov-autonomy-check-"))
+    ) {
+      throw new Error(`autonomy readiness JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceAutonomyReadinessChainArtifacts();
+
+    console.log("PASS governance-autonomy-readiness-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyReadinessChainArtifacts();
+    console.log("FAIL governance-autonomy-readiness-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessArtifactUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyReadinessChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "autonomy-readiness.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "autonomy-readiness.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`autonomy readiness artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Controlled Autonomy Readiness") || artifact.autonomyEnabled !== false) {
+      throw new Error(`autonomy readiness artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceAutonomyReadinessChainArtifacts();
+
+    console.log("PASS governance-autonomy-readiness-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyReadinessChainArtifacts();
+    console.log("FAIL governance-autonomy-readiness-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessNoAutonomyUnit() {
+  try {
+    const readiness = directGovernanceAutonomyReadinessFromActivationGates(createSyntheticRuntimeActivationGates());
+    if (
+      readiness.autonomyEnabled !== false ||
+      readiness.autonomousActionsAllowed !== false ||
+      readiness.autonomyApplied !== false ||
+      readiness.autonomyEnforced !== false
+    ) {
+      throw new Error(`autonomy readiness autonomy mismatch: ${JSON.stringify(readiness)}`);
+    }
+
+    console.log("PASS governance-autonomy-readiness-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyReadinessNoEnforcementUnit() {
+  try {
+    const readiness = directGovernanceAutonomyReadinessFromActivationGates(createSyntheticRuntimeActivationGates());
+    assertGovernanceAutonomyReadinessSafety(readiness, "autonomy readiness no enforcement");
+
+    console.log("PASS governance-autonomy-readiness-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-readiness-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -19333,6 +19758,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceRuntimeActivationGatesPreviewNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessReadyForDesignReviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessForbiddenCapabilitiesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessHumanReviewGatesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyReadinessNoEnforcementUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

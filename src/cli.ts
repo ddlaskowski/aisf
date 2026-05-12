@@ -188,6 +188,11 @@ import {
   writeGovernanceRuntimeActivationGatesPreviewArtifacts
 } from "./governance/runtimeActivationGatesPreview.js";
 import {
+  buildGovernanceAutonomyReadiness,
+  renderGovernanceAutonomyReadinessText,
+  writeGovernanceAutonomyReadinessArtifacts
+} from "./governance/autonomyReadiness.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -209,6 +214,7 @@ import {
   renderGovernanceSimulationPreviewHelp,
   renderGovernanceGuardedPolicyActivationCandidatesPreviewHelp,
   renderGovernanceRuntimeActivationGatesPreviewHelp,
+  renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
   renderGovernanceRepoClassificationPreviewHelp,
   renderGovernancePolicyRuntimePreviewHelp,
@@ -998,6 +1004,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceRuntimeActivationGatesPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "autonomy" && args[2] === "readiness") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance autonomy readiness", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceAutonomyReadinessHelp(), 0);
+    }
+
+    const readiness = buildGovernanceAutonomyReadiness(process.cwd());
+    writeGovernanceAutonomyReadinessArtifacts(process.cwd(), readiness);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(readiness, null, 2), 0);
+    }
+    printAndExit(renderGovernanceAutonomyReadinessText(readiness), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

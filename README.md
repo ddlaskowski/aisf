@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.9 - Governance Runtime Activation Gates Preview**
+**v7.0 - Controlled Autonomy Readiness Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -122,6 +122,8 @@ v6.7 adds deterministic Governance Simulation Mode Preview. It simulates future 
 v6.8 adds deterministic Guarded Policy Activation Candidates Preview. It identifies future guarded policy activation candidates from the simulation chain without activating policies, enforcing governance, enabling guarded activation, or changing runtime behavior.
 
 v6.9 adds deterministic Governance Runtime Activation Gates Preview. It models final pre-activation governance runtime gates without enabling runtime activation, activating policies, enforcing governance, or changing runtime behavior.
+
+v7.0 adds deterministic Controlled Autonomy Readiness analysis. It evaluates whether the full governance preview platform is structurally ready for future controlled-autonomy design review while keeping autonomy disabled and preserving zero runtime impact.
 
 ---
 
@@ -3993,6 +3995,125 @@ v6.9 deterministic checks:
 * governance-runtime-activation-gates-preview-artifact
 * governance-runtime-activation-gates-preview-no-activation
 * governance-runtime-activation-gates-preview-no-enforcement
+
+## Controlled Autonomy Readiness (v7.0)
+
+v7.0 evaluates whether the governance preview platform is structurally ready for a future controlled-autonomy design review.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy readiness
+node dist/cli.js governance autonomy readiness --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-readiness.json
+.factory/governance/autonomy-readiness.md
+```
+
+The controlled autonomy readiness layer:
+
+* reuses deterministic runtime activation gates preview logic
+* evaluates whether the v6.x governance preview chain is structurally complete
+* identifies readiness blockers
+* lists required future human review gates
+* lists permanently forbidden autonomy capabilities
+* assigns deterministic IDs such as `gov-autonomy-check-001`
+* does not enable autonomy
+* does not perform autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Readiness status:
+ready-for-design-review
+
+Autonomy stage:
+readiness-preview
+
+Autonomy enabled:
+false
+
+Autonomous actions allowed:
+false
+
+Runtime activation enabled:
+false
+
+Policy activated:
+false
+```
+
+Example JSON fields:
+
+* `readinessStatus`
+* `autonomyStage`
+* `sourceActivationGatesStatus`
+* `autonomyEnabled`
+* `autonomousActionsAllowed`
+* `autonomyApplied`
+* `autonomyEnforced`
+* `readinessChecks`
+* `blockers`
+* `humanReviewGates`
+* `permanentlyForbiddenCapabilities`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown summary shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Readiness
+
+## Readiness Checks
+
+## Blockers
+
+## Human Review Gates
+
+## Permanently Forbidden Capabilities
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.0 deterministic checks:
+
+* governance-autonomy-readiness-unit
+* governance-autonomy-readiness-missing
+* governance-autonomy-readiness-not-ready
+* governance-autonomy-readiness-ready-for-design-review
+* governance-autonomy-readiness-blocked
+* governance-autonomy-readiness-forbidden-capabilities
+* governance-autonomy-readiness-human-review-gates
+* governance-autonomy-readiness-json-output
+* governance-autonomy-readiness-artifact
+* governance-autonomy-readiness-no-autonomy
+* governance-autonomy-readiness-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
