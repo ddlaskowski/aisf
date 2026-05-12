@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.5 - GitHub PR Governance Summary Preview**
+**v6.6 - Governance Exception Review Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -114,6 +114,8 @@ v6.3 adds deterministic Governance Attestation. It summarizes the governance pre
 v6.4 adds deterministic CI Governance Annotations Preview. It converts governance attestations into CI-friendly annotation artifacts without failing builds, enforcing governance, applying profiles, calling external CI systems, or changing runtime behavior.
 
 v6.5 adds deterministic GitHub PR Governance Summary Preview. It converts CI governance annotations into PR-ready local markdown and JSON artifacts without calling GitHub APIs, creating PR comments, failing builds, or enforcing governance.
+
+v6.6 adds deterministic Governance Exception Review Preview. It collects potential exception candidates from the preview chain and separates reviewable from non-reviewable candidates without approving exceptions, allowing bypasses, enforcing governance, or changing runtime behavior.
 
 ---
 
@@ -3541,6 +3543,117 @@ v6.5 deterministic checks:
 * governance-github-pr-summary-preview-no-github-api
 * governance-github-pr-summary-preview-no-publish
 * governance-github-pr-summary-preview-no-enforcement
+
+## Governance Exception Review Preview (v6.6)
+
+v6.6 generates deterministic local exception review previews from the GitHub PR governance summary chain.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance exception review-preview
+node dist/cli.js governance exception review-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/governance-exception-review-preview.json
+.factory/governance/governance-exception-review-preview.md
+```
+
+The exception review preview:
+
+* reuses deterministic GitHub PR governance summary preview logic
+* collects exception candidates from blocked capabilities, warnings, safety invariant failures, CI failures, PR warning conclusions, PR blocked conclusions, and repo boundary concerns
+* classifies candidates by severity, category, source, and reviewability
+* separates reviewable candidates from non-reviewable blocking candidates
+* assigns deterministic IDs such as `gov-exception-001`
+* does not approve exceptions
+* does not apply exceptions
+* does not allow governance bypass
+* does not enforce governance
+
+Example human output fields:
+
+```text
+Preview status:
+blocked
+
+Exception review conclusion:
+blocked-non-reviewable
+
+Exception approved:
+false
+
+Exception applied:
+false
+
+Governance bypass allowed:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourcePrSummaryStatus`
+* `exceptionReviewConclusion`
+* `exceptionCandidates`
+* `summary.totalCandidates`
+* `summary.reviewableCandidates`
+* `summary.nonReviewableCandidates`
+* `summary.categories`
+* `recommendedNextStage`
+
+Example markdown summary shape:
+
+```markdown
+# AI Software Factory - Governance Exception Review Preview
+
+## Exception Candidates
+
+## Preview-Only Guarantees
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `exceptionApproved` is always `false`
+* `exceptionApplied` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `exceptionEnforced` is always `false`
+* `githubPublished` is always `false`
+* `prCommentCreated` is always `false`
+* `githubApiCalled` is always `false`
+* `ciEnforced` is always `false`
+* `buildFailedByGovernance` is always `false`
+* `attestationApplied` is always `false`
+* `attestationEnforced` is always `false`
+* `classificationApplied` is always `false`
+* `boundariesEnforced` is always `false`
+* `profileApplied` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* `autonomyEnabled` is always `false`
+
+v6.6 deterministic checks:
+
+* governance-exception-review-preview-unit
+* governance-exception-review-preview-missing
+* governance-exception-review-preview-no-exceptions
+* governance-exception-review-preview-review-needed
+* governance-exception-review-preview-non-reviewable-blocked
+* governance-exception-review-preview-json-output
+* governance-exception-review-preview-artifact
+* governance-exception-review-preview-no-approval
+* governance-exception-review-preview-no-bypass
+* governance-exception-review-preview-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

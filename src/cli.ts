@@ -168,6 +168,11 @@ import {
   writeGovernanceGithubPrSummaryPreviewArtifacts
 } from "./governance/githubPrGovernanceSummaryPreview.js";
 import {
+  buildGovernanceExceptionReviewPreview,
+  renderGovernanceExceptionReviewPreviewText,
+  writeGovernanceExceptionReviewPreviewArtifacts
+} from "./governance/governanceExceptionReviewPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -184,6 +189,7 @@ import {
   renderGovernanceConfigLoadPreviewHelp,
   renderGovernanceAttestationHelp,
   renderGovernanceCiAnnotationsPreviewHelp,
+  renderGovernanceExceptionReviewPreviewHelp,
   renderGovernanceGithubPrSummaryPreviewHelp,
   renderGovernanceProfileInheritancePreviewHelp,
   renderGovernanceRepoClassificationPreviewHelp,
@@ -878,6 +884,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceGithubPrSummaryPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "exception" && args[2] === "review-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance exception review-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceExceptionReviewPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceExceptionReviewPreview(process.cwd());
+    writeGovernanceExceptionReviewPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceExceptionReviewPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

@@ -16155,6 +16155,339 @@ function runGovernanceGithubPrSummaryPreviewNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceExceptionReviewPreview(repo) {
+  const { buildGovernanceExceptionReviewPreview } = require(path.join(projectRoot, "dist", "governance", "governanceExceptionReviewPreview.js"));
+  return buildGovernanceExceptionReviewPreview(repo);
+}
+
+function directGovernanceExceptionReviewPreviewFromPrSummary(prSummary) {
+  const { buildGovernanceExceptionReviewPreviewFromPrSummary } = require(path.join(projectRoot, "dist", "governance", "governanceExceptionReviewPreview.js"));
+  return buildGovernanceExceptionReviewPreviewFromPrSummary(prSummary);
+}
+
+function cleanupProjectGovernanceExceptionReviewPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "governance-exception-review-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "governance-exception-review-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceExceptionReviewPreviewChainArtifacts() {
+  cleanupProjectGovernanceExceptionReviewPreviewArtifacts();
+  cleanupProjectGithubPrSummaryPreviewChainArtifacts();
+}
+
+function createSyntheticPrSummary(overrides = {}) {
+  return {
+    schemaVersion: 1,
+    previewStatus: "created",
+    sourceCiAnnotationsStatus: "created",
+    prConclusion: "pass-preview",
+    githubPublished: false,
+    prCommentCreated: false,
+    githubApiCalled: false,
+    ciAnnotationsApplied: false,
+    ciEnforced: false,
+    buildFailedByGovernance: false,
+    attestationApplied: false,
+    attestationEnforced: false,
+    classificationApplied: false,
+    boundariesEnforced: false,
+    profileApplied: false,
+    applied: false,
+    enforced: false,
+    policyRuntimeMode: "preview-only",
+    runtimeBehaviorChanged: false,
+    governanceDecisionsChanged: false,
+    repairOrchestrationChanged: false,
+    safePatchEngineOnly: true,
+    autonomyEnabled: false,
+    summary: {
+      title: "Governance PR Summary Preview",
+      conclusion: "pass-preview",
+      governanceMaturityLevel: "advanced-preview",
+      stableGovernanceChain: true,
+      repositoryCategory: "single-repo",
+      recommendedProfile: "strict",
+      totalAnnotations: 0,
+      notices: 0,
+      warnings: 0,
+      failures: 0,
+      blockedCapabilityCount: 0,
+      invariantFailureCount: 0
+    },
+    sections: [
+      { id: "blocked-capabilities", title: "Blocked Capabilities", lines: ["- none"] },
+      { id: "warnings", title: "Warnings", lines: ["- none"] }
+    ],
+    markdown: "# Governance PR Summary Preview\n",
+    warnings: [],
+    recommendedNextStage: "prepare-governance-exception-review",
+    ...overrides
+  };
+}
+
+function assertGovernanceExceptionReviewSafety(preview, label) {
+  if (
+    preview.exceptionApproved !== false ||
+    preview.exceptionApplied !== false ||
+    preview.governanceBypassAllowed !== false ||
+    preview.exceptionEnforced !== false ||
+    preview.githubPublished !== false ||
+    preview.prCommentCreated !== false ||
+    preview.githubApiCalled !== false ||
+    preview.ciEnforced !== false ||
+    preview.buildFailedByGovernance !== false ||
+    preview.attestationApplied !== false ||
+    preview.attestationEnforced !== false ||
+    preview.classificationApplied !== false ||
+    preview.boundariesEnforced !== false ||
+    preview.profileApplied !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true ||
+    preview.autonomyEnabled !== false ||
+    !preview.exceptionCandidates.every((candidate) => candidate.exceptionApproved === false && candidate.exceptionApplied === false && candidate.governanceBypassAllowed === false)
+  ) {
+    throw new Error(`${label} changed runtime or exception behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function runGovernanceExceptionReviewPreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-exception-review-preview-unit");
+    const preview = directGovernanceExceptionReviewPreview(repo);
+    const { renderGovernanceExceptionReviewPreviewText } = require(path.join(projectRoot, "dist", "governance", "governanceExceptionReviewPreview.js"));
+    const rendered = renderGovernanceExceptionReviewPreviewText(preview);
+    assertGovernanceExceptionReviewSafety(preview, "exception review unit");
+    if (preview.schemaVersion !== 1 || !rendered.includes("Governance Exception Review Preview")) {
+      throw new Error(`exception review unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-exception-review-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-exception-review-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-exception-review-preview-missing");
+    const preview = directGovernanceExceptionReviewPreview(repo);
+    assertGovernanceExceptionReviewSafety(preview, "exception review missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourcePrSummaryStatus !== "not-created" ||
+      preview.exceptionReviewConclusion !== "source-missing" ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`exception review missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-exception-review-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-exception-review-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewNoExceptionsUnit() {
+  try {
+    const preview = directGovernanceExceptionReviewPreviewFromPrSummary(createSyntheticPrSummary());
+    assertGovernanceExceptionReviewSafety(preview, "exception review no exceptions");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.exceptionReviewConclusion !== "no-exceptions" ||
+      preview.summary.totalCandidates !== 0 ||
+      preview.recommendedNextStage !== "prepare-governance-simulation"
+    ) {
+      throw new Error(`exception review no exceptions mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-exception-review-preview-no-exceptions");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-exception-review-preview-no-exceptions");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewReviewNeededUnit() {
+  try {
+    const prSummary = createSyntheticPrSummary({
+      prConclusion: "warning-preview",
+      summary: {
+        ...createSyntheticPrSummary().summary,
+        conclusion: "warning-preview",
+        warnings: 1
+      },
+      sections: [
+        { id: "blocked-capabilities", title: "Blocked Capabilities", lines: ["- none"] },
+        { id: "warnings", title: "Warnings", lines: ["- Review governance warning when convenient."] }
+      ]
+    });
+    const preview = directGovernanceExceptionReviewPreviewFromPrSummary(prSummary);
+    assertGovernanceExceptionReviewSafety(preview, "exception review needed");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.exceptionReviewConclusion !== "review-needed" ||
+      preview.summary.reviewableCandidates === 0 ||
+      preview.summary.nonReviewableCandidates !== 0 ||
+      preview.exceptionCandidates[0].id !== "gov-exception-001"
+    ) {
+      throw new Error(`exception review needed mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-exception-review-preview-review-needed");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-exception-review-preview-review-needed");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewNonReviewableBlockedUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-exception-review-preview-non-reviewable-blocked");
+    const preview = directGovernanceExceptionReviewPreview(repo);
+    assertGovernanceExceptionReviewSafety(preview, "exception review non-reviewable");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.exceptionReviewConclusion !== "blocked-non-reviewable" ||
+      preview.summary.nonReviewableCandidates === 0 ||
+      !preview.exceptionCandidates.some((candidate) => candidate.reviewability === "non-reviewable" && candidate.severity === "blocking")
+    ) {
+      throw new Error(`exception review non-reviewable mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-exception-review-preview-non-reviewable-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-exception-review-preview-non-reviewable-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceExceptionReviewPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.exceptionApproved !== false ||
+      parsed.exceptionApplied !== false ||
+      parsed.governanceBypassAllowed !== false ||
+      parsed.exceptionEnforced !== false ||
+      !parsed.exceptionCandidates.every((candidate) => candidate.id.startsWith("gov-exception-"))
+    ) {
+      throw new Error(`exception review JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceExceptionReviewPreviewChainArtifacts();
+
+    console.log("PASS governance-exception-review-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceExceptionReviewPreviewChainArtifacts();
+    console.log("FAIL governance-exception-review-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceExceptionReviewPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "governance-exception-review-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "governance-exception-review-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`exception review artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Governance Exception Review Preview") || artifact.exceptionApproved !== false) {
+      throw new Error(`exception review artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceExceptionReviewPreviewChainArtifacts();
+
+    console.log("PASS governance-exception-review-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceExceptionReviewPreviewChainArtifacts();
+    console.log("FAIL governance-exception-review-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewNoApprovalUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-exception-review-preview-no-approval");
+    const preview = directGovernanceExceptionReviewPreview(repo);
+    if (preview.exceptionApproved !== false || preview.exceptionApplied !== false) {
+      throw new Error(`exception review approval mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-exception-review-preview-no-approval");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-exception-review-preview-no-approval");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewNoBypassUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-exception-review-preview-no-bypass");
+    const preview = directGovernanceExceptionReviewPreview(repo);
+    if (preview.governanceBypassAllowed !== false || !preview.exceptionCandidates.every((candidate) => candidate.governanceBypassAllowed === false)) {
+      throw new Error(`exception review bypass mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-exception-review-preview-no-bypass");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-exception-review-preview-no-bypass");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceExceptionReviewPreviewNoEnforcementUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-exception-review-preview-no-enforcement");
+    const preview = directGovernanceExceptionReviewPreview(repo);
+    assertGovernanceExceptionReviewSafety(preview, "exception review no enforcement");
+
+    console.log("PASS governance-exception-review-preview-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-exception-review-preview-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -17643,6 +17976,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceGithubPrSummaryPreviewNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewNoExceptionsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewReviewNeededUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewNonReviewableBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewNoApprovalUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewNoBypassUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceExceptionReviewPreviewNoEnforcementUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
