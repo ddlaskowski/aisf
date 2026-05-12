@@ -153,6 +153,11 @@ import {
   writeGovernanceRepoClassificationPreviewArtifacts
 } from "./governance/repoClassificationPreview.js";
 import {
+  buildGovernanceAttestation,
+  renderGovernanceAttestationText,
+  writeGovernanceAttestationArtifacts
+} from "./governance/governanceAttestation.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -167,6 +172,7 @@ import {
   renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
   renderGovernanceConfigLoadPreviewHelp,
+  renderGovernanceAttestationHelp,
   renderGovernanceProfileInheritancePreviewHelp,
   renderGovernanceRepoClassificationPreviewHelp,
   renderGovernancePolicyRuntimePreviewHelp,
@@ -788,6 +794,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceRepoClassificationPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "attestation" && args[2] === "generate") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance attestation generate", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceAttestationHelp(), 0);
+    }
+
+    const attestation = buildGovernanceAttestation(process.cwd());
+    writeGovernanceAttestationArtifacts(process.cwd(), attestation);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(attestation, null, 2), 0);
+    }
+    printAndExit(renderGovernanceAttestationText(attestation), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

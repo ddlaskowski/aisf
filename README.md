@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.2 - Repo Classification & Governance Boundaries Preview**
+**v6.3 - Governance Attestation Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -108,6 +108,8 @@ v6.0 adds deterministic Policy-as-Code Governance Runtime Preview. It projects a
 v6.1 adds deterministic Governance Profile Inheritance Preview. It resolves built-in profile candidates over policy-runtime-preview outputs without applying profiles, enforcing policies, activating config, or changing runtime behavior.
 
 v6.2 adds deterministic Repo Classification & Governance Boundaries Preview. It classifies local repository governance maturity and previews boundary/profile recommendations without enforcing boundaries or changing runtime behavior.
+
+v6.3 adds deterministic Governance Attestation. It summarizes the governance preview chain, maturity, safety invariants, and blocked capabilities without cryptographic signing, governance enforcement, profile application, or runtime behavior changes.
 
 ---
 
@@ -3221,6 +3223,100 @@ v6.2 deterministic checks:
 * governance-repo-classification-preview-json-output
 * governance-repo-classification-preview-artifact
 * governance-repo-classification-preview-no-enforcement
+
+## Governance Attestation Layer (v6.3)
+
+v6.3 generates deterministic governance-state attestations for the current preview chain.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance attestation generate
+node dist/cli.js governance attestation generate --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/governance-attestation.json
+.factory/governance/governance-attestation.md
+```
+
+The governance attestation:
+
+* reuses the governance preview chain through repo classification preview
+* summarizes whether activation plan, load preview, snapshot lock, audit trail, policy runtime preview, profile inheritance preview, and repo classification preview artifacts are available
+* classifies governance maturity as `basic`, `managed`, `advanced-preview`, or `enterprise-preview`
+* summarizes repository category, recommended profile, and stable governance candidate signals
+* attests that safety invariants remain preserved
+* lists unsafe capabilities that remain blocked
+* does not cryptographically sign anything
+* does not enforce governance
+* does not apply profiles
+* does not activate runtime config
+
+Example human output fields:
+
+```text
+Attestation status:
+created
+
+Governance maturity level:
+advanced-preview
+
+Attestation applied:
+false
+
+Attestation enforced:
+false
+
+Autonomy enabled:
+false
+```
+
+Example JSON fields:
+
+* `attestationStatus`
+* `sourceClassificationStatus`
+* `governanceChain`
+* `governanceMaturity.level`
+* `governanceMaturity.stableGovernanceChain`
+* `attestedSafetyInvariants`
+* `blockedCapabilities`
+* `governanceSummary`
+* `recommendedNextStage`
+
+Safety guarantees:
+
+* `attestationApplied` is always `false`
+* `attestationEnforced` is always `false`
+* `classificationApplied` is always `false`
+* `boundariesEnforced` is always `false`
+* `profileApplied` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* `autonomyEnabled` is always `false`
+* no governance is enforced
+* no profile is applied
+* no runtime behavior changes occur
+
+v6.3 deterministic checks:
+
+* governance-attestation-unit
+* governance-attestation-missing
+* governance-attestation-created
+* governance-attestation-enterprise-preview
+* governance-attestation-blocked
+* governance-attestation-json-output
+* governance-attestation-artifact
+* governance-attestation-safe-patch-only
+* governance-attestation-no-autonomy
+* governance-attestation-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

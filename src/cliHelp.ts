@@ -31,6 +31,7 @@
     "  node dist/cli.js governance policy runtime-preview",
     "  node dist/cli.js governance profile inheritance-preview",
     "  node dist/cli.js governance repo classification-preview",
+    "  node dist/cli.js governance attestation generate",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -74,11 +75,33 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance policy runtime-preview",
     "  node dist/cli.js governance profile inheritance-preview",
     "  node dist/cli.js governance repo classification-preview",
+    "  node dist/cli.js governance attestation generate",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
     "  Governance control plane does not generate evidence packs or archives automatically.",
     "  Governance control plane does not modify .factory/archive-index.json, .factory/evidence-index.json, or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceAttestationHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance attestation generate",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance attestation generate [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance attestation generate",
+    "  node dist/cli.js governance attestation generate --json",
+    "",
+    "Attestation-only guarantee:",
+    "  This command generates a deterministic governance-state attestation only.",
+    "  It does not cryptographically sign, enforce governance, apply profiles, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

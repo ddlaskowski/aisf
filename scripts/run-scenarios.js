@@ -15299,6 +15299,304 @@ function runGovernanceRepoClassificationPreviewNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceAttestation(repo) {
+  const { buildGovernanceAttestation } = require(path.join(projectRoot, "dist", "governance", "governanceAttestation.js"));
+  return buildGovernanceAttestation(repo);
+}
+
+function cleanupProjectGovernanceAttestationArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "governance-attestation.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "governance-attestation.md"), { force: true });
+}
+
+function cleanupProjectGovernanceAttestationChainArtifacts() {
+  cleanupProjectGovernanceAttestationArtifacts();
+  cleanupProjectRepoClassificationPreviewArtifacts();
+  cleanupProjectProfileInheritancePreviewArtifacts();
+  cleanupProjectPolicyRuntimePreviewArtifacts();
+  cleanupProjectAuditTrailArtifacts();
+  cleanupProjectSnapshotLockArtifacts();
+  cleanupProjectLoadPreviewArtifacts();
+  cleanupProjectActivationPlanArtifacts();
+}
+
+function writeGovernanceAttestationReadyArtifacts(repo, enterprise = false) {
+  const { buildGovernanceConfigActivationPlan, writeGovernanceConfigActivationPlanArtifacts } = require(path.join(projectRoot, "dist", "governance", "configActivationPlan.js"));
+  const { buildGovernanceConfigLoadPreview, writeGovernanceConfigLoadPreviewArtifacts } = require(path.join(projectRoot, "dist", "governance", "configLoadPreview.js"));
+  const { buildGovernanceConfigSnapshotLock, writeGovernanceConfigSnapshotLockArtifacts } = require(path.join(projectRoot, "dist", "governance", "configSnapshotLock.js"));
+  const { writeGovernanceConfigAuditTrailArtifacts } = require(path.join(projectRoot, "dist", "governance", "configAuditTrail.js"));
+  const { buildGovernancePolicyRuntimePreview, writeGovernancePolicyRuntimePreviewArtifacts } = require(path.join(projectRoot, "dist", "governance", "policyRuntimePreview.js"));
+  const { buildGovernanceProfileInheritancePreview, writeGovernanceProfileInheritancePreviewArtifacts } = require(path.join(projectRoot, "dist", "governance", "profileInheritancePreview.js"));
+  const { buildGovernanceRepoClassificationPreview, writeGovernanceRepoClassificationPreviewArtifacts } = require(path.join(projectRoot, "dist", "governance", "repoClassificationPreview.js"));
+
+  writeGovernanceConfigActivationPlanArtifacts(repo, buildGovernanceConfigActivationPlan(repo));
+  writeGovernanceConfigLoadPreviewArtifacts(repo, buildGovernanceConfigLoadPreview(repo));
+  writeGovernanceConfigSnapshotLockArtifacts(repo, buildGovernanceConfigSnapshotLock(repo));
+  const firstAudit = directGovernanceConfigAuditTrail(repo);
+  writeGovernanceConfigAuditTrailArtifacts(repo, firstAudit.artifact, firstAudit.result);
+  writeGovernancePolicyRuntimePreviewArtifacts(repo, buildGovernancePolicyRuntimePreview(repo));
+  writeGovernanceProfileInheritancePreviewArtifacts(repo, buildGovernanceProfileInheritancePreview(repo));
+  if (enterprise) {
+    ensureDir(path.join(repo, ".factory", "evidence-packs"));
+    writeJson(path.join(repo, ".factory", "evidence-index.json"), { version: 1, entries: [] });
+    writeJson(path.join(repo, ".factory", "archive-index.json"), { version: 1, archives: [] });
+    writeJson(path.join(repo, ".factory", "runs-index.json"), { version: 1, runs: [] });
+    writeJson(path.join(repo, ".factory", "release-gate.json"), { version: 1 });
+  }
+  writeGovernanceRepoClassificationPreviewArtifacts(repo, buildGovernanceRepoClassificationPreview(repo));
+}
+
+function createGovernanceAttestationReadyRepo(name, enterprise = false) {
+  const repo = createRepoClassificationReadyRepo(name);
+  writeGovernanceAttestationReadyArtifacts(repo, enterprise);
+  return repo;
+}
+
+function assertGovernanceAttestationSafety(attestation, label) {
+  if (
+    attestation.attestationApplied !== false ||
+    attestation.attestationEnforced !== false ||
+    attestation.classificationApplied !== false ||
+    attestation.boundariesEnforced !== false ||
+    attestation.profileApplied !== false ||
+    attestation.applied !== false ||
+    attestation.enforced !== false ||
+    attestation.policyRuntimeMode !== "preview-only" ||
+    attestation.runtimeBehaviorChanged !== false ||
+    attestation.governanceDecisionsChanged !== false ||
+    attestation.repairOrchestrationChanged !== false ||
+    attestation.safePatchEngineOnly !== true ||
+    attestation.autonomyEnabled !== false
+  ) {
+    throw new Error(`${label} changed runtime behavior: ${JSON.stringify(attestation)}`);
+  }
+}
+
+function runGovernanceAttestationUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-attestation-unit");
+    const attestation = directGovernanceAttestation(repo);
+    const { renderGovernanceAttestationText } = require(path.join(projectRoot, "dist", "governance", "governanceAttestation.js"));
+    const rendered = renderGovernanceAttestationText(attestation);
+    assertGovernanceAttestationSafety(attestation, "attestation unit");
+    if (attestation.schemaVersion !== 1 || !rendered.includes("Governance Attestation")) {
+      throw new Error(`attestation unit mismatch: ${JSON.stringify(attestation)}`);
+    }
+
+    console.log("PASS governance-attestation-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-attestation-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-attestation-missing");
+    const attestation = directGovernanceAttestation(repo);
+    assertGovernanceAttestationSafety(attestation, "attestation missing");
+    if (
+      attestation.attestationStatus !== "not-created" ||
+      attestation.sourceClassificationStatus !== "not-created" ||
+      attestation.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`attestation missing mismatch: ${JSON.stringify(attestation)}`);
+    }
+
+    console.log("PASS governance-attestation-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-attestation-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationCreatedUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-attestation-created");
+    const attestation = directGovernanceAttestation(repo);
+    assertGovernanceAttestationSafety(attestation, "attestation created");
+    if (
+      attestation.attestationStatus !== "created" ||
+      attestation.recommendedNextStage !== "prepare-ci-annotations" ||
+      attestation.governanceMaturity.level !== "advanced-preview" ||
+      !attestation.attestedSafetyInvariants.every((invariant) => invariant.preserved)
+    ) {
+      throw new Error(`attestation created mismatch: ${JSON.stringify(attestation)}`);
+    }
+
+    console.log("PASS governance-attestation-created");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-attestation-created");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationEnterprisePreviewUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-attestation-enterprise-preview", true);
+    const attestation = directGovernanceAttestation(repo);
+    if (
+      attestation.governanceMaturity.level !== "enterprise-preview" ||
+      attestation.governanceSummary.repositoryCategory !== "enterprise" ||
+      attestation.governanceSummary.recommendedProfile !== "enterprise"
+    ) {
+      throw new Error(`attestation enterprise mismatch: ${JSON.stringify(attestation)}`);
+    }
+
+    console.log("PASS governance-attestation-enterprise-preview");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-attestation-enterprise-preview");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationBlockedUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-attestation-blocked");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.evalPolicy = true;
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const attestation = directGovernanceAttestation(repo);
+    assertGovernanceAttestationSafety(attestation, "attestation blocked");
+    if (attestation.attestationStatus !== "blocked" || attestation.sourceClassificationStatus !== "blocked" || attestation.recommendedNextStage !== "blocked") {
+      throw new Error(`attestation blocked mismatch: ${JSON.stringify(attestation)}`);
+    }
+
+    console.log("PASS governance-attestation-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-attestation-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceAttestationChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "activation-plan", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "load-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "snapshot-lock", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "runtime-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "profile", "inheritance-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "repo", "classification-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "attestation", "generate", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.attestationStatus !== "created" ||
+      parsed.attestationApplied !== false ||
+      parsed.attestationEnforced !== false ||
+      parsed.autonomyEnabled !== false ||
+      parsed.safePatchEngineOnly !== true
+    ) {
+      throw new Error(`attestation JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceAttestationChainArtifacts();
+
+    console.log("PASS governance-attestation-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAttestationChainArtifacts();
+    console.log("FAIL governance-attestation-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationArtifactUnit() {
+  try {
+    cleanupProjectGovernanceAttestationChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "activation-plan", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "load-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "snapshot-lock", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "runtime-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "profile", "inheritance-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "repo", "classification-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "attestation", "generate"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "governance-attestation.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "governance-attestation.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`attestation artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (artifact.attestationStatus !== "created" || !fs.readFileSync(markdownPath, "utf8").includes("Governance Attestation")) {
+      throw new Error(`attestation artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceAttestationChainArtifacts();
+
+    console.log("PASS governance-attestation-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAttestationChainArtifacts();
+    console.log("FAIL governance-attestation-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationSafePatchOnlyUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-attestation-safe-patch-only");
+    const attestation = directGovernanceAttestation(repo);
+    if (!attestation.safePatchEngineOnly || !attestation.attestedSafetyInvariants.some((invariant) => invariant.key === "safe-patch-engine-only" && invariant.preserved)) {
+      throw new Error(`attestation safe patch mismatch: ${JSON.stringify(attestation)}`);
+    }
+
+    console.log("PASS governance-attestation-safe-patch-only");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-attestation-safe-patch-only");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationNoAutonomyUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-attestation-no-autonomy");
+    const attestation = directGovernanceAttestation(repo);
+    if (attestation.autonomyEnabled !== false || !attestation.blockedCapabilities.some((blocked) => blocked.key === "autonomousExecution")) {
+      throw new Error(`attestation autonomy mismatch: ${JSON.stringify(attestation)}`);
+    }
+
+    console.log("PASS governance-attestation-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-attestation-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAttestationNoEnforcementUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-attestation-no-enforcement");
+    const attestation = directGovernanceAttestation(repo);
+    assertGovernanceAttestationSafety(attestation, "attestation no enforcement");
+
+    console.log("PASS governance-attestation-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-attestation-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -16697,6 +16995,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceRepoClassificationPreviewNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationCreatedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationEnterprisePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationSafePatchOnlyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAttestationNoEnforcementUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
