@@ -16488,6 +16488,370 @@ function runGovernanceExceptionReviewPreviewNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceSimulationPreview(repo) {
+  const { buildGovernanceSimulationPreview } = require(path.join(projectRoot, "dist", "governance", "governanceSimulationPreview.js"));
+  return buildGovernanceSimulationPreview(repo);
+}
+
+function directGovernanceSimulationPreviewFromExceptionReview(exceptionReview) {
+  const { buildGovernanceSimulationPreviewFromExceptionReview } = require(path.join(projectRoot, "dist", "governance", "governanceSimulationPreview.js"));
+  return buildGovernanceSimulationPreviewFromExceptionReview(exceptionReview);
+}
+
+function cleanupProjectGovernanceSimulationPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "governance-simulation-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "governance-simulation-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceSimulationPreviewChainArtifacts() {
+  cleanupProjectGovernanceSimulationPreviewArtifacts();
+  cleanupProjectGovernanceExceptionReviewPreviewChainArtifacts();
+}
+
+function createSyntheticExceptionReview(overrides = {}) {
+  return {
+    schemaVersion: 1,
+    previewStatus: "created",
+    sourcePrSummaryStatus: "created",
+    exceptionReviewConclusion: "no-exceptions",
+    exceptionApproved: false,
+    exceptionApplied: false,
+    governanceBypassAllowed: false,
+    exceptionEnforced: false,
+    githubPublished: false,
+    prCommentCreated: false,
+    githubApiCalled: false,
+    ciEnforced: false,
+    buildFailedByGovernance: false,
+    attestationApplied: false,
+    attestationEnforced: false,
+    classificationApplied: false,
+    boundariesEnforced: false,
+    profileApplied: false,
+    applied: false,
+    enforced: false,
+    policyRuntimeMode: "preview-only",
+    runtimeBehaviorChanged: false,
+    governanceDecisionsChanged: false,
+    repairOrchestrationChanged: false,
+    safePatchEngineOnly: true,
+    autonomyEnabled: false,
+    exceptionCandidates: [],
+    summary: {
+      totalCandidates: 0,
+      reviewableCandidates: 0,
+      nonReviewableCandidates: 0,
+      warningCandidates: 0,
+      blockingCandidates: 0,
+      categories: []
+    },
+    warnings: [],
+    recommendedNextStage: "prepare-governance-simulation",
+    ...overrides
+  };
+}
+
+function assertGovernanceSimulationSafety(preview, label) {
+  if (
+    preview.simulationApplied !== false ||
+    preview.simulationEnforced !== false ||
+    preview.simulationChangedOutcome !== false ||
+    preview.exceptionApproved !== false ||
+    preview.exceptionApplied !== false ||
+    preview.governanceBypassAllowed !== false ||
+    preview.exceptionEnforced !== false ||
+    preview.ciEnforced !== false ||
+    preview.buildFailedByGovernance !== false ||
+    preview.githubPublished !== false ||
+    preview.prCommentCreated !== false ||
+    preview.githubApiCalled !== false ||
+    preview.attestationApplied !== false ||
+    preview.attestationEnforced !== false ||
+    preview.classificationApplied !== false ||
+    preview.boundariesEnforced !== false ||
+    preview.profileApplied !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true ||
+    preview.autonomyEnabled !== false ||
+    !preview.scenarios.every((scenario) => scenario.previewOnly === true && scenario.applied === false && scenario.enforced === false)
+  ) {
+    throw new Error(`${label} changed runtime or simulation behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceSimulationOrdering(preview) {
+  const decisions = { "would-block": 0, "would-warn": 1, "would-pass": 2 };
+  for (let index = 0; index < preview.scenarios.length; index += 1) {
+    const expectedId = `gov-simulation-${String(index + 1).padStart(3, "0")}`;
+    if (preview.scenarios[index].id !== expectedId) {
+      throw new Error(`simulation scenario id mismatch: ${JSON.stringify(preview.scenarios)}`);
+    }
+    if (index > 0) {
+      const previous = preview.scenarios[index - 1];
+      const current = preview.scenarios[index];
+      const previousKey = `${decisions[previous.simulatedDecision]}|${previous.source}|${previous.name}`;
+      const currentKey = `${decisions[current.simulatedDecision]}|${current.source}|${current.name}`;
+      if (previousKey.localeCompare(currentKey) > 0) {
+        throw new Error(`simulation scenario ordering mismatch: ${JSON.stringify(preview.scenarios)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceSimulationPreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-simulation-preview-unit");
+    const preview = directGovernanceSimulationPreview(repo);
+    const { renderGovernanceSimulationPreviewText } = require(path.join(projectRoot, "dist", "governance", "governanceSimulationPreview.js"));
+    const rendered = renderGovernanceSimulationPreviewText(preview);
+    assertGovernanceSimulationSafety(preview, "simulation unit");
+    assertGovernanceSimulationOrdering(preview);
+    if (preview.schemaVersion !== 1 || !rendered.includes("Governance Simulation Preview")) {
+      throw new Error(`simulation unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-simulation-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-simulation-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-simulation-preview-missing");
+    const preview = directGovernanceSimulationPreview(repo);
+    assertGovernanceSimulationSafety(preview, "simulation missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceExceptionReviewStatus !== "not-created" ||
+      preview.simulationConclusion !== "source-missing" ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`simulation missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-simulation-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-simulation-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewPassUnit() {
+  try {
+    const preview = directGovernanceSimulationPreviewFromExceptionReview(createSyntheticExceptionReview());
+    assertGovernanceSimulationSafety(preview, "simulation pass");
+    assertGovernanceSimulationOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.simulationConclusion !== "pass-preview" ||
+      preview.simulatedOutcomeSummary.simulatedBlocks !== 0 ||
+      preview.simulatedOutcomeSummary.simulatedWarnings !== 0 ||
+      preview.recommendedNextStage !== "prepare-guarded-policy-activation-candidates"
+    ) {
+      throw new Error(`simulation pass mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-simulation-preview-pass");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-simulation-preview-pass");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewWarningUnit() {
+  try {
+    const exceptionReview = createSyntheticExceptionReview({
+      exceptionReviewConclusion: "review-needed",
+      exceptionCandidates: [
+        {
+          id: "gov-exception-001",
+          category: "pr-warning",
+          severity: "warning",
+          reviewability: "reviewable",
+          source: "github-pr-summary-preview",
+          title: "Reviewable warning",
+          reason: "A reviewable warning exists.",
+          exceptionApproved: false,
+          exceptionApplied: false,
+          governanceBypassAllowed: false
+        }
+      ],
+      summary: {
+        totalCandidates: 1,
+        reviewableCandidates: 1,
+        nonReviewableCandidates: 0,
+        warningCandidates: 1,
+        blockingCandidates: 0,
+        categories: ["pr-warning"]
+      }
+    });
+    const preview = directGovernanceSimulationPreviewFromExceptionReview(exceptionReview);
+    assertGovernanceSimulationSafety(preview, "simulation warning");
+    assertGovernanceSimulationOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.simulationConclusion !== "warning-preview" ||
+      preview.simulatedOutcomeSummary.reviewableWarnings !== 1 ||
+      preview.simulatedOutcomeSummary.simulatedWarnings === 0
+    ) {
+      throw new Error(`simulation warning mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-simulation-preview-warning");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-simulation-preview-warning");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewBlockedUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-simulation-preview-blocked");
+    const preview = directGovernanceSimulationPreview(repo);
+    assertGovernanceSimulationSafety(preview, "simulation blocked");
+    assertGovernanceSimulationOrdering(preview);
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.simulationConclusion !== "blocked-preview" ||
+      preview.simulatedOutcomeSummary.nonReviewableBlockers === 0 ||
+      preview.simulatedOutcomeSummary.simulatedBlocks === 0 ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`simulation blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-simulation-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-simulation-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceSimulationPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.simulationApplied !== false ||
+      parsed.simulationEnforced !== false ||
+      parsed.simulationChangedOutcome !== false ||
+      !parsed.scenarios.every((scenario) => scenario.id.startsWith("gov-simulation-") && scenario.previewOnly === true && scenario.applied === false && scenario.enforced === false)
+    ) {
+      throw new Error(`simulation JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceSimulationPreviewChainArtifacts();
+
+    console.log("PASS governance-simulation-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceSimulationPreviewChainArtifacts();
+    console.log("FAIL governance-simulation-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceSimulationPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "governance-simulation-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "governance-simulation-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`simulation artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Governance Simulation Preview") || artifact.simulationApplied !== false) {
+      throw new Error(`simulation artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceSimulationPreviewChainArtifacts();
+
+    console.log("PASS governance-simulation-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceSimulationPreviewChainArtifacts();
+    console.log("FAIL governance-simulation-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewNoApplicationUnit() {
+  try {
+    const preview = directGovernanceSimulationPreviewFromExceptionReview(createSyntheticExceptionReview());
+    if (preview.simulationApplied !== false || preview.simulationChangedOutcome !== false || preview.applied !== false) {
+      throw new Error(`simulation application mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-simulation-preview-no-application");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-simulation-preview-no-application");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewNoEnforcementUnit() {
+  try {
+    const preview = directGovernanceSimulationPreviewFromExceptionReview(createSyntheticExceptionReview());
+    assertGovernanceSimulationSafety(preview, "simulation no enforcement");
+
+    console.log("PASS governance-simulation-preview-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-simulation-preview-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceSimulationPreviewNoOutcomeChangeUnit() {
+  try {
+    const preview = directGovernanceSimulationPreviewFromExceptionReview(createSyntheticExceptionReview());
+    if (preview.simulationChangedOutcome !== false || preview.runtimeBehaviorChanged !== false || preview.governanceDecisionsChanged !== false || preview.repairOrchestrationChanged !== false) {
+      throw new Error(`simulation outcome change mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-simulation-preview-no-outcome-change");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-simulation-preview-no-outcome-change");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -18006,6 +18370,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceExceptionReviewPreviewNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewPassUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewWarningUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewNoApplicationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceSimulationPreviewNoOutcomeChangeUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

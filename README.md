@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.6 - Governance Exception Review Preview**
+**v6.7 - Governance Simulation Mode Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -116,6 +116,8 @@ v6.4 adds deterministic CI Governance Annotations Preview. It converts governanc
 v6.5 adds deterministic GitHub PR Governance Summary Preview. It converts CI governance annotations into PR-ready local markdown and JSON artifacts without calling GitHub APIs, creating PR comments, failing builds, or enforcing governance.
 
 v6.6 adds deterministic Governance Exception Review Preview. It collects potential exception candidates from the preview chain and separates reviewable from non-reviewable candidates without approving exceptions, allowing bypasses, enforcing governance, or changing runtime behavior.
+
+v6.7 adds deterministic Governance Simulation Mode Preview. It simulates future governance outcomes from the exception review chain without applying simulation results, enforcing governance, approving exceptions, or changing runtime behavior.
 
 ---
 
@@ -3654,6 +3656,122 @@ v6.6 deterministic checks:
 * governance-exception-review-preview-no-approval
 * governance-exception-review-preview-no-bypass
 * governance-exception-review-preview-no-enforcement
+
+## Governance Simulation Mode Preview (v6.7)
+
+v6.7 simulates future governance outcomes locally from the governance exception review preview chain.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance simulation preview
+node dist/cli.js governance simulation preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/governance-simulation-preview.json
+.factory/governance/governance-simulation-preview.md
+```
+
+The governance simulation preview:
+
+* reuses deterministic governance exception review preview logic
+* creates deterministic scenarios such as governance source status, exception conclusion, profile status, policy runtime mode, safety invariants, reviewable warnings, and non-reviewable blockers
+* classifies simulated outcomes as `would-pass`, `would-warn`, or `would-block`
+* summarizes pass, warning, and block counts
+* assigns deterministic scenario IDs such as `gov-simulation-001`
+* does not apply simulation outcomes
+* does not enforce simulated decisions
+* does not approve exceptions
+* does not allow governance bypass
+* does not change runtime outcomes
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Simulation conclusion:
+warning-preview
+
+Simulation applied:
+false
+
+Simulation enforced:
+false
+
+Simulation changed outcome:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceExceptionReviewStatus`
+* `simulationConclusion`
+* `scenarios`
+* `simulatedOutcomeSummary.totalScenarios`
+* `simulatedOutcomeSummary.simulatedPasses`
+* `simulatedOutcomeSummary.simulatedWarnings`
+* `simulatedOutcomeSummary.simulatedBlocks`
+* `simulatedOutcomeSummary.nonReviewableBlockers`
+* `recommendedNextStage`
+
+Example markdown summary shape:
+
+```markdown
+# AI Software Factory - Governance Simulation Preview
+
+## Simulation Scenarios
+
+## Preview-Only Guarantees
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `simulationApplied` is always `false`
+* `simulationEnforced` is always `false`
+* `simulationChangedOutcome` is always `false`
+* `exceptionApproved` is always `false`
+* `exceptionApplied` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `exceptionEnforced` is always `false`
+* `ciEnforced` is always `false`
+* `buildFailedByGovernance` is always `false`
+* `githubPublished` is always `false`
+* `prCommentCreated` is always `false`
+* `githubApiCalled` is always `false`
+* `attestationApplied` is always `false`
+* `attestationEnforced` is always `false`
+* `classificationApplied` is always `false`
+* `boundariesEnforced` is always `false`
+* `profileApplied` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* `autonomyEnabled` is always `false`
+
+v6.7 deterministic checks:
+
+* governance-simulation-preview-unit
+* governance-simulation-preview-missing
+* governance-simulation-preview-pass
+* governance-simulation-preview-warning
+* governance-simulation-preview-blocked
+* governance-simulation-preview-json-output
+* governance-simulation-preview-artifact
+* governance-simulation-preview-no-application
+* governance-simulation-preview-no-enforcement
+* governance-simulation-preview-no-outcome-change
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

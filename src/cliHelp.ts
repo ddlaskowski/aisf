@@ -35,6 +35,7 @@
     "  node dist/cli.js governance ci annotations-preview",
     "  node dist/cli.js governance github pr-summary-preview",
     "  node dist/cli.js governance exception review-preview",
+    "  node dist/cli.js governance simulation preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -82,6 +83,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance ci annotations-preview",
     "  node dist/cli.js governance github pr-summary-preview",
     "  node dist/cli.js governance exception review-preview",
+    "  node dist/cli.js governance simulation preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -171,6 +173,27 @@ export function renderGovernanceExceptionReviewPreviewHelp(): string {
     "Exception preview-only guarantee:",
     "  This command prepares deterministic governance exception review data locally.",
     "  It does not approve exceptions, apply exceptions, allow governance bypass, enforce governance, fail builds, call GitHub APIs, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceSimulationPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance simulation preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance simulation preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance simulation preview",
+    "  node dist/cli.js governance simulation preview --json",
+    "",
+    "Simulation preview-only guarantee:",
+    "  This command simulates future governance behavior locally without applying outcomes.",
+    "  It does not enforce governance, approve exceptions, allow bypasses, fail builds, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 
