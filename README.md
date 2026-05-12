@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.8 - Governance Config Snapshot Lock Layer**
+**v5.9 - Governance Config Audit Trail Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -100,6 +100,8 @@ v5.6 adds deterministic Governance Config Activation Plans. It writes advisory a
 v5.7 adds deterministic guarded Governance Config Load Preview. It validates, normalizes, and snapshots safe governance config override candidates for preview only without applying runtime behavior changes.
 
 v5.8 adds deterministic Governance Config Snapshot Locks. It converts a valid load-preview snapshot into a reproducible audit lock with a stable fingerprint while keeping runtime behavior unchanged.
+
+v5.9 adds deterministic Governance Config Audit Trails. It records snapshot-lock history, detects fingerprint drift, and identifies stable repeated config candidates without applying config or changing runtime behavior.
 
 ---
 
@@ -2903,6 +2905,73 @@ v5.8 deterministic checks:
 * governance-config-snapshot-lock-json-output
 * governance-config-snapshot-lock-artifact
 * governance-config-snapshot-lock-fingerprint-stable
+
+## Governance Config Audit Trail Layer (v5.9)
+
+v5.9 records deterministic governance config snapshot-lock history.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance config audit-trail
+node dist/cli.js governance config audit-trail --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/config-audit-trail.json
+.factory/governance/config-audit-trail.md
+```
+
+The audit trail:
+
+* reuses the existing snapshot-lock logic
+* records entries only when a snapshot lock is created
+* compares the current fingerprint with the previous recorded fingerprint
+* reports whether fingerprint drift was detected
+* reports whether the config candidate is stable across repeated previews
+* avoids duplicate noisy entries when the latest snapshot lock is already recorded
+* uses deterministic `recordedAt` values such as `deterministic-audit-sequence-1`
+
+Example JSON fields:
+
+* `auditStatus`
+* `sourceLockStatus`
+* `currentFingerprint`
+* `previousFingerprint`
+* `fingerprintChanged`
+* `driftDetected`
+* `stableCandidate`
+* `trailSummary.totalEntries`
+* `trailSummary.uniqueFingerprints`
+* `trailSummary.repeatedLatestFingerprintCount`
+* `recommendedNextStage`
+
+Safety guarantees:
+
+* `applied` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* governance thresholds are not changed
+* governance decisions are not changed
+* repair orchestration is not changed
+* audit trails record config snapshot-lock history only
+* audit trails are preview/audit preparation only, not runtime activation
+
+v5.9 deterministic checks:
+
+* governance-config-audit-trail-unit
+* governance-config-audit-trail-missing
+* governance-config-audit-trail-valid-first-entry
+* governance-config-audit-trail-valid-stable-repeat
+* governance-config-audit-trail-drift-detected
+* governance-config-audit-trail-invalid
+* governance-config-audit-trail-blocked-unsafe
+* governance-config-audit-trail-json-output
+* governance-config-audit-trail-artifact
+* governance-config-audit-trail-no-duplicate-latest
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

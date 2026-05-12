@@ -14253,6 +14253,286 @@ function runGovernanceConfigSnapshotLockFingerprintStableUnit() {
     return false;
   }
 }
+
+function directGovernanceConfigAuditTrail(repo) {
+  const { buildGovernanceConfigAuditTrail } = require(path.join(projectRoot, "dist", "governance", "configAuditTrail.js"));
+  return buildGovernanceConfigAuditTrail(repo);
+}
+
+function cleanupProjectAuditTrailArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "config-audit-trail.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "config-audit-trail.md"), { force: true });
+}
+
+function assertAuditTrailSafety(result, label) {
+  if (
+    result.applied !== false ||
+    result.runtimeBehaviorChanged !== false ||
+    result.governanceDecisionsChanged !== false ||
+    result.repairOrchestrationChanged !== false
+  ) {
+    throw new Error(`${label} changed runtime behavior: ${JSON.stringify(result)}`);
+  }
+}
+
+function runGovernanceConfigAuditTrailUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-audit-trail-unit");
+    const { result } = directGovernanceConfigAuditTrail(repo);
+    const { renderGovernanceConfigAuditTrailText } = require(path.join(projectRoot, "dist", "governance", "configAuditTrail.js"));
+    const rendered = renderGovernanceConfigAuditTrailText(result);
+    assertAuditTrailSafety(result, "audit trail unit");
+    if (result.schemaVersion !== 1 || !rendered.includes("Governance Config Audit Trail")) {
+      throw new Error(`audit trail unit mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-audit-trail-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-audit-trail-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-audit-trail-missing");
+    const { result, artifact } = directGovernanceConfigAuditTrail(repo);
+    assertAuditTrailSafety(result, "audit trail missing");
+    if (
+      result.auditStatus !== "not-created" ||
+      result.sourceLockStatus !== "not-created" ||
+      result.currentEntry !== null ||
+      result.recommendedNextStage !== "continue-preview-only" ||
+      artifact.entries.length !== 0
+    ) {
+      throw new Error(`audit trail missing mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-audit-trail-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-audit-trail-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailValidFirstEntryUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-audit-trail-valid-first-entry");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const { result, artifact } = directGovernanceConfigAuditTrail(repo);
+    assertAuditTrailSafety(result, "audit trail first entry");
+    if (
+      result.auditStatus !== "updated" ||
+      result.sourceLockStatus !== "created" ||
+      result.currentEntry?.sequence !== 1 ||
+      result.previousFingerprint !== null ||
+      result.stableCandidate !== false ||
+      result.driftDetected !== false ||
+      result.recommendedNextStage !== "continue-preview-only" ||
+      artifact.entries.length !== 1
+    ) {
+      throw new Error(`audit trail first entry mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-audit-trail-valid-first-entry");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-audit-trail-valid-first-entry");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailValidStableRepeatUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-audit-trail-valid-stable-repeat");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const first = directGovernanceConfigAuditTrail(repo);
+    const { writeGovernanceConfigAuditTrailArtifacts } = require(path.join(projectRoot, "dist", "governance", "configAuditTrail.js"));
+    writeGovernanceConfigAuditTrailArtifacts(repo, first.artifact, first.result);
+    const second = directGovernanceConfigAuditTrail(repo);
+    assertAuditTrailSafety(second.result, "audit trail stable repeat");
+    if (
+      second.result.auditStatus !== "updated" ||
+      second.result.stableCandidate !== true ||
+      second.result.driftDetected !== false ||
+      second.result.recommendedNextStage !== "prepare-policy-runtime" ||
+      second.artifact.entries.length !== 1 ||
+      !second.result.warnings.includes("latest snapshot lock already recorded; audit trail unchanged")
+    ) {
+      throw new Error(`audit trail stable repeat mismatch: ${JSON.stringify(second.result)}`);
+    }
+
+    console.log("PASS governance-config-audit-trail-valid-stable-repeat");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-audit-trail-valid-stable-repeat");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailDriftDetectedUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-audit-trail-drift-detected");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const first = directGovernanceConfigAuditTrail(repo);
+    const { writeGovernanceConfigAuditTrailArtifacts } = require(path.join(projectRoot, "dist", "governance", "configAuditTrail.js"));
+    writeGovernanceConfigAuditTrailArtifacts(repo, first.artifact, first.result);
+    const changed = createValidGovernanceConfigWithOverrides();
+    changed.policyProfiles.balanced.thresholds.highBlockedRatePercent = 21;
+    writeJson(path.join(repo, ".factory", "governance.config.json"), changed);
+    const second = directGovernanceConfigAuditTrail(repo);
+    assertAuditTrailSafety(second.result, "audit trail drift");
+    if (
+      second.result.fingerprintChanged !== true ||
+      second.result.driftDetected !== true ||
+      second.result.stableCandidate !== false ||
+      second.artifact.entries.length !== 2 ||
+      second.result.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`audit trail drift mismatch: ${JSON.stringify(second.result)}`);
+    }
+
+    console.log("PASS governance-config-audit-trail-drift-detected");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-audit-trail-drift-detected");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailInvalidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-audit-trail-invalid");
+    ensureDir(path.join(repo, ".factory"));
+    fs.writeFileSync(path.join(repo, ".factory", "governance.config.json"), "{", "utf8");
+    const { result } = directGovernanceConfigAuditTrail(repo);
+    assertAuditTrailSafety(result, "audit trail invalid");
+    if (result.auditStatus !== "blocked" || result.sourceLockStatus !== "blocked" || result.recommendedNextStage !== "fix-config") {
+      throw new Error(`audit trail invalid mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-audit-trail-invalid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-audit-trail-invalid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailBlockedUnsafeUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-audit-trail-blocked-unsafe");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.runtimeExecution = true;
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const { result } = directGovernanceConfigAuditTrail(repo);
+    assertAuditTrailSafety(result, "audit trail unsafe");
+    if (result.auditStatus !== "blocked" || result.sourceLockStatus !== "blocked" || result.recommendedNextStage !== "blocked") {
+      throw new Error(`audit trail unsafe mismatch: ${JSON.stringify(result)}`);
+    }
+
+    console.log("PASS governance-config-audit-trail-blocked-unsafe");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-audit-trail-blocked-unsafe");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailJsonOutputUnit() {
+  try {
+    cleanupProjectAuditTrailArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.auditStatus !== "updated" ||
+      parsed.currentEntry.sequence !== 1 ||
+      parsed.applied !== false ||
+      parsed.runtimeBehaviorChanged !== false
+    ) {
+      throw new Error(`audit trail JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectAuditTrailArtifacts();
+
+    console.log("PASS governance-config-audit-trail-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectAuditTrailArtifacts();
+    console.log("FAIL governance-config-audit-trail-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailArtifactUnit() {
+  try {
+    cleanupProjectAuditTrailArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "config-audit-trail.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "config-audit-trail.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`audit trail artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (artifact.entries.length !== 1 || artifact.summary.totalEntries !== 1 || !fs.readFileSync(markdownPath, "utf8").includes("Governance Config Audit Trail")) {
+      throw new Error(`audit trail artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectAuditTrailArtifacts();
+
+    console.log("PASS governance-config-audit-trail-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectAuditTrailArtifacts();
+    console.log("FAIL governance-config-audit-trail-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigAuditTrailNoDuplicateLatestUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-audit-trail-no-duplicate-latest");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const first = directGovernanceConfigAuditTrail(repo);
+    const { writeGovernanceConfigAuditTrailArtifacts } = require(path.join(projectRoot, "dist", "governance", "configAuditTrail.js"));
+    writeGovernanceConfigAuditTrailArtifacts(repo, first.artifact, first.result);
+    const second = directGovernanceConfigAuditTrail(repo);
+    writeGovernanceConfigAuditTrailArtifacts(repo, second.artifact, second.result);
+    const third = directGovernanceConfigAuditTrail(repo);
+    if (
+      second.artifact.entries.length !== 1 ||
+      third.artifact.entries.length !== 1 ||
+      third.result.currentEntry.sequence !== 1 ||
+      third.result.trailSummary.totalEntries !== 1
+    ) {
+      throw new Error(`audit trail duplicate mismatch: second=${JSON.stringify(second.result)} third=${JSON.stringify(third.result)}`);
+    }
+
+    console.log("PASS governance-config-audit-trail-no-duplicate-latest");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-audit-trail-no-duplicate-latest");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -15537,6 +15817,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceConfigSnapshotLockFingerprintStableUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailValidFirstEntryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailValidStableRepeatUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailDriftDetectedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailInvalidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailBlockedUnsafeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigAuditTrailNoDuplicateLatestUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
