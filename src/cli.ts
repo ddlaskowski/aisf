@@ -163,6 +163,11 @@ import {
   writeGovernanceCiAnnotationsPreviewArtifacts
 } from "./governance/ciGovernanceAnnotationsPreview.js";
 import {
+  buildGovernanceGithubPrSummaryPreview,
+  renderGovernanceGithubPrSummaryPreviewText,
+  writeGovernanceGithubPrSummaryPreviewArtifacts
+} from "./governance/githubPrGovernanceSummaryPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -179,6 +184,7 @@ import {
   renderGovernanceConfigLoadPreviewHelp,
   renderGovernanceAttestationHelp,
   renderGovernanceCiAnnotationsPreviewHelp,
+  renderGovernanceGithubPrSummaryPreviewHelp,
   renderGovernanceProfileInheritancePreviewHelp,
   renderGovernanceRepoClassificationPreviewHelp,
   renderGovernancePolicyRuntimePreviewHelp,
@@ -848,6 +854,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceCiAnnotationsPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "github" && args[2] === "pr-summary-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance github pr-summary-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceGithubPrSummaryPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceGithubPrSummaryPreview(process.cwd());
+    writeGovernanceGithubPrSummaryPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceGithubPrSummaryPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

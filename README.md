@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.4 - CI Governance Annotations Preview**
+**v6.5 - GitHub PR Governance Summary Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -112,6 +112,8 @@ v6.2 adds deterministic Repo Classification & Governance Boundaries Preview. It 
 v6.3 adds deterministic Governance Attestation. It summarizes the governance preview chain, maturity, safety invariants, and blocked capabilities without cryptographic signing, governance enforcement, profile application, or runtime behavior changes.
 
 v6.4 adds deterministic CI Governance Annotations Preview. It converts governance attestations into CI-friendly annotation artifacts without failing builds, enforcing governance, applying profiles, calling external CI systems, or changing runtime behavior.
+
+v6.5 adds deterministic GitHub PR Governance Summary Preview. It converts CI governance annotations into PR-ready local markdown and JSON artifacts without calling GitHub APIs, creating PR comments, failing builds, or enforcing governance.
 
 ---
 
@@ -3416,6 +3418,129 @@ v6.4 deterministic checks:
 * governance-ci-annotations-preview-artifact
 * governance-ci-annotations-preview-no-build-fail
 * governance-ci-annotations-preview-no-enforcement
+
+## GitHub PR Governance Summary Preview (v6.5)
+
+v6.5 generates deterministic PR-ready governance summary artifacts from CI governance annotations.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance github pr-summary-preview
+node dist/cli.js governance github pr-summary-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/github-pr-governance-summary-preview.json
+.factory/governance/github-pr-governance-summary-preview.md
+```
+
+The GitHub PR summary preview:
+
+* reuses deterministic CI governance annotation preview logic
+* mirrors CI conclusion as `pass-preview`, `warning-preview`, or `blocked-preview`
+* generates markdown suitable for a future PR comment
+* includes governance maturity, repository category, recommended profile, safety invariants, blocked capabilities, annotation counts, warnings, and next-stage guidance
+* does not call GitHub APIs
+* does not read GitHub tokens or GitHub environment variables
+* does not publish PR comments
+* does not create or update PR reviews
+* does not fail builds
+* does not enforce governance
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+PR conclusion:
+pass-preview
+
+GitHub published:
+false
+
+PR comment created:
+false
+
+GitHub API called:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceCiAnnotationsStatus`
+* `prConclusion`
+* `summary`
+* `sections`
+* `markdown`
+* `warnings`
+* `recommendedNextStage`
+
+Example markdown summary shape:
+
+```markdown
+# Governance PR Summary Preview
+
+# Preview Conclusion
+
+# Governance Maturity
+
+# Repository Classification
+
+# Recommended Profile
+
+# Safety Invariants
+
+# Blocked Capabilities
+
+# CI Annotation Summary
+
+# Preview-Only Guarantees
+
+# Warnings
+
+# Recommended Next Stage
+```
+
+Safety guarantees:
+
+* `githubPublished` is always `false`
+* `prCommentCreated` is always `false`
+* `githubApiCalled` is always `false`
+* `ciAnnotationsApplied` is always `false`
+* `ciEnforced` is always `false`
+* `buildFailedByGovernance` is always `false`
+* `attestationApplied` is always `false`
+* `attestationEnforced` is always `false`
+* `classificationApplied` is always `false`
+* `boundariesEnforced` is always `false`
+* `profileApplied` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* `autonomyEnabled` is always `false`
+
+v6.5 deterministic checks:
+
+* governance-github-pr-summary-preview-unit
+* governance-github-pr-summary-preview-missing
+* governance-github-pr-summary-preview-created
+* governance-github-pr-summary-preview-warning
+* governance-github-pr-summary-preview-blocked
+* governance-github-pr-summary-preview-json-output
+* governance-github-pr-summary-preview-artifact
+* governance-github-pr-summary-preview-markdown
+* governance-github-pr-summary-preview-no-github-api
+* governance-github-pr-summary-preview-no-publish
+* governance-github-pr-summary-preview-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

@@ -15849,6 +15849,312 @@ function runGovernanceCiAnnotationsPreviewNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceGithubPrSummaryPreview(repo) {
+  const { buildGovernanceGithubPrSummaryPreview } = require(path.join(projectRoot, "dist", "governance", "githubPrGovernanceSummaryPreview.js"));
+  return buildGovernanceGithubPrSummaryPreview(repo);
+}
+
+function cleanupProjectGithubPrSummaryPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "github-pr-governance-summary-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "github-pr-governance-summary-preview.md"), { force: true });
+}
+
+function cleanupProjectGithubPrSummaryPreviewChainArtifacts() {
+  cleanupProjectGithubPrSummaryPreviewArtifacts();
+  cleanupProjectCiGovernanceAnnotationsChainArtifacts();
+}
+
+function assertGithubPrSummarySafety(preview, label) {
+  if (
+    preview.githubPublished !== false ||
+    preview.prCommentCreated !== false ||
+    preview.githubApiCalled !== false ||
+    preview.ciAnnotationsApplied !== false ||
+    preview.ciEnforced !== false ||
+    preview.buildFailedByGovernance !== false ||
+    preview.attestationApplied !== false ||
+    preview.attestationEnforced !== false ||
+    preview.classificationApplied !== false ||
+    preview.boundariesEnforced !== false ||
+    preview.profileApplied !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true ||
+    preview.autonomyEnabled !== false
+  ) {
+    throw new Error(`${label} changed runtime or GitHub behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGithubPrSummaryMarkdown(markdown) {
+  const required = [
+    "# Governance PR Summary Preview",
+    "# Preview Conclusion",
+    "# Governance Maturity",
+    "# Repository Classification",
+    "# Recommended Profile",
+    "# Safety Invariants",
+    "# Blocked Capabilities",
+    "# CI Annotation Summary",
+    "# Preview-Only Guarantees",
+    "# Warnings",
+    "# Recommended Next Stage",
+    "No GitHub API was called.",
+    "No PR comment was created.",
+    "No build was failed by governance.",
+    "No governance was enforced.",
+    "No runtime behavior changed."
+  ];
+  for (const needle of required) {
+    if (!markdown.includes(needle)) {
+      throw new Error(`PR summary markdown missing ${needle}: ${markdown}`);
+    }
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-github-pr-summary-preview-unit");
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    const { renderGovernanceGithubPrSummaryPreviewText } = require(path.join(projectRoot, "dist", "governance", "githubPrGovernanceSummaryPreview.js"));
+    const rendered = renderGovernanceGithubPrSummaryPreviewText(preview);
+    assertGithubPrSummarySafety(preview, "github pr summary unit");
+    assertGithubPrSummaryMarkdown(preview.markdown);
+    if (preview.schemaVersion !== 1 || !rendered.includes("GitHub PR Governance Summary Preview") || preview.sections.length !== 11) {
+      throw new Error(`github pr summary unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-github-pr-summary-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-github-pr-summary-preview-missing");
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    assertGithubPrSummarySafety(preview, "github pr summary missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceCiAnnotationsStatus !== "not-created" ||
+      preview.prConclusion !== "warning-preview" ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`github pr summary missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-github-pr-summary-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewCreatedUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-github-pr-summary-preview-created");
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    assertGithubPrSummarySafety(preview, "github pr summary created");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourceCiAnnotationsStatus !== "created" ||
+      preview.prConclusion !== "pass-preview" ||
+      preview.recommendedNextStage !== "prepare-governance-exception-review" ||
+      preview.summary.totalAnnotations === 0 ||
+      !preview.markdown.includes("PR conclusion: pass-preview")
+    ) {
+      throw new Error(`github pr summary created mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-github-pr-summary-preview-created");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-created");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewWarningUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-github-pr-summary-preview-warning");
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    assertGithubPrSummarySafety(preview, "github pr summary warning");
+    if (preview.prConclusion !== "warning-preview" || preview.summary.warnings === 0) {
+      throw new Error(`github pr summary warning mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-github-pr-summary-preview-warning");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-warning");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewBlockedUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-github-pr-summary-preview-blocked");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.evalPolicy = true;
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    assertGithubPrSummarySafety(preview, "github pr summary blocked");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.sourceCiAnnotationsStatus !== "blocked" ||
+      preview.prConclusion !== "blocked-preview" ||
+      preview.recommendedNextStage !== "blocked" ||
+      preview.summary.failures === 0
+    ) {
+      throw new Error(`github pr summary blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-github-pr-summary-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGithubPrSummaryPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.previewStatus !== "created" ||
+      parsed.prConclusion !== "pass-preview" ||
+      parsed.githubPublished !== false ||
+      parsed.prCommentCreated !== false ||
+      parsed.githubApiCalled !== false ||
+      !parsed.markdown.includes("# Governance PR Summary Preview")
+    ) {
+      throw new Error(`github pr summary JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGithubPrSummaryPreviewChainArtifacts();
+
+    console.log("PASS governance-github-pr-summary-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGithubPrSummaryPreviewChainArtifacts();
+    console.log("FAIL governance-github-pr-summary-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewArtifactUnit() {
+  try {
+    cleanupProjectGithubPrSummaryPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "github-pr-governance-summary-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "github-pr-governance-summary-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`github pr summary artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (artifact.previewStatus !== "created" || artifact.markdown !== markdown) {
+      throw new Error(`github pr summary artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGithubPrSummaryPreviewChainArtifacts();
+
+    console.log("PASS governance-github-pr-summary-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGithubPrSummaryPreviewChainArtifacts();
+    console.log("FAIL governance-github-pr-summary-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewMarkdownUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-github-pr-summary-preview-markdown");
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    assertGithubPrSummaryMarkdown(preview.markdown);
+
+    console.log("PASS governance-github-pr-summary-preview-markdown");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-markdown");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewNoGithubApiUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-github-pr-summary-preview-no-github-api");
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    if (preview.githubApiCalled !== false || !preview.warnings.includes("No GitHub API was called.")) {
+      throw new Error(`github pr summary API mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-github-pr-summary-preview-no-github-api");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-no-github-api");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewNoPublishUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-github-pr-summary-preview-no-publish");
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    if (preview.githubPublished !== false || preview.prCommentCreated !== false) {
+      throw new Error(`github pr summary publish mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-github-pr-summary-preview-no-publish");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-no-publish");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceGithubPrSummaryPreviewNoEnforcementUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-github-pr-summary-preview-no-enforcement");
+    const preview = directGovernanceGithubPrSummaryPreview(repo);
+    assertGithubPrSummarySafety(preview, "github pr summary no enforcement");
+
+    console.log("PASS governance-github-pr-summary-preview-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-github-pr-summary-preview-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -17304,6 +17610,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceCiAnnotationsPreviewNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewCreatedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewWarningUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewMarkdownUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewNoGithubApiUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewNoPublishUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceGithubPrSummaryPreviewNoEnforcementUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

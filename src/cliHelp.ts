@@ -33,6 +33,7 @@
     "  node dist/cli.js governance repo classification-preview",
     "  node dist/cli.js governance attestation generate",
     "  node dist/cli.js governance ci annotations-preview",
+    "  node dist/cli.js governance github pr-summary-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -78,6 +79,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance repo classification-preview",
     "  node dist/cli.js governance attestation generate",
     "  node dist/cli.js governance ci annotations-preview",
+    "  node dist/cli.js governance github pr-summary-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -125,6 +127,27 @@ export function renderGovernanceCiAnnotationsPreviewHelp(): string {
     "CI preview-only guarantee:",
     "  This command generates deterministic CI-oriented governance annotations only.",
     "  It does not fail builds, enforce governance, apply profiles, activate config, call CI APIs, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceGithubPrSummaryPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance github pr-summary-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance github pr-summary-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance github pr-summary-preview",
+    "  node dist/cli.js governance github pr-summary-preview --json",
+    "",
+    "GitHub preview-only guarantee:",
+    "  This command generates a deterministic PR-ready governance summary locally.",
+    "  It does not call GitHub APIs, read GitHub tokens, create PR comments, fail builds, enforce governance, or change repair orchestration."
   ].join("\n") + "\n";
 }
 
