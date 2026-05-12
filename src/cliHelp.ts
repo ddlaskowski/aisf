@@ -28,6 +28,7 @@
     "Examples:",
     "  node dist/cli.js governance",
     "  node dist/cli.js governance config",
+    "  node dist/cli.js governance policy runtime-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -68,11 +69,34 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance --window 20",
     "  node dist/cli.js governance --json",
     "  node dist/cli.js governance config",
+    "  node dist/cli.js governance policy runtime-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
     "  Governance control plane does not generate evidence packs or archives automatically.",
     "  Governance control plane does not modify .factory/archive-index.json, .factory/evidence-index.json, or .factory/runs-index.json."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernancePolicyRuntimePreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance policy runtime-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance policy runtime-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance policy runtime-preview",
+    "  node dist/cli.js governance policy runtime-preview --json",
+    "",
+    "Preview-only guarantee:",
+    "  This command builds a Policy-as-Code runtime preview only.",
+    "  It does not activate runtime config, apply policies, or enforce policies.",
+    "  Runtime behavior, governance decisions, and repair orchestration remain unchanged."
   ].join("\n") + "\n";
 }
 

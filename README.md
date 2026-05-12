@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.9 - Governance Config Audit Trail Layer**
+**v6.0 - Policy-as-Code Governance Runtime Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -102,6 +102,8 @@ v5.7 adds deterministic guarded Governance Config Load Preview. It validates, no
 v5.8 adds deterministic Governance Config Snapshot Locks. It converts a valid load-preview snapshot into a reproducible audit lock with a stable fingerprint while keeping runtime behavior unchanged.
 
 v5.9 adds deterministic Governance Config Audit Trails. It records snapshot-lock history, detects fingerprint drift, and identifies stable repeated config candidates without applying config or changing runtime behavior.
+
+v6.0 adds deterministic Policy-as-Code Governance Runtime Preview. It projects a stable config audit candidate into a preview-only policy model while keeping policies inactive, unenforced, and unable to change runtime behavior.
 
 ---
 
@@ -2972,6 +2974,86 @@ v5.9 deterministic checks:
 * governance-config-audit-trail-json-output
 * governance-config-audit-trail-artifact
 * governance-config-audit-trail-no-duplicate-latest
+
+## Policy-as-Code Governance Runtime Preview (v6.0)
+
+v6.0 creates a deterministic preview-only Policy-as-Code runtime model from a stable governance config audit candidate.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance policy runtime-preview
+node dist/cli.js governance policy runtime-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/policy-runtime-preview.json
+.factory/governance/policy-runtime-preview.md
+```
+
+The runtime preview:
+
+* reuses the governance config audit-trail stability signal
+* creates a policy model only when the latest config candidate is stable
+* separates preview-only policies, blocked policies, and unsupported policies
+* keeps all projected policies inactive and unenforced
+* does not parse policy expressions or execute policy code
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Policy runtime mode:
+preview-only
+
+Applied:
+false
+
+Enforced:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceAuditStatus`
+* `policyRuntimeMode`
+* `configCandidate.stableCandidate`
+* `configCandidate.fingerprint`
+* `policyModel.policies`
+* `blockedPolicies`
+* `unsupportedPolicies`
+* `recommendedNextStage`
+
+Safety guarantees:
+
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* no runtime config is activated
+* no policy is enforced
+* governance thresholds are not changed
+* governance decisions are not changed
+* Safe Patch Engine behavior is not changed
+
+v6.0 deterministic checks:
+
+* governance-policy-runtime-preview-unit
+* governance-policy-runtime-preview-missing
+* governance-policy-runtime-preview-not-stable
+* governance-policy-runtime-preview-stable-valid
+* governance-policy-runtime-preview-invalid
+* governance-policy-runtime-preview-blocked-unsafe
+* governance-policy-runtime-preview-json-output
+* governance-policy-runtime-preview-artifact
+* governance-policy-runtime-preview-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

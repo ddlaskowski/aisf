@@ -14533,6 +14533,265 @@ function runGovernanceConfigAuditTrailNoDuplicateLatestUnit() {
     return false;
   }
 }
+
+function directGovernancePolicyRuntimePreview(repo) {
+  const { buildGovernancePolicyRuntimePreview } = require(path.join(projectRoot, "dist", "governance", "policyRuntimePreview.js"));
+  return buildGovernancePolicyRuntimePreview(repo);
+}
+
+function cleanupProjectPolicyRuntimePreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "policy-runtime-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "policy-runtime-preview.md"), { force: true });
+}
+
+function writeStableAuditTrail(repo) {
+  const first = directGovernanceConfigAuditTrail(repo);
+  const { writeGovernanceConfigAuditTrailArtifacts } = require(path.join(projectRoot, "dist", "governance", "configAuditTrail.js"));
+  writeGovernanceConfigAuditTrailArtifacts(repo, first.artifact, first.result);
+}
+
+function assertPolicyRuntimePreviewSafety(preview, label) {
+  if (
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false
+  ) {
+    throw new Error(`${label} changed runtime behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function runGovernancePolicyRuntimePreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-policy-runtime-preview-unit");
+    const preview = directGovernancePolicyRuntimePreview(repo);
+    const { renderGovernancePolicyRuntimePreviewText } = require(path.join(projectRoot, "dist", "governance", "policyRuntimePreview.js"));
+    const rendered = renderGovernancePolicyRuntimePreviewText(preview);
+    assertPolicyRuntimePreviewSafety(preview, "policy runtime unit");
+    if (preview.schemaVersion !== 1 || !rendered.includes("Policy-as-Code Governance Runtime Preview")) {
+      throw new Error(`policy runtime unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-policy-runtime-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-runtime-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRuntimePreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-policy-runtime-preview-missing");
+    const preview = directGovernancePolicyRuntimePreview(repo);
+    assertPolicyRuntimePreviewSafety(preview, "policy runtime missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceAuditStatus !== "not-created" ||
+      preview.policyModel !== null ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`policy runtime missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-policy-runtime-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-runtime-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRuntimePreviewNotStableUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-policy-runtime-preview-not-stable");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const preview = directGovernancePolicyRuntimePreview(repo);
+    assertPolicyRuntimePreviewSafety(preview, "policy runtime not stable");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceAuditStatus !== "updated" ||
+      preview.configCandidate.stableCandidate !== false ||
+      preview.policyModel !== null ||
+      !preview.warnings.includes("config candidate is not stable across repeated audit entries")
+    ) {
+      throw new Error(`policy runtime not stable mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-policy-runtime-preview-not-stable");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-runtime-preview-not-stable");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRuntimePreviewStableValidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-policy-runtime-preview-stable-valid");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    writeStableAuditTrail(repo);
+    const preview = directGovernancePolicyRuntimePreview(repo);
+    assertPolicyRuntimePreviewSafety(preview, "policy runtime stable valid");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourceAuditStatus !== "updated" ||
+      preview.configCandidate.stableCandidate !== true ||
+      preview.recommendedNextStage !== "prepare-profile-inheritance" ||
+      preview.policyModel === null ||
+      preview.policyModel.policies.length === 0 ||
+      !preview.policyModel.policies.every((policy) => policy.previewOnly === true && policy.active === false && policy.enforced === false)
+    ) {
+      throw new Error(`policy runtime stable mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-policy-runtime-preview-stable-valid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-runtime-preview-stable-valid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRuntimePreviewInvalidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-policy-runtime-preview-invalid");
+    ensureDir(path.join(repo, ".factory"));
+    fs.writeFileSync(path.join(repo, ".factory", "governance.config.json"), "{", "utf8");
+    const preview = directGovernancePolicyRuntimePreview(repo);
+    assertPolicyRuntimePreviewSafety(preview, "policy runtime invalid");
+    if (preview.previewStatus !== "blocked" || preview.sourceAuditStatus !== "blocked" || preview.recommendedNextStage !== "fix-config") {
+      throw new Error(`policy runtime invalid mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-policy-runtime-preview-invalid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-runtime-preview-invalid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRuntimePreviewBlockedUnsafeUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-policy-runtime-preview-blocked-unsafe");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.scriptCommand = "node unsafe.js";
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const preview = directGovernancePolicyRuntimePreview(repo);
+    assertPolicyRuntimePreviewSafety(preview, "policy runtime unsafe");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.recommendedNextStage !== "blocked" ||
+      !preview.blockedPolicies.some((policy) => policy.key === "scriptCommand")
+    ) {
+      throw new Error(`policy runtime unsafe mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-policy-runtime-preview-blocked-unsafe");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-runtime-preview-blocked-unsafe");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRuntimePreviewJsonOutputUnit() {
+  try {
+    cleanupProjectPolicyRuntimePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "runtime-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.previewStatus !== "created" ||
+      parsed.policyRuntimeMode !== "preview-only" ||
+      parsed.applied !== false ||
+      parsed.enforced !== false ||
+      parsed.policyModel === null
+    ) {
+      throw new Error(`policy runtime JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectPolicyRuntimePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+
+    console.log("PASS governance-policy-runtime-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectPolicyRuntimePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    console.log("FAIL governance-policy-runtime-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRuntimePreviewArtifactUnit() {
+  try {
+    cleanupProjectPolicyRuntimePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "runtime-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "policy-runtime-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "policy-runtime-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`policy runtime artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (artifact.previewStatus !== "created" || artifact.policyModel === null || !fs.readFileSync(markdownPath, "utf8").includes("Policy-as-Code Governance Runtime Preview")) {
+      throw new Error(`policy runtime artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectPolicyRuntimePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+
+    console.log("PASS governance-policy-runtime-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectPolicyRuntimePreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    console.log("FAIL governance-policy-runtime-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePolicyRuntimePreviewNoEnforcementUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-policy-runtime-preview-no-enforcement");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    writeStableAuditTrail(repo);
+    const preview = directGovernancePolicyRuntimePreview(repo);
+    assertPolicyRuntimePreviewSafety(preview, "policy runtime no enforcement");
+    if (
+      preview.policyModel === null ||
+      !preview.policyModel.policies.every((policy) => policy.previewOnly === true && policy.active === false && policy.enforced === false)
+    ) {
+      throw new Error(`policy runtime enforcement mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-policy-runtime-preview-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-policy-runtime-preview-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -15847,6 +16106,33 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceConfigAuditTrailNoDuplicateLatestUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewNotStableUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewStableValidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewInvalidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewBlockedUnsafeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePolicyRuntimePreviewNoEnforcementUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

@@ -138,6 +138,11 @@ import {
   writeGovernanceConfigAuditTrailArtifacts
 } from "./governance/configAuditTrail.js";
 import {
+  buildGovernancePolicyRuntimePreview,
+  renderGovernancePolicyRuntimePreviewText,
+  writeGovernancePolicyRuntimePreviewArtifacts
+} from "./governance/policyRuntimePreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -152,6 +157,7 @@ import {
   renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
   renderGovernanceConfigLoadPreviewHelp,
+  renderGovernancePolicyRuntimePreviewHelp,
   renderGovernanceConfigSnapshotLockHelp,
   renderGovernanceConfigValidateHelp,
   renderGovernanceHelp,
@@ -698,6 +704,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceConfigPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "policy" && args[2] === "runtime-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance policy runtime-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernancePolicyRuntimePreviewHelp(), 0);
+    }
+
+    const preview = buildGovernancePolicyRuntimePreview(process.cwd());
+    writeGovernancePolicyRuntimePreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernancePolicyRuntimePreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);
