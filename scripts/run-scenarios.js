@@ -17291,6 +17291,440 @@ function runGovernanceActivationCandidatesPreviewNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceRuntimeActivationGatesPreview(repo) {
+  const { buildGovernanceRuntimeActivationGatesPreview } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationGatesPreview.js"));
+  return buildGovernanceRuntimeActivationGatesPreview(repo);
+}
+
+function directGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(source) {
+  const { buildGovernanceRuntimeActivationGatesPreviewFromActivationCandidates } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationGatesPreview.js"));
+  return buildGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(source);
+}
+
+function cleanupProjectGovernanceRuntimeActivationGatesPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-activation-gates-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-activation-gates-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceRuntimeActivationGatesPreviewChainArtifacts() {
+  cleanupProjectGovernanceRuntimeActivationGatesPreviewArtifacts();
+  cleanupProjectGovernanceActivationCandidatesPreviewChainArtifacts();
+}
+
+function createSyntheticActivationCandidates(overrides = {}) {
+  return {
+    schemaVersion: 1,
+    previewStatus: "created",
+    sourceSimulationStatus: "created",
+    activationCandidateConclusion: "eligible-preview",
+    activationCandidateApplied: false,
+    policyActivated: false,
+    guardedActivationEnabled: false,
+    activationEnforced: false,
+    simulationApplied: false,
+    simulationEnforced: false,
+    simulationChangedOutcome: false,
+    exceptionApproved: false,
+    exceptionApplied: false,
+    governanceBypassAllowed: false,
+    ciEnforced: false,
+    buildFailedByGovernance: false,
+    githubPublished: false,
+    prCommentCreated: false,
+    githubApiCalled: false,
+    attestationApplied: false,
+    attestationEnforced: false,
+    classificationApplied: false,
+    boundariesEnforced: false,
+    profileApplied: false,
+    applied: false,
+    enforced: false,
+    policyRuntimeMode: "preview-only",
+    runtimeBehaviorChanged: false,
+    governanceDecisionsChanged: false,
+    repairOrchestrationChanged: false,
+    safePatchEngineOnly: true,
+    autonomyEnabled: false,
+    candidates: [
+      {
+        id: "gov-activation-candidate-001",
+        key: "policy-runtime.policy-runtime-mode",
+        category: "policy-runtime",
+        activationClassification: "eligible",
+        source: "policy-runtime-preview",
+        reason: "Stable preview-only governance simulation indicates this policy could be a future guarded activation candidate.",
+        previewOnly: true,
+        activationCandidateApplied: false,
+        policyActivated: false,
+        enforced: false
+      }
+    ],
+    summary: {
+      totalCandidates: 1,
+      eligibleCandidates: 1,
+      reviewRequiredCandidates: 0,
+      blockedCandidates: 0,
+      permanentlyNonActivatableCandidates: 0,
+      categories: ["policy-runtime"]
+    },
+    warnings: ["Guarded policy activation candidates are preview-only."],
+    recommendedNextStage: "prepare-governance-runtime-activation-gates",
+    ...overrides
+  };
+}
+
+function assertGovernanceRuntimeActivationGatesSafety(preview, label) {
+  if (
+    preview.activationGatePassed !== false ||
+    preview.runtimeActivationEnabled !== false ||
+    preview.policyActivated !== false ||
+    preview.guardedActivationEnabled !== false ||
+    preview.activationEnforced !== false ||
+    preview.activationCandidateApplied !== false ||
+    preview.simulationApplied !== false ||
+    preview.simulationEnforced !== false ||
+    preview.simulationChangedOutcome !== false ||
+    preview.exceptionApproved !== false ||
+    preview.exceptionApplied !== false ||
+    preview.governanceBypassAllowed !== false ||
+    preview.ciEnforced !== false ||
+    preview.buildFailedByGovernance !== false ||
+    preview.githubPublished !== false ||
+    preview.prCommentCreated !== false ||
+    preview.githubApiCalled !== false ||
+    preview.attestationApplied !== false ||
+    preview.attestationEnforced !== false ||
+    preview.classificationApplied !== false ||
+    preview.boundariesEnforced !== false ||
+    preview.profileApplied !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true ||
+    preview.autonomyEnabled !== false ||
+    !preview.gates.every((gate) => gate.previewOnly === true && gate.activationGatePassed === false && gate.runtimeActivationEnabled === false && gate.enforced === false)
+  ) {
+    throw new Error(`${label} changed runtime activation or governance behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceRuntimeActivationGatesOrdering(preview) {
+  const statuses = {
+    "permanently-non-passable": 0,
+    blocked: 1,
+    "warning-state": 2,
+    satisfied: 3
+  };
+  for (let index = 0; index < preview.gates.length; index += 1) {
+    const expectedId = `gov-runtime-gate-${String(index + 1).padStart(3, "0")}`;
+    if (preview.gates[index].id !== expectedId) {
+      throw new Error(`runtime gate id mismatch: ${JSON.stringify(preview.gates)}`);
+    }
+    if (index > 0) {
+      const previous = preview.gates[index - 1];
+      const current = preview.gates[index];
+      const previousKey = `${statuses[previous.gateStatus]}|${previous.category}|${previous.name}`;
+      const currentKey = `${statuses[current.gateStatus]}|${current.category}|${current.name}`;
+      if (previousKey.localeCompare(currentKey) > 0) {
+        throw new Error(`runtime gate ordering mismatch: ${JSON.stringify(preview.gates)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(createSyntheticActivationCandidates());
+    const { renderGovernanceRuntimeActivationGatesPreviewText } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationGatesPreview.js"));
+    const rendered = renderGovernanceRuntimeActivationGatesPreviewText(preview);
+    assertGovernanceRuntimeActivationGatesSafety(preview, "runtime gates unit");
+    assertGovernanceRuntimeActivationGatesOrdering(preview);
+    if (preview.schemaVersion !== 1 || !rendered.includes("Governance Runtime Activation Gates Preview")) {
+      throw new Error(`runtime gates unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-runtime-activation-gates-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-gates-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-runtime-activation-gates-preview-missing");
+    const preview = directGovernanceRuntimeActivationGatesPreview(repo);
+    assertGovernanceRuntimeActivationGatesSafety(preview, "runtime gates missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceActivationCandidatesStatus !== "not-created" ||
+      preview.activationGateConclusion !== "source-missing" ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`runtime gates missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-runtime-activation-gates-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-gates-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewWarningUnit() {
+  try {
+    const source = createSyntheticActivationCandidates({
+      activationCandidateConclusion: "review-required-preview",
+      candidates: [
+        {
+          id: "gov-activation-candidate-001",
+          key: "release-gate.release-gate-sensitivity",
+          category: "release-gate",
+          activationClassification: "review-required",
+          source: "governance-simulation-preview",
+          reason: "Policy candidate requires future human review.",
+          previewOnly: true,
+          activationCandidateApplied: false,
+          policyActivated: false,
+          enforced: false
+        }
+      ],
+      summary: {
+        totalCandidates: 1,
+        eligibleCandidates: 0,
+        reviewRequiredCandidates: 1,
+        blockedCandidates: 0,
+        permanentlyNonActivatableCandidates: 0,
+        categories: ["release-gate"]
+      }
+    });
+    const preview = directGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(source);
+    assertGovernanceRuntimeActivationGatesSafety(preview, "runtime gates warning");
+    assertGovernanceRuntimeActivationGatesOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.activationGateConclusion !== "warning-preview" ||
+      preview.summary.warningStateGates === 0 ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`runtime gates warning mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-runtime-activation-gates-preview-warning");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-gates-preview-warning");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewStructurallyReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(createSyntheticActivationCandidates());
+    assertGovernanceRuntimeActivationGatesSafety(preview, "runtime gates ready");
+    assertGovernanceRuntimeActivationGatesOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.activationGateConclusion !== "structurally-ready-preview" ||
+      preview.summary.structurallyReady !== true ||
+      preview.summary.blockedGates !== 0 ||
+      preview.summary.warningStateGates !== 0 ||
+      preview.summary.permanentlyNonPassableGates === 0 ||
+      preview.recommendedNextStage !== "prepare-v7-autonomy-readiness"
+    ) {
+      throw new Error(`runtime gates ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-runtime-activation-gates-preview-structurally-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-gates-preview-structurally-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewBlockedUnit() {
+  try {
+    const source = createSyntheticActivationCandidates({
+      previewStatus: "blocked",
+      activationCandidateConclusion: "blocked-preview",
+      candidates: [
+        {
+          id: "gov-activation-candidate-001",
+          key: "other-governance.incomplete-governance-chain",
+          category: "other-governance",
+          activationClassification: "blocked",
+          source: "governance-simulation-preview",
+          reason: "Policy candidate is blocked by source simulation.",
+          previewOnly: true,
+          activationCandidateApplied: false,
+          policyActivated: false,
+          enforced: false
+        }
+      ],
+      summary: {
+        totalCandidates: 1,
+        eligibleCandidates: 0,
+        reviewRequiredCandidates: 0,
+        blockedCandidates: 1,
+        permanentlyNonActivatableCandidates: 0,
+        categories: ["other-governance"]
+      }
+    });
+    const preview = directGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(source);
+    assertGovernanceRuntimeActivationGatesSafety(preview, "runtime gates blocked");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.activationGateConclusion !== "blocked-preview" ||
+      preview.summary.blockedGates === 0 ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`runtime gates blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-runtime-activation-gates-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-gates-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewPermanentlyNonPassableUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(createSyntheticActivationCandidates());
+    assertGovernanceRuntimeActivationGatesSafety(preview, "runtime gates permanent");
+    assertGovernanceRuntimeActivationGatesOrdering(preview);
+    if (
+      preview.summary.permanentlyNonPassableGates < 10 ||
+      !preview.gates.some((gate) => gate.name === "Plugin execution" && gate.gateStatus === "permanently-non-passable") ||
+      !preview.gates.some((gate) => gate.name === "Autonomous execution enablement" && gate.gateStatus === "permanently-non-passable")
+    ) {
+      throw new Error(`runtime gates permanent mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-runtime-activation-gates-preview-permanently-non-passable");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-gates-preview-permanently-non-passable");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeActivationGatesPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.activationGatePassed !== false ||
+      parsed.runtimeActivationEnabled !== false ||
+      parsed.policyActivated !== false ||
+      parsed.activationEnforced !== false ||
+      !parsed.gates.every((gate) => gate.id.startsWith("gov-runtime-gate-") && gate.previewOnly === true && gate.enforced === false)
+    ) {
+      throw new Error(`runtime gates JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceRuntimeActivationGatesPreviewChainArtifacts();
+
+    console.log("PASS governance-runtime-activation-gates-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeActivationGatesPreviewChainArtifacts();
+    console.log("FAIL governance-runtime-activation-gates-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeActivationGatesPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "runtime-activation-gates-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "runtime-activation-gates-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`runtime gates artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Governance Runtime Activation Gates Preview") || artifact.runtimeActivationEnabled !== false) {
+      throw new Error(`runtime gates artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceRuntimeActivationGatesPreviewChainArtifacts();
+
+    console.log("PASS governance-runtime-activation-gates-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeActivationGatesPreviewChainArtifacts();
+    console.log("FAIL governance-runtime-activation-gates-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewNoActivationUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(createSyntheticActivationCandidates());
+    if (
+      preview.activationGatePassed !== false ||
+      preview.runtimeActivationEnabled !== false ||
+      preview.policyActivated !== false ||
+      preview.guardedActivationEnabled !== false ||
+      preview.activationEnforced !== false
+    ) {
+      throw new Error(`runtime gates activation mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-runtime-activation-gates-preview-no-activation");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-gates-preview-no-activation");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationGatesPreviewNoEnforcementUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationGatesPreviewFromActivationCandidates(createSyntheticActivationCandidates());
+    assertGovernanceRuntimeActivationGatesSafety(preview, "runtime gates no enforcement");
+
+    console.log("PASS governance-runtime-activation-gates-preview-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-gates-preview-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -18869,6 +19303,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceActivationCandidatesPreviewNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewWarningUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewStructurallyReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewPermanentlyNonPassableUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewNoActivationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationGatesPreviewNoEnforcementUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

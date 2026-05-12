@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.8 - Guarded Policy Activation Candidates Preview**
+**v6.9 - Governance Runtime Activation Gates Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -120,6 +120,8 @@ v6.6 adds deterministic Governance Exception Review Preview. It collects potenti
 v6.7 adds deterministic Governance Simulation Mode Preview. It simulates future governance outcomes from the exception review chain without applying simulation results, enforcing governance, approving exceptions, or changing runtime behavior.
 
 v6.8 adds deterministic Guarded Policy Activation Candidates Preview. It identifies future guarded policy activation candidates from the simulation chain without activating policies, enforcing governance, enabling guarded activation, or changing runtime behavior.
+
+v6.9 adds deterministic Governance Runtime Activation Gates Preview. It models final pre-activation governance runtime gates without enabling runtime activation, activating policies, enforcing governance, or changing runtime behavior.
 
 ---
 
@@ -3882,6 +3884,115 @@ v6.8 deterministic checks:
 * governance-activation-candidates-preview-artifact
 * governance-activation-candidates-preview-no-activation
 * governance-activation-candidates-preview-no-enforcement
+
+## Governance Runtime Activation Gates Preview (v6.9)
+
+v6.9 models final pre-activation governance runtime gates in deterministic preview-only mode.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance runtime activation-gates-preview
+node dist/cli.js governance runtime activation-gates-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/runtime-activation-gates-preview.json
+.factory/governance/runtime-activation-gates-preview.md
+```
+
+The runtime activation gates preview:
+
+* reuses deterministic guarded policy activation candidates preview logic
+* creates deterministic gate definitions for config chain, policy runtime, profiles, repo boundaries, attestations, CI/PR previews, exception review, simulation, activation candidates, and safety invariants
+* classifies gates as `satisfied`, `warning-state`, `blocked`, or `permanently-non-passable`
+* keeps unsafe governance capabilities permanently non-passable
+* assigns deterministic gate IDs such as `gov-runtime-gate-001`
+* explains why every gate has its current status
+* does not pass activation gates
+* does not enable runtime activation
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Activation gate conclusion:
+structurally-ready-preview
+
+Activation gate passed:
+false
+
+Runtime activation enabled:
+false
+
+Policy activated:
+false
+
+Activation enforced:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceActivationCandidatesStatus`
+* `activationGateConclusion`
+* `activationGatePassed`
+* `runtimeActivationEnabled`
+* `policyActivated`
+* `guardedActivationEnabled`
+* `activationEnforced`
+* `gates`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown summary shape:
+
+```markdown
+# AI Software Factory - Governance Runtime Activation Gates Preview
+
+## Runtime Activation Gates
+
+## Preview-Only Guarantees
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `activationGatePassed` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* `autonomyEnabled` is always `false`
+
+v6.9 deterministic checks:
+
+* governance-runtime-activation-gates-preview-unit
+* governance-runtime-activation-gates-preview-missing
+* governance-runtime-activation-gates-preview-warning
+* governance-runtime-activation-gates-preview-structurally-ready
+* governance-runtime-activation-gates-preview-blocked
+* governance-runtime-activation-gates-preview-permanently-non-passable
+* governance-runtime-activation-gates-preview-json-output
+* governance-runtime-activation-gates-preview-artifact
+* governance-runtime-activation-gates-preview-no-activation
+* governance-runtime-activation-gates-preview-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

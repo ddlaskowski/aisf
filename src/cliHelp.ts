@@ -37,6 +37,7 @@
     "  node dist/cli.js governance exception review-preview",
     "  node dist/cli.js governance simulation preview",
     "  node dist/cli.js governance policy activation-candidates-preview",
+    "  node dist/cli.js governance runtime activation-gates-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -86,6 +87,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance exception review-preview",
     "  node dist/cli.js governance simulation preview",
     "  node dist/cli.js governance policy activation-candidates-preview",
+    "  node dist/cli.js governance runtime activation-gates-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -217,6 +219,27 @@ export function renderGovernanceGuardedPolicyActivationCandidatesPreviewHelp(): 
     "Activation candidate preview-only guarantee:",
     "  This command identifies future guarded policy activation candidates only.",
     "  It does not activate policies, enforce governance, enable guarded activation, apply profiles, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeActivationGatesPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime activation-gates-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime activation-gates-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime activation-gates-preview",
+    "  node dist/cli.js governance runtime activation-gates-preview --json",
+    "",
+    "Activation gate preview-only guarantee:",
+    "  This command models future governance runtime activation gates only.",
+    "  It does not activate runtime governance, activate policies, enforce governance, apply profiles, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

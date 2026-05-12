@@ -183,6 +183,11 @@ import {
   writeGovernanceGuardedPolicyActivationCandidatesPreviewArtifacts
 } from "./governance/guardedPolicyActivationCandidatesPreview.js";
 import {
+  buildGovernanceRuntimeActivationGatesPreview,
+  renderGovernanceRuntimeActivationGatesPreviewText,
+  writeGovernanceRuntimeActivationGatesPreviewArtifacts
+} from "./governance/runtimeActivationGatesPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -203,6 +208,7 @@ import {
   renderGovernanceGithubPrSummaryPreviewHelp,
   renderGovernanceSimulationPreviewHelp,
   renderGovernanceGuardedPolicyActivationCandidatesPreviewHelp,
+  renderGovernanceRuntimeActivationGatesPreviewHelp,
   renderGovernanceProfileInheritancePreviewHelp,
   renderGovernanceRepoClassificationPreviewHelp,
   renderGovernancePolicyRuntimePreviewHelp,
@@ -968,6 +974,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceGuardedPolicyActivationCandidatesPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "runtime" && args[2] === "activation-gates-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance runtime activation-gates-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceRuntimeActivationGatesPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceRuntimeActivationGatesPreview(process.cwd());
+    writeGovernanceRuntimeActivationGatesPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceRuntimeActivationGatesPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);
