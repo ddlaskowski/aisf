@@ -32,6 +32,7 @@
     "  node dist/cli.js governance profile inheritance-preview",
     "  node dist/cli.js governance repo classification-preview",
     "  node dist/cli.js governance attestation generate",
+    "  node dist/cli.js governance ci annotations-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -76,6 +77,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance profile inheritance-preview",
     "  node dist/cli.js governance repo classification-preview",
     "  node dist/cli.js governance attestation generate",
+    "  node dist/cli.js governance ci annotations-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -102,6 +104,27 @@ export function renderGovernanceAttestationHelp(): string {
     "Attestation-only guarantee:",
     "  This command generates a deterministic governance-state attestation only.",
     "  It does not cryptographically sign, enforce governance, apply profiles, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceCiAnnotationsPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance ci annotations-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance ci annotations-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance ci annotations-preview",
+    "  node dist/cli.js governance ci annotations-preview --json",
+    "",
+    "CI preview-only guarantee:",
+    "  This command generates deterministic CI-oriented governance annotations only.",
+    "  It does not fail builds, enforce governance, apply profiles, activate config, call CI APIs, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

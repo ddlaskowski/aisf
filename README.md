@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.3 - Governance Attestation Layer**
+**v6.4 - CI Governance Annotations Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -110,6 +110,8 @@ v6.1 adds deterministic Governance Profile Inheritance Preview. It resolves buil
 v6.2 adds deterministic Repo Classification & Governance Boundaries Preview. It classifies local repository governance maturity and previews boundary/profile recommendations without enforcing boundaries or changing runtime behavior.
 
 v6.3 adds deterministic Governance Attestation. It summarizes the governance preview chain, maturity, safety invariants, and blocked capabilities without cryptographic signing, governance enforcement, profile application, or runtime behavior changes.
+
+v6.4 adds deterministic CI Governance Annotations Preview. It converts governance attestations into CI-friendly annotation artifacts without failing builds, enforcing governance, applying profiles, calling external CI systems, or changing runtime behavior.
 
 ---
 
@@ -3317,6 +3319,103 @@ v6.3 deterministic checks:
 * governance-attestation-safe-patch-only
 * governance-attestation-no-autonomy
 * governance-attestation-no-enforcement
+
+## CI Governance Annotations Preview (v6.4)
+
+v6.4 generates deterministic CI-oriented governance annotations from the governance attestation chain.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance ci annotations-preview
+node dist/cli.js governance ci annotations-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/ci-governance-annotations-preview.json
+.factory/governance/ci-governance-annotations-preview.md
+```
+
+The CI annotations preview:
+
+* reuses deterministic governance attestation logic
+* converts attestation status, maturity, repository category, recommended profile, policy runtime mode, safety invariants, blocked capabilities, and warnings into CI-friendly annotation records
+* classifies CI conclusion as `pass-preview`, `warning-preview`, or `blocked-preview`
+* keeps every annotation preview-only and non-build-blocking
+* does not call GitHub APIs
+* does not integrate with external CI services
+* does not fail builds
+* does not enforce governance
+* does not apply profiles
+* does not activate runtime config
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+CI conclusion:
+pass-preview
+
+CI annotations applied:
+false
+
+CI enforced:
+false
+
+Build failed by governance:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceAttestationStatus`
+* `ciConclusion`
+* `annotations`
+* `summary.governanceMaturityLevel`
+* `summary.stableGovernanceChain`
+* `summary.blockedCapabilityCount`
+* `summary.warningCount`
+* `summary.invariantFailureCount`
+* `recommendedNextStage`
+
+Safety guarantees:
+
+* `ciAnnotationsApplied` is always `false`
+* `ciEnforced` is always `false`
+* `buildFailedByGovernance` is always `false`
+* `attestationApplied` is always `false`
+* `attestationEnforced` is always `false`
+* `classificationApplied` is always `false`
+* `boundariesEnforced` is always `false`
+* `profileApplied` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* `autonomyEnabled` is always `false`
+* all annotations have `previewOnly: true`
+* all annotations have `enforced: false`
+* all annotations have `buildBlocking: false`
+
+v6.4 deterministic checks:
+
+* governance-ci-annotations-preview-unit
+* governance-ci-annotations-preview-missing
+* governance-ci-annotations-preview-created
+* governance-ci-annotations-preview-warning
+* governance-ci-annotations-preview-blocked
+* governance-ci-annotations-preview-json-output
+* governance-ci-annotations-preview-artifact
+* governance-ci-annotations-preview-no-build-fail
+* governance-ci-annotations-preview-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

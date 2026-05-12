@@ -15597,6 +15597,258 @@ function runGovernanceAttestationNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceCiAnnotationsPreview(repo) {
+  const { buildGovernanceCiAnnotationsPreview } = require(path.join(projectRoot, "dist", "governance", "ciGovernanceAnnotationsPreview.js"));
+  return buildGovernanceCiAnnotationsPreview(repo);
+}
+
+function cleanupProjectCiGovernanceAnnotationsPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "ci-governance-annotations-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "ci-governance-annotations-preview.md"), { force: true });
+}
+
+function cleanupProjectCiGovernanceAnnotationsChainArtifacts() {
+  cleanupProjectCiGovernanceAnnotationsPreviewArtifacts();
+  cleanupProjectGovernanceAttestationChainArtifacts();
+}
+
+function assertCiGovernanceAnnotationsSafety(preview, label) {
+  if (
+    preview.ciAnnotationsApplied !== false ||
+    preview.ciEnforced !== false ||
+    preview.buildFailedByGovernance !== false ||
+    preview.attestationApplied !== false ||
+    preview.attestationEnforced !== false ||
+    preview.classificationApplied !== false ||
+    preview.boundariesEnforced !== false ||
+    preview.profileApplied !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true ||
+    preview.autonomyEnabled !== false ||
+    !preview.annotations.every((annotation) => annotation.previewOnly === true && annotation.enforced === false && annotation.buildBlocking === false)
+  ) {
+    throw new Error(`${label} changed runtime or CI behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function createProjectCiAnnotationsReadyChain(content) {
+  withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "activation-plan", "--json"]));
+  withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "load-preview", "--json"]));
+  withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "snapshot-lock", "--json"]));
+  withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+  withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "runtime-preview", "--json"]));
+  withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "profile", "inheritance-preview", "--json"]));
+  withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "repo", "classification-preview", "--json"]));
+}
+
+function runGovernanceCiAnnotationsPreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-ci-annotations-preview-unit");
+    const preview = directGovernanceCiAnnotationsPreview(repo);
+    const { renderGovernanceCiAnnotationsPreviewText } = require(path.join(projectRoot, "dist", "governance", "ciGovernanceAnnotationsPreview.js"));
+    const rendered = renderGovernanceCiAnnotationsPreviewText(preview);
+    assertCiGovernanceAnnotationsSafety(preview, "ci annotations unit");
+    if (preview.schemaVersion !== 1 || !rendered.includes("CI Governance Annotations Preview") || preview.annotations.length === 0) {
+      throw new Error(`ci annotations unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-ci-annotations-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-annotations-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiAnnotationsPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-ci-annotations-preview-missing");
+    const preview = directGovernanceCiAnnotationsPreview(repo);
+    assertCiGovernanceAnnotationsSafety(preview, "ci annotations missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceAttestationStatus !== "not-created" ||
+      preview.ciConclusion !== "warning-preview" ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`ci annotations missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-ci-annotations-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-annotations-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiAnnotationsPreviewCreatedUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-ci-annotations-preview-created");
+    const preview = directGovernanceCiAnnotationsPreview(repo);
+    assertCiGovernanceAnnotationsSafety(preview, "ci annotations created");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourceAttestationStatus !== "created" ||
+      preview.ciConclusion !== "pass-preview" ||
+      preview.recommendedNextStage !== "prepare-github-pr-summary" ||
+      preview.summary.invariantFailureCount !== 0 ||
+      !preview.annotations.some((annotation) => annotation.category === "safety-invariant")
+    ) {
+      throw new Error(`ci annotations created mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-ci-annotations-preview-created");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-annotations-preview-created");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiAnnotationsPreviewWarningUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-ci-annotations-preview-warning");
+    const preview = directGovernanceCiAnnotationsPreview(repo);
+    assertCiGovernanceAnnotationsSafety(preview, "ci annotations warning");
+    if (preview.ciConclusion !== "warning-preview" || preview.summary.warningCount === 0) {
+      throw new Error(`ci annotations warning mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-ci-annotations-preview-warning");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-annotations-preview-warning");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiAnnotationsPreviewBlockedUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-ci-annotations-preview-blocked");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.evalPolicy = true;
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const preview = directGovernanceCiAnnotationsPreview(repo);
+    assertCiGovernanceAnnotationsSafety(preview, "ci annotations blocked");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.sourceAttestationStatus !== "blocked" ||
+      preview.ciConclusion !== "blocked-preview" ||
+      preview.recommendedNextStage !== "blocked" ||
+      !preview.annotations.some((annotation) => annotation.level === "failure")
+    ) {
+      throw new Error(`ci annotations blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-ci-annotations-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-annotations-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiAnnotationsPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectCiGovernanceAnnotationsChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.previewStatus !== "created" ||
+      parsed.ciConclusion !== "pass-preview" ||
+      parsed.ciAnnotationsApplied !== false ||
+      parsed.ciEnforced !== false ||
+      parsed.buildFailedByGovernance !== false ||
+      !parsed.annotations.every((annotation) => annotation.previewOnly === true && annotation.enforced === false && annotation.buildBlocking === false)
+    ) {
+      throw new Error(`ci annotations JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectCiGovernanceAnnotationsChainArtifacts();
+
+    console.log("PASS governance-ci-annotations-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectCiGovernanceAnnotationsChainArtifacts();
+    console.log("FAIL governance-ci-annotations-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiAnnotationsPreviewArtifactUnit() {
+  try {
+    cleanupProjectCiGovernanceAnnotationsChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "ci-governance-annotations-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "ci-governance-annotations-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`ci annotations artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (artifact.previewStatus !== "created" || !fs.readFileSync(markdownPath, "utf8").includes("CI Governance Annotations Preview")) {
+      throw new Error(`ci annotations artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectCiGovernanceAnnotationsChainArtifacts();
+
+    console.log("PASS governance-ci-annotations-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectCiGovernanceAnnotationsChainArtifacts();
+    console.log("FAIL governance-ci-annotations-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiAnnotationsPreviewNoBuildFailUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-ci-annotations-preview-no-build-fail");
+    const preview = directGovernanceCiAnnotationsPreview(repo);
+    if (preview.buildFailedByGovernance !== false || preview.annotations.some((annotation) => annotation.buildBlocking !== false)) {
+      throw new Error(`ci annotations build fail mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-ci-annotations-preview-no-build-fail");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-annotations-preview-no-build-fail");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceCiAnnotationsPreviewNoEnforcementUnit() {
+  try {
+    const repo = createGovernanceAttestationReadyRepo("governance-ci-annotations-preview-no-enforcement");
+    const preview = directGovernanceCiAnnotationsPreview(repo);
+    assertCiGovernanceAnnotationsSafety(preview, "ci annotations no enforcement");
+
+    console.log("PASS governance-ci-annotations-preview-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-ci-annotations-preview-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -17025,6 +17277,33 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceAttestationNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewCreatedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewWarningUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewNoBuildFailUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceCiAnnotationsPreviewNoEnforcementUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

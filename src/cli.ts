@@ -158,6 +158,11 @@ import {
   writeGovernanceAttestationArtifacts
 } from "./governance/governanceAttestation.js";
 import {
+  buildGovernanceCiAnnotationsPreview,
+  renderGovernanceCiAnnotationsPreviewText,
+  writeGovernanceCiAnnotationsPreviewArtifacts
+} from "./governance/ciGovernanceAnnotationsPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -173,6 +178,7 @@ import {
   renderGovernanceConfigHelp,
   renderGovernanceConfigLoadPreviewHelp,
   renderGovernanceAttestationHelp,
+  renderGovernanceCiAnnotationsPreviewHelp,
   renderGovernanceProfileInheritancePreviewHelp,
   renderGovernanceRepoClassificationPreviewHelp,
   renderGovernancePolicyRuntimePreviewHelp,
@@ -818,6 +824,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(attestation, null, 2), 0);
     }
     printAndExit(renderGovernanceAttestationText(attestation), 0);
+  }
+
+  if (command === "governance" && args[1] === "ci" && args[2] === "annotations-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance ci annotations-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceCiAnnotationsPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceCiAnnotationsPreview(process.cwd());
+    writeGovernanceCiAnnotationsPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceCiAnnotationsPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);
