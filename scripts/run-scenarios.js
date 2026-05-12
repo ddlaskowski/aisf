@@ -15035,6 +15035,270 @@ function runGovernanceProfileInheritancePreviewNoApplicationUnit() {
     return false;
   }
 }
+
+function directGovernanceRepoClassificationPreview(repo) {
+  const { buildGovernanceRepoClassificationPreview } = require(path.join(projectRoot, "dist", "governance", "repoClassificationPreview.js"));
+  return buildGovernanceRepoClassificationPreview(repo);
+}
+
+function cleanupProjectRepoClassificationPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "repo-classification-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "repo-classification-preview.md"), { force: true });
+}
+
+function createRepoClassificationReadyRepo(name) {
+  const repo = createProfileInheritanceReadyRepo(name);
+  writeJson(path.join(repo, "package.json"), { name, version: "1.0.0" });
+  return repo;
+}
+
+function assertRepoClassificationSafety(preview, label) {
+  if (
+    preview.classificationApplied !== false ||
+    preview.boundariesEnforced !== false ||
+    preview.profileApplied !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true
+  ) {
+    throw new Error(`${label} changed runtime behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function runGovernanceRepoClassificationPreviewUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-repo-classification-preview-unit");
+    const preview = directGovernanceRepoClassificationPreview(repo);
+    const { renderGovernanceRepoClassificationPreviewText } = require(path.join(projectRoot, "dist", "governance", "repoClassificationPreview.js"));
+    const rendered = renderGovernanceRepoClassificationPreviewText(preview);
+    assertRepoClassificationSafety(preview, "repo classification unit");
+    if (preview.schemaVersion !== 1 || !rendered.includes("Governance Repo Classification Preview")) {
+      throw new Error(`repo classification unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-repo-classification-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-repo-classification-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-repo-classification-preview-missing");
+    const preview = directGovernanceRepoClassificationPreview(repo);
+    assertRepoClassificationSafety(preview, "repo classification missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceProfilePreviewStatus !== "not-created" ||
+      preview.repositoryClassification !== null ||
+      preview.governanceBoundaryPreview !== null ||
+      preview.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`repo classification missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-repo-classification-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-repo-classification-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewCreatedUnit() {
+  try {
+    const repo = createRepoClassificationReadyRepo("governance-repo-classification-preview-created");
+    const preview = directGovernanceRepoClassificationPreview(repo);
+    assertRepoClassificationSafety(preview, "repo classification created");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.repositoryClassification?.category !== "single-repo" ||
+      preview.governanceBoundaryPreview?.recommendedProfile !== "strict" ||
+      preview.recommendedNextStage !== "prepare-governance-attestation"
+    ) {
+      throw new Error(`repo classification created mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-repo-classification-preview-created");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-repo-classification-preview-created");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewEnterpriseUnit() {
+  try {
+    const repo = createRepoClassificationReadyRepo("governance-repo-classification-preview-enterprise");
+    ensureDir(path.join(repo, ".factory", "evidence-packs"));
+    writeJson(path.join(repo, ".factory", "evidence-index.json"), { version: 1, entries: [] });
+    writeJson(path.join(repo, ".factory", "archive-index.json"), { version: 1, archives: [] });
+    writeJson(path.join(repo, ".factory", "runs-index.json"), { version: 1, runs: [] });
+    writeJson(path.join(repo, ".factory", "release-gate.json"), { version: 1 });
+    writeJson(path.join(repo, ".factory", "governance", "config-snapshot-lock.json"), { schemaVersion: 1 });
+    writeJson(path.join(repo, ".factory", "governance", "policy-runtime-preview.json"), { schemaVersion: 1 });
+    writeJson(path.join(repo, ".factory", "governance", "profile-inheritance-preview.json"), { schemaVersion: 1 });
+    const preview = directGovernanceRepoClassificationPreview(repo);
+    if (preview.repositoryClassification?.category !== "enterprise" || preview.governanceBoundaryPreview?.recommendedProfile !== "enterprise") {
+      throw new Error(`repo classification enterprise mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-repo-classification-preview-enterprise");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-repo-classification-preview-enterprise");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewExperimentalUnit() {
+  try {
+    const repo = createRepoClassificationReadyRepo("governance-repo-classification-preview-experimental");
+    ensureDir(path.join(repo, ".factory", "governance"));
+    fs.writeFileSync(path.join(repo, ".factory", "governance", "experimental-preview.flag"), "preview\n", "utf8");
+    const preview = directGovernanceRepoClassificationPreview(repo);
+    if (preview.repositoryClassification?.category !== "experimental" || preview.governanceBoundaryPreview?.recommendedProfile !== "experimental-preview") {
+      throw new Error(`repo classification experimental mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-repo-classification-preview-experimental");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-repo-classification-preview-experimental");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewBlockedSourceUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-repo-classification-preview-blocked-source");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.pluginExecution = true;
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const preview = directGovernanceRepoClassificationPreview(repo);
+    assertRepoClassificationSafety(preview, "repo classification blocked source");
+    if (preview.previewStatus !== "blocked" || preview.sourceProfilePreviewStatus !== "blocked" || preview.recommendedNextStage !== "blocked") {
+      throw new Error(`repo classification blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-repo-classification-preview-blocked-source");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-repo-classification-preview-blocked-source");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewBlocksUnsafeBoundariesUnit() {
+  try {
+    const repo = createRepoClassificationReadyRepo("governance-repo-classification-preview-blocks-unsafe-boundaries");
+    const preview = directGovernanceRepoClassificationPreview(repo);
+    if (
+      preview.governanceBoundaryPreview === null ||
+      !preview.governanceBoundaryPreview.blockedBoundaryCapabilities.some((blocked) => blocked.key === "enableAutonomy") ||
+      !preview.governanceBoundaryPreview.blockedBoundaryCapabilities.some((blocked) => blocked.key === "bypassSafePatchEngine")
+    ) {
+      throw new Error(`repo classification blocked boundaries mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-repo-classification-preview-blocks-unsafe-boundaries");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-repo-classification-preview-blocks-unsafe-boundaries");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectRepoClassificationPreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "repo", "classification-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.previewStatus !== "created" ||
+      parsed.classificationApplied !== false ||
+      parsed.boundariesEnforced !== false ||
+      parsed.safePatchEngineOnly !== true ||
+      parsed.governanceBoundaryPreview === null
+    ) {
+      throw new Error(`repo classification JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectRepoClassificationPreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+
+    console.log("PASS governance-repo-classification-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectRepoClassificationPreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    console.log("FAIL governance-repo-classification-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewArtifactUnit() {
+  try {
+    cleanupProjectRepoClassificationPreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "audit-trail", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "repo", "classification-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "repo-classification-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "repo-classification-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`repo classification artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (artifact.previewStatus !== "created" || !fs.readFileSync(markdownPath, "utf8").includes("Governance Repo Classification Preview")) {
+      throw new Error(`repo classification artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectRepoClassificationPreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+
+    console.log("PASS governance-repo-classification-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectRepoClassificationPreviewArtifacts();
+    cleanupProjectAuditTrailArtifacts();
+    console.log("FAIL governance-repo-classification-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRepoClassificationPreviewNoEnforcementUnit() {
+  try {
+    const repo = createRepoClassificationReadyRepo("governance-repo-classification-preview-no-enforcement");
+    const preview = directGovernanceRepoClassificationPreview(repo);
+    assertRepoClassificationSafety(preview, "repo classification no enforcement");
+
+    console.log("PASS governance-repo-classification-preview-no-enforcement");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-repo-classification-preview-no-enforcement");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -16403,6 +16667,36 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceProfileInheritancePreviewNoApplicationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewCreatedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewEnterpriseUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewExperimentalUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewBlockedSourceUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewBlocksUnsafeBoundariesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRepoClassificationPreviewNoEnforcementUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

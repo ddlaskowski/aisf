@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v6.1 - Governance Profile Inheritance Preview**
+**v6.2 - Repo Classification & Governance Boundaries Preview**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -106,6 +106,8 @@ v5.9 adds deterministic Governance Config Audit Trails. It records snapshot-lock
 v6.0 adds deterministic Policy-as-Code Governance Runtime Preview. It projects a stable config audit candidate into a preview-only policy model while keeping policies inactive, unenforced, and unable to change runtime behavior.
 
 v6.1 adds deterministic Governance Profile Inheritance Preview. It resolves built-in profile candidates over policy-runtime-preview outputs without applying profiles, enforcing policies, activating config, or changing runtime behavior.
+
+v6.2 adds deterministic Repo Classification & Governance Boundaries Preview. It classifies local repository governance maturity and previews boundary/profile recommendations without enforcing boundaries or changing runtime behavior.
 
 ---
 
@@ -3132,6 +3134,93 @@ v6.1 deterministic checks:
 * governance-profile-inheritance-preview-json-output
 * governance-profile-inheritance-preview-artifact
 * governance-profile-inheritance-preview-no-application
+
+## Repo Classification & Governance Boundaries Preview (v6.2)
+
+v6.2 classifies repositories with deterministic local signals and previews governance boundary recommendations.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance repo classification-preview
+node dist/cli.js governance repo classification-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/repo-classification-preview.json
+.factory/governance/repo-classification-preview.md
+```
+
+The repo classification preview:
+
+* reuses governance profile inheritance preview logic
+* inspects only local deterministic repository signals
+* classifies repositories into categories such as `local-development`, `single-repo`, `multi-service`, `enterprise`, `high-governance`, `experimental`, or `unknown`
+* previews allowed governance profiles and a recommended profile
+* previews relevant policy categories
+* blocks unsafe boundary capabilities such as runtime enforcement, autonomy, Safe Patch Engine bypass, mutation scope expansion, plugin execution, dynamic policy execution, external execution, and uncontrolled orchestration
+* does not enforce governance boundaries
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Classification applied:
+false
+
+Boundaries enforced:
+false
+
+Safe Patch Engine only:
+true
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceProfilePreviewStatus`
+* `repositoryClassification.category`
+* `repositoryClassification.confidence`
+* `repositoryClassification.signals`
+* `governanceBoundaryPreview.allowedProfiles`
+* `governanceBoundaryPreview.recommendedProfile`
+* `governanceBoundaryPreview.relevantPolicyCategories`
+* `governanceBoundaryPreview.blockedBoundaryCapabilities`
+* `recommendedNextStage`
+
+Safety guarantees:
+
+* `classificationApplied` is always `false`
+* `boundariesEnforced` is always `false`
+* `profileApplied` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* no profile is applied
+* no policy is enforced
+* no governance boundary is enforced
+* runtime behavior does not change
+
+v6.2 deterministic checks:
+
+* governance-repo-classification-preview-unit
+* governance-repo-classification-preview-missing
+* governance-repo-classification-preview-created
+* governance-repo-classification-preview-enterprise
+* governance-repo-classification-preview-experimental
+* governance-repo-classification-preview-blocked-source
+* governance-repo-classification-preview-blocks-unsafe-boundaries
+* governance-repo-classification-preview-json-output
+* governance-repo-classification-preview-artifact
+* governance-repo-classification-preview-no-enforcement
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
