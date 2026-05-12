@@ -128,6 +128,11 @@ import {
   writeGovernanceConfigLoadPreviewArtifacts
 } from "./governance/configLoadPreview.js";
 import {
+  buildGovernanceConfigSnapshotLock,
+  renderGovernanceConfigSnapshotLockText,
+  writeGovernanceConfigSnapshotLockArtifacts
+} from "./governance/configSnapshotLock.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -141,6 +146,7 @@ import {
   renderGovernanceConfigExampleHelp,
   renderGovernanceConfigHelp,
   renderGovernanceConfigLoadPreviewHelp,
+  renderGovernanceConfigSnapshotLockHelp,
   renderGovernanceConfigValidateHelp,
   renderGovernanceHelp,
   renderEscalationHelp,
@@ -490,6 +496,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "config") {
+    if (args[2] === "snapshot-lock") {
+      const allowed = new Set(["--json", "--help", "-h"]);
+      for (const arg of args.slice(3)) {
+        if (!arg.startsWith("-")) {
+          continue;
+        }
+        const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+        if (!allowed.has(flag)) {
+          printAndExit(renderInvalidFlagError("governance config snapshot-lock", flag), 1);
+        }
+      }
+
+      if (args.includes("--help") || args.includes("-h")) {
+        printAndExit(renderGovernanceConfigSnapshotLockHelp(), 0);
+      }
+
+      const snapshotLock = buildGovernanceConfigSnapshotLock(process.cwd());
+      writeGovernanceConfigSnapshotLockArtifacts(process.cwd(), snapshotLock);
+      if (args.includes("--json")) {
+        printAndExit(JSON.stringify(snapshotLock, null, 2), 0);
+      }
+      printAndExit(renderGovernanceConfigSnapshotLockText(snapshotLock), 0);
+    }
+
     if (args[2] === "load-preview") {
       const allowed = new Set(["--json", "--help", "-h"]);
       for (const arg of args.slice(3)) {

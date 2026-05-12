@@ -14025,6 +14025,234 @@ function runGovernanceConfigLoadPreviewArtifactUnit() {
     return false;
   }
 }
+
+function directGovernanceConfigSnapshotLock(repo) {
+  const { buildGovernanceConfigSnapshotLock } = require(path.join(projectRoot, "dist", "governance", "configSnapshotLock.js"));
+  return buildGovernanceConfigSnapshotLock(repo);
+}
+
+function cleanupProjectSnapshotLockArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "config-snapshot-lock.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "config-snapshot-lock.md"), { force: true });
+}
+
+function assertSnapshotLockSafety(snapshotLock, label) {
+  if (
+    snapshotLock.applied !== false ||
+    snapshotLock.runtimeBehaviorChanged !== false ||
+    snapshotLock.governanceDecisionsChanged !== false ||
+    snapshotLock.repairOrchestrationChanged !== false
+  ) {
+    throw new Error(`${label} changed runtime behavior: ${JSON.stringify(snapshotLock)}`);
+  }
+}
+
+function runGovernanceConfigSnapshotLockUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-snapshot-lock-unit");
+    const snapshotLock = directGovernanceConfigSnapshotLock(repo);
+    const { renderGovernanceConfigSnapshotLockText } = require(path.join(projectRoot, "dist", "governance", "configSnapshotLock.js"));
+    const rendered = renderGovernanceConfigSnapshotLockText(snapshotLock);
+    assertSnapshotLockSafety(snapshotLock, "snapshot lock unit");
+    if (snapshotLock.schemaVersion !== 1 || !rendered.includes("Governance Config Snapshot Lock")) {
+      throw new Error(`snapshot lock unit mismatch: ${JSON.stringify(snapshotLock)}`);
+    }
+
+    console.log("PASS governance-config-snapshot-lock-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-snapshot-lock-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigSnapshotLockMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-snapshot-lock-missing");
+    const snapshotLock = directGovernanceConfigSnapshotLock(repo);
+    assertSnapshotLockSafety(snapshotLock, "snapshot lock missing");
+    if (
+      snapshotLock.sourcePreviewStatus !== "missing" ||
+      snapshotLock.sourceLoadStatus !== "not-loaded" ||
+      snapshotLock.lockStatus !== "not-created" ||
+      snapshotLock.lock !== null ||
+      snapshotLock.recommendedNextStage !== "continue-preview-only"
+    ) {
+      throw new Error(`snapshot lock missing mismatch: ${JSON.stringify(snapshotLock)}`);
+    }
+
+    console.log("PASS governance-config-snapshot-lock-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-snapshot-lock-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigSnapshotLockValidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-snapshot-lock-valid");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const snapshotLock = directGovernanceConfigSnapshotLock(repo);
+    assertSnapshotLockSafety(snapshotLock, "snapshot lock valid");
+    if (
+      snapshotLock.lockStatus !== "created" ||
+      snapshotLock.sourcePreviewStatus !== "valid" ||
+      snapshotLock.sourceLoadStatus !== "loaded-for-preview" ||
+      snapshotLock.recommendedNextStage !== "prepare-audit-trail" ||
+      snapshotLock.lock?.lockedAt !== "deterministic-lock" ||
+      snapshotLock.lock.valueCount !== 2 ||
+      !snapshotLock.lock.deterministicId.startsWith("gov-config-lock-")
+    ) {
+      throw new Error(`snapshot lock valid mismatch: ${JSON.stringify(snapshotLock)}`);
+    }
+
+    console.log("PASS governance-config-snapshot-lock-valid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-snapshot-lock-valid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigSnapshotLockInvalidUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-snapshot-lock-invalid");
+    ensureDir(path.join(repo, ".factory"));
+    fs.writeFileSync(path.join(repo, ".factory", "governance.config.json"), "{", "utf8");
+    const snapshotLock = directGovernanceConfigSnapshotLock(repo);
+    assertSnapshotLockSafety(snapshotLock, "snapshot lock invalid");
+    if (
+      snapshotLock.sourcePreviewStatus !== "invalid" ||
+      snapshotLock.sourceLoadStatus !== "blocked" ||
+      snapshotLock.lockStatus !== "blocked" ||
+      snapshotLock.lock !== null ||
+      snapshotLock.recommendedNextStage !== "fix-config"
+    ) {
+      throw new Error(`snapshot lock invalid mismatch: ${JSON.stringify(snapshotLock)}`);
+    }
+
+    console.log("PASS governance-config-snapshot-lock-invalid");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-snapshot-lock-invalid");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigSnapshotLockBlockedUnsafeUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-snapshot-lock-blocked-unsafe");
+    const config = createValidGovernanceConfigWithOverrides();
+    config.scriptCommand = "npm run unsafe";
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), config);
+    const snapshotLock = directGovernanceConfigSnapshotLock(repo);
+    assertSnapshotLockSafety(snapshotLock, "snapshot lock blocked unsafe");
+    if (
+      snapshotLock.sourcePreviewStatus !== "valid" ||
+      snapshotLock.sourceLoadStatus !== "blocked" ||
+      snapshotLock.lockStatus !== "blocked" ||
+      snapshotLock.lock !== null ||
+      snapshotLock.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`snapshot lock unsafe mismatch: ${JSON.stringify(snapshotLock)}`);
+    }
+
+    console.log("PASS governance-config-snapshot-lock-blocked-unsafe");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-snapshot-lock-blocked-unsafe");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigSnapshotLockJsonOutputUnit() {
+  try {
+    cleanupProjectSnapshotLockArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "snapshot-lock", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.lockStatus !== "created" ||
+      parsed.lock.lockedAt !== "deterministic-lock" ||
+      parsed.applied !== false ||
+      parsed.runtimeBehaviorChanged !== false
+    ) {
+      throw new Error(`snapshot lock JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectSnapshotLockArtifacts();
+
+    console.log("PASS governance-config-snapshot-lock-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectSnapshotLockArtifacts();
+    console.log("FAIL governance-config-snapshot-lock-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigSnapshotLockArtifactUnit() {
+  try {
+    cleanupProjectSnapshotLockArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "config", "snapshot-lock"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "config-snapshot-lock.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "config-snapshot-lock.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`snapshot lock artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    if (
+      artifact.lockStatus !== "created" ||
+      artifact.lock.lockedAt !== "deterministic-lock" ||
+      !fs.readFileSync(markdownPath, "utf8").includes("Governance Config Snapshot Lock")
+    ) {
+      throw new Error(`snapshot lock artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectSnapshotLockArtifacts();
+
+    console.log("PASS governance-config-snapshot-lock-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectSnapshotLockArtifacts();
+    console.log("FAIL governance-config-snapshot-lock-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConfigSnapshotLockFingerprintStableUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-config-snapshot-lock-fingerprint-stable");
+    ensureDir(path.join(repo, ".factory"));
+    writeJson(path.join(repo, ".factory", "governance.config.json"), createValidGovernanceConfigWithOverrides());
+    const first = directGovernanceConfigSnapshotLock(repo);
+    const second = directGovernanceConfigSnapshotLock(repo);
+    if (
+      first.lock?.fingerprint !== second.lock?.fingerprint ||
+      first.lock?.deterministicId !== second.lock?.deterministicId ||
+      first.lock?.fingerprint.length !== 16
+    ) {
+      throw new Error(`snapshot lock fingerprint mismatch: first=${JSON.stringify(first.lock)} second=${JSON.stringify(second.lock)}`);
+    }
+
+    console.log("PASS governance-config-snapshot-lock-fingerprint-stable");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-config-snapshot-lock-fingerprint-stable");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -15285,6 +15513,30 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceConfigLoadPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigSnapshotLockUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigSnapshotLockMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigSnapshotLockValidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigSnapshotLockInvalidUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigSnapshotLockBlockedUnsafeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigSnapshotLockJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigSnapshotLockArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConfigSnapshotLockFingerprintStableUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

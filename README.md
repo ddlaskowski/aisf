@@ -15,7 +15,7 @@ AI-powered local development agent that can:
 
 ## ✨ Current Version
 
-**v5.7 - Guarded Governance Config Loading Layer**
+**v5.8 - Governance Config Snapshot Lock Layer**
 
 See [v1.5 Safe Patch Engine](docs/v1.5-safe-patch-engine.md) for the patch validation architecture, metadata, confidence scoring, and regression coverage.
 
@@ -98,6 +98,8 @@ v5.5 adds deterministic Governance Config Effective Preview. It shows static def
 v5.6 adds deterministic Governance Config Activation Plans. It writes advisory activation-plan artifacts for future guarded loading while keeping runtime config loading disabled and `applied: false`.
 
 v5.7 adds deterministic guarded Governance Config Load Preview. It validates, normalizes, and snapshots safe governance config override candidates for preview only without applying runtime behavior changes.
+
+v5.8 adds deterministic Governance Config Snapshot Locks. It converts a valid load-preview snapshot into a reproducible audit lock with a stable fingerprint while keeping runtime behavior unchanged.
 
 ---
 
@@ -2840,6 +2842,67 @@ v5.7 deterministic checks:
 * governance-config-load-preview-blocked-unsafe
 * governance-config-load-preview-json-output
 * governance-config-load-preview-artifact
+
+## Governance Config Snapshot Lock Layer (v5.8)
+
+v5.8 creates a deterministic snapshot lock from a successful governance config load preview.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance config snapshot-lock
+node dist/cli.js governance config snapshot-lock --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/config-snapshot-lock.json
+.factory/governance/config-snapshot-lock.md
+```
+
+The snapshot lock:
+
+* reuses the existing load-preview logic
+* creates a lock only when `loadStatus` is `loaded-for-preview`
+* does not create a lock for missing, invalid, or unsafe config
+* uses `lockedAt: deterministic-lock`
+* computes a deterministic fingerprint from normalized snapshot values, safe override keys, blocked keys, and schema version
+* derives `deterministicId` from the fingerprint
+
+Example JSON fields:
+
+* `lockStatus`
+* `sourcePreviewStatus`
+* `sourceLoadStatus`
+* `lock.fingerprint`
+* `lock.deterministicId`
+* `lock.safeOverrideKeys`
+* `lock.blockedKeys`
+* `lock.valueCount`
+* `recommendedNextStage`
+
+Safety guarantees:
+
+* `applied` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* governance thresholds are not changed
+* governance decisions are not changed
+* repair orchestration is not changed
+* snapshot locks are audit/preview preparation only, not runtime activation
+
+v5.8 deterministic checks:
+
+* governance-config-snapshot-lock-unit
+* governance-config-snapshot-lock-missing
+* governance-config-snapshot-lock-valid
+* governance-config-snapshot-lock-invalid
+* governance-config-snapshot-lock-blocked-unsafe
+* governance-config-snapshot-lock-json-output
+* governance-config-snapshot-lock-artifact
+* governance-config-snapshot-lock-fingerprint-stable
 
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate

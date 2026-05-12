@@ -95,10 +95,32 @@ export function renderGovernanceConfigHelp(): string {
     "  node dist/cli.js governance config effective",
     "  node dist/cli.js governance config activation-plan",
     "  node dist/cli.js governance config load-preview",
+    "  node dist/cli.js governance config snapshot-lock",
     "",
     "Read-only guarantee:",
     "  Governance config preview does not modify repair behavior or governance indexes.",
     "  Governance config preview does not load, create, or enforce .factory/governance.config.json."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceConfigSnapshotLockHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance config snapshot-lock",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance config snapshot-lock [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance config snapshot-lock",
+    "  node dist/cli.js governance config snapshot-lock --json",
+    "",
+    "Audit-preview guarantee:",
+    "  This command converts a load-preview snapshot into a deterministic lock only.",
+    "  It does not apply config values or change runtime behavior."
   ].join("\n") + "\n";
 }
 
