@@ -4362,6 +4362,134 @@ v7.2 deterministic checks:
 * governance-human-approval-workflow-preview-no-approval
 * governance-human-approval-workflow-preview-no-autonomy
 
+## Controlled Autonomy Scope Preview (v7.3)
+
+v7.3 models future controlled-autonomy scope candidates while keeping all autonomy disabled.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy scope-preview
+node dist/cli.js governance autonomy scope-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-scope-preview.json
+.factory/governance/autonomy-scope-preview.md
+```
+
+The controlled autonomy scope preview:
+
+* reuses deterministic human approval workflow preview logic
+* classifies future autonomy scope candidates
+* summarizes scope boundaries
+* summarizes future-only actions that require human approval
+* lists permanently forbidden actions
+* assigns deterministic IDs such as `gov-autonomy-scope-001`
+* does not approve scope
+* does not apply scope
+* does not enable autonomy
+* does not allow autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Scope conclusion:
+scope-review-ready-preview
+
+Scope approved:
+false
+
+Scope applied:
+false
+
+Autonomy enabled:
+false
+
+Autonomous actions allowed:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceApprovalWorkflowStatus`
+* `scopeConclusion`
+* `scopeApproved`
+* `scopeApplied`
+* `scopeEnforced`
+* `scopeCandidates`
+* `scopeBoundaries`
+* `futureOnlyActions`
+* `permanentlyForbiddenActions`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown scope-preview shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Scope Preview
+
+## Scope Candidates
+
+## Scope Boundaries
+
+## Future-Only Actions
+
+## Permanently Forbidden Actions
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `scopeApproved` is always `false`
+* `scopeApplied` is always `false`
+* `scopeEnforced` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `humanApprovalGranted` is always `false`
+* `approvalApplied` is always `false`
+* `approvalWorkflowEnforced` is always `false`
+* `designReviewApproved` is always `false`
+* `designReviewApplied` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.3 deterministic checks:
+
+* governance-autonomy-scope-preview-unit
+* governance-autonomy-scope-preview-missing
+* governance-autonomy-scope-preview-not-ready
+* governance-autonomy-scope-preview-ready
+* governance-autonomy-scope-preview-blocked
+* governance-autonomy-scope-preview-boundaries
+* governance-autonomy-scope-preview-forbidden-actions
+* governance-autonomy-scope-preview-json-output
+* governance-autonomy-scope-preview-artifact
+* governance-autonomy-scope-preview-no-approval
+* governance-autonomy-scope-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

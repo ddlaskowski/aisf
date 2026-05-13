@@ -18895,6 +18895,389 @@ function runGovernanceHumanApprovalWorkflowPreviewNoAutonomyUnit() {
     return false;
   }
 }
+
+function directGovernanceAutonomyScopePreview(repo) {
+  const { buildGovernanceAutonomyScopePreview } = require(path.join(projectRoot, "dist", "governance", "autonomyScopePreview.js"));
+  return buildGovernanceAutonomyScopePreview(repo);
+}
+
+function directGovernanceAutonomyScopePreviewFromApprovalWorkflow(source) {
+  const { buildGovernanceAutonomyScopePreviewFromApprovalWorkflow } = require(path.join(projectRoot, "dist", "governance", "autonomyScopePreview.js"));
+  return buildGovernanceAutonomyScopePreviewFromApprovalWorkflow(source);
+}
+
+function cleanupProjectGovernanceAutonomyScopePreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-scope-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-scope-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceAutonomyScopePreviewChainArtifacts() {
+  cleanupProjectGovernanceAutonomyScopePreviewArtifacts();
+  cleanupProjectGovernanceHumanApprovalWorkflowPreviewChainArtifacts();
+}
+
+function createSyntheticHumanApprovalWorkflow(overrides = {}) {
+  const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack());
+  return {
+    ...preview,
+    ...overrides,
+    summary: {
+      ...preview.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceAutonomyScopePreviewSafety(preview, label) {
+  if (
+    preview.scopeApproved !== false ||
+    preview.scopeApplied !== false ||
+    preview.scopeEnforced !== false ||
+    preview.autonomyEnabled !== false ||
+    preview.autonomousActionsAllowed !== false ||
+    preview.autonomyApplied !== false ||
+    preview.autonomyEnforced !== false ||
+    preview.humanApprovalGranted !== false ||
+    preview.approvalApplied !== false ||
+    preview.approvalWorkflowEnforced !== false ||
+    preview.designReviewApproved !== false ||
+    preview.designReviewApplied !== false ||
+    preview.runtimeActivationEnabled !== false ||
+    preview.policyActivated !== false ||
+    preview.guardedActivationEnabled !== false ||
+    preview.activationEnforced !== false ||
+    preview.governanceBypassAllowed !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true
+  ) {
+    throw new Error(`${label} changed scope, autonomy, or runtime behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceAutonomyScopePreviewOrdering(preview) {
+  const classificationOrder = {
+    "permanently-forbidden": 0,
+    blocked: 1,
+    "review-required": 2,
+    "eligible-for-review": 3
+  };
+  const lists = [
+    ["gov-autonomy-scope", preview.scopeCandidates, (item) => `${classificationOrder[item.classification]}:${item.category}:${item.key}`],
+    ["gov-autonomy-boundary", preview.scopeBoundaries, (item) => `${item.boundaryType}:${item.key}`],
+    ["gov-autonomy-future-action", preview.futureOnlyActions, (item) => item.key],
+    ["gov-autonomy-forbidden-action", preview.permanentlyForbiddenActions, (item) => item.key]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`autonomy scope id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`autonomy scope ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceAutonomyScopePreviewUnit() {
+  try {
+    const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow());
+    const { renderGovernanceAutonomyScopePreviewText } = require(path.join(projectRoot, "dist", "governance", "autonomyScopePreview.js"));
+    const rendered = renderGovernanceAutonomyScopePreviewText(preview);
+    assertGovernanceAutonomyScopePreviewSafety(preview, "autonomy scope unit");
+    assertGovernanceAutonomyScopePreviewOrdering(preview);
+    if (
+      preview.schemaVersion !== 1 ||
+      preview.previewStatus !== "created" ||
+      preview.scopeConclusion !== "scope-review-ready-preview" ||
+      !rendered.includes("Controlled Autonomy Scope Preview")
+    ) {
+      throw new Error(`autonomy scope unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-scope-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-autonomy-scope-preview-missing");
+    const preview = directGovernanceAutonomyScopePreview(repo);
+    assertGovernanceAutonomyScopePreviewSafety(preview, "autonomy scope missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceApprovalWorkflowStatus !== "not-created" ||
+      preview.scopeConclusion !== "source-missing" ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy scope missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-scope-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow({
+      previewStatus: "created",
+      sourceDesignReviewPackStatus: "created",
+      approvalWorkflowConclusion: "workflow-not-ready",
+      recommendedNextStage: "continue-governance-hardening",
+      summary: {
+        workflowReadyForFutureReview: false
+      }
+    }));
+    assertGovernanceAutonomyScopePreviewSafety(preview, "autonomy scope not ready");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.scopeConclusion !== "scope-not-ready" ||
+      preview.summary.scopeReadyForFutureReview !== false ||
+      preview.summary.blockedCandidates === 0 ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy scope not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-scope-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewReadyUnit() {
+  try {
+    const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow());
+    assertGovernanceAutonomyScopePreviewSafety(preview, "autonomy scope ready");
+    assertGovernanceAutonomyScopePreviewOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourceApprovalWorkflowStatus !== "created" ||
+      preview.scopeConclusion !== "scope-review-ready-preview" ||
+      preview.summary.scopeReadyForFutureReview !== true ||
+      preview.summary.eligibleForReviewCandidates === 0 ||
+      preview.summary.reviewRequiredCandidates === 0 ||
+      preview.recommendedNextStage !== "prepare-autonomy-risk-register-preview"
+    ) {
+      throw new Error(`autonomy scope ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-scope-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow({
+      previewStatus: "blocked",
+      sourceDesignReviewPackStatus: "blocked",
+      approvalWorkflowConclusion: "blocked-preview",
+      recommendedNextStage: "blocked",
+      summary: {
+        workflowReadyForFutureReview: false
+      }
+    }));
+    assertGovernanceAutonomyScopePreviewSafety(preview, "autonomy scope blocked");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.sourceApprovalWorkflowStatus !== "blocked" ||
+      preview.scopeConclusion !== "blocked-preview" ||
+      preview.summary.blockedCandidates === 0 ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`autonomy scope blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-scope-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewBoundariesUnit() {
+  try {
+    const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow());
+    assertGovernanceAutonomyScopePreviewSafety(preview, "autonomy scope boundaries");
+    assertGovernanceAutonomyScopePreviewOrdering(preview);
+    if (
+      preview.summary.totalScopeBoundaries < 8 ||
+      !preview.scopeBoundaries.some((item) => item.key === "safe-patch-engine-exclusive") ||
+      !preview.scopeBoundaries.some((item) => item.key === "no-plugin-script-network-execution")
+    ) {
+      throw new Error(`autonomy scope boundaries mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-scope-preview-boundaries");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-boundaries");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewForbiddenActionsUnit() {
+  try {
+    const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow());
+    assertGovernanceAutonomyScopePreviewSafety(preview, "autonomy scope forbidden actions");
+    assertGovernanceAutonomyScopePreviewOrdering(preview);
+    if (
+      preview.summary.permanentlyForbiddenActionCount < 14 ||
+      !preview.permanentlyForbiddenActions.every((item) => item.permanentlyForbidden === true) ||
+      !preview.permanentlyForbiddenActions.some((item) => item.key === "safe-patch-engine-bypass") ||
+      !preview.scopeCandidates.some((item) => item.classification === "permanently-forbidden")
+    ) {
+      throw new Error(`autonomy scope forbidden actions mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-scope-preview-forbidden-actions");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-forbidden-actions");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyScopePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.scopeApproved !== false ||
+      parsed.scopeApplied !== false ||
+      parsed.scopeEnforced !== false ||
+      parsed.autonomyEnabled !== false ||
+      parsed.autonomousActionsAllowed !== false ||
+      !parsed.scopeCandidates.every((item) => item.id.startsWith("gov-autonomy-scope-"))
+    ) {
+      throw new Error(`autonomy scope JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceAutonomyScopePreviewChainArtifacts();
+
+    console.log("PASS governance-autonomy-scope-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyScopePreviewChainArtifacts();
+    console.log("FAIL governance-autonomy-scope-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyScopePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "autonomy-scope-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "autonomy-scope-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`autonomy scope artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Controlled Autonomy Scope Preview") || artifact.scopeApproved !== false) {
+      throw new Error(`autonomy scope artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceAutonomyScopePreviewChainArtifacts();
+
+    console.log("PASS governance-autonomy-scope-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyScopePreviewChainArtifacts();
+    console.log("FAIL governance-autonomy-scope-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewNoApprovalUnit() {
+  try {
+    const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow());
+    if (
+      preview.scopeApproved !== false ||
+      preview.scopeApplied !== false ||
+      preview.scopeEnforced !== false ||
+      preview.humanApprovalGranted !== false ||
+      preview.approvalApplied !== false ||
+      preview.designReviewApproved !== false
+    ) {
+      throw new Error(`autonomy scope approval mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-scope-preview-no-approval");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-no-approval");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyScopePreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow());
+    assertGovernanceAutonomyScopePreviewSafety(preview, "autonomy scope no autonomy");
+
+    console.log("PASS governance-autonomy-scope-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-scope-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -20602,6 +20985,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceHumanApprovalWorkflowPreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewBoundariesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewForbiddenActionsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewNoApprovalUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyScopePreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
