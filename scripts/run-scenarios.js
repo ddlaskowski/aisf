@@ -18525,6 +18525,376 @@ function runGovernanceAutonomyDesignReviewPackNoAutonomyUnit() {
     return false;
   }
 }
+
+function directGovernanceHumanApprovalWorkflowPreview(repo) {
+  const { buildGovernanceHumanApprovalWorkflowPreview } = require(path.join(projectRoot, "dist", "governance", "humanApprovalWorkflowPreview.js"));
+  return buildGovernanceHumanApprovalWorkflowPreview(repo);
+}
+
+function directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(pack) {
+  const { buildGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack } = require(path.join(projectRoot, "dist", "governance", "humanApprovalWorkflowPreview.js"));
+  return buildGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(pack);
+}
+
+function cleanupProjectGovernanceHumanApprovalWorkflowPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "human-approval-workflow-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "human-approval-workflow-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceHumanApprovalWorkflowPreviewChainArtifacts() {
+  cleanupProjectGovernanceHumanApprovalWorkflowPreviewArtifacts();
+  cleanupProjectGovernanceAutonomyDesignReviewPackChainArtifacts();
+}
+
+function createSyntheticDesignReviewPack(overrides = {}) {
+  const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness());
+  return {
+    ...pack,
+    ...overrides,
+    summary: {
+      ...pack.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, label) {
+  if (
+    preview.humanApprovalGranted !== false ||
+    preview.approvalApplied !== false ||
+    preview.approvalWorkflowEnforced !== false ||
+    preview.designReviewApproved !== false ||
+    preview.designReviewApplied !== false ||
+    preview.autonomyEnabled !== false ||
+    preview.autonomousActionsAllowed !== false ||
+    preview.autonomyApplied !== false ||
+    preview.autonomyEnforced !== false ||
+    preview.runtimeActivationEnabled !== false ||
+    preview.policyActivated !== false ||
+    preview.guardedActivationEnabled !== false ||
+    preview.activationEnforced !== false ||
+    preview.governanceBypassAllowed !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true
+  ) {
+    throw new Error(`${label} changed approval, autonomy, or runtime behavior: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceHumanApprovalWorkflowPreviewOrdering(preview) {
+  const lists = [
+    ["gov-human-approval-step", preview.workflowSteps, (item) => `${item.key}:${item.title}:${item.status}`],
+    ["gov-human-decision", preview.manualDecisions, (item) => item.key],
+    ["gov-human-approval-blocker", preview.approvalBlockers, (item) => item.key],
+    ["gov-human-forbidden-path", preview.permanentlyForbiddenApprovalPaths, (item) => item.key]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`human approval workflow id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`human approval workflow ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewUnit() {
+  try {
+    const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack());
+    const { renderGovernanceHumanApprovalWorkflowPreviewText } = require(path.join(projectRoot, "dist", "governance", "humanApprovalWorkflowPreview.js"));
+    const rendered = renderGovernanceHumanApprovalWorkflowPreviewText(preview);
+    assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, "human approval workflow unit");
+    assertGovernanceHumanApprovalWorkflowPreviewOrdering(preview);
+    if (
+      preview.schemaVersion !== 1 ||
+      preview.previewStatus !== "created" ||
+      preview.approvalWorkflowConclusion !== "workflow-ready-preview" ||
+      !rendered.includes("Human Approval Workflow Preview")
+    ) {
+      throw new Error(`human approval workflow unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-human-approval-workflow-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-human-approval-workflow-preview-missing");
+    const preview = directGovernanceHumanApprovalWorkflowPreview(repo);
+    assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, "human approval workflow missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceDesignReviewPackStatus !== "not-created" ||
+      preview.approvalWorkflowConclusion !== "source-missing" ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`human approval workflow missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-human-approval-workflow-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack({
+      reviewPackStatus: "created",
+      sourceAutonomyReadinessStatus: "created",
+      reviewPackConclusion: "review-not-ready",
+      recommendedNextStage: "continue-governance-hardening",
+      summary: {
+        structurallyReadyForReview: false
+      }
+    }));
+    assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, "human approval workflow not ready");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.approvalWorkflowConclusion !== "workflow-not-ready" ||
+      preview.summary.workflowReadyForFutureReview !== false ||
+      preview.summary.notReadySteps === 0 ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`human approval workflow not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-human-approval-workflow-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewReadyUnit() {
+  try {
+    const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack());
+    assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, "human approval workflow ready");
+    assertGovernanceHumanApprovalWorkflowPreviewOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourceDesignReviewPackStatus !== "created" ||
+      preview.approvalWorkflowConclusion !== "workflow-ready-preview" ||
+      preview.summary.workflowReadyForFutureReview !== true ||
+      preview.summary.requiredSteps === 0 ||
+      preview.recommendedNextStage !== "prepare-controlled-autonomy-scope-preview"
+    ) {
+      throw new Error(`human approval workflow ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-human-approval-workflow-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack({
+      reviewPackStatus: "blocked",
+      sourceAutonomyReadinessStatus: "blocked",
+      reviewPackConclusion: "blocked-preview",
+      recommendedNextStage: "blocked",
+      summary: {
+        structurallyReadyForReview: false
+      }
+    }));
+    assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, "human approval workflow blocked");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.sourceDesignReviewPackStatus !== "blocked" ||
+      preview.approvalWorkflowConclusion !== "blocked-preview" ||
+      preview.summary.blockedSteps === 0 ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`human approval workflow blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-human-approval-workflow-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewForbiddenPathsUnit() {
+  try {
+    const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack());
+    assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, "human approval workflow forbidden paths");
+    assertGovernanceHumanApprovalWorkflowPreviewOrdering(preview);
+    if (
+      preview.summary.permanentlyForbiddenApprovalPathCount < 12 ||
+      !preview.permanentlyForbiddenApprovalPaths.every((item) => item.permanentlyForbidden === true) ||
+      !preview.permanentlyForbiddenApprovalPaths.some((item) => item.key === "approving-safe-patch-engine-bypass") ||
+      !preview.permanentlyForbiddenApprovalPaths.some((item) => item.key === "approving-uncontrolled-multi-agent-orchestration")
+    ) {
+      throw new Error(`human approval workflow forbidden paths mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-human-approval-workflow-preview-forbidden-paths");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-forbidden-paths");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewManualDecisionsUnit() {
+  try {
+    const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack());
+    assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, "human approval workflow manual decisions");
+    assertGovernanceHumanApprovalWorkflowPreviewOrdering(preview);
+    if (
+      preview.summary.manualDecisionCount < 10 ||
+      !preview.manualDecisions.every((item) => item.required === true) ||
+      !preview.manualDecisions.some((item) => item.key === "controlled-autonomy-design-may-proceed") ||
+      !preview.manualDecisions.some((item) => item.key === "safe-patch-engine-exclusivity-mandatory")
+    ) {
+      throw new Error(`human approval workflow manual decision mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-human-approval-workflow-preview-manual-decisions");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-manual-decisions");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceHumanApprovalWorkflowPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.humanApprovalGranted !== false ||
+      parsed.approvalApplied !== false ||
+      parsed.approvalWorkflowEnforced !== false ||
+      parsed.autonomyEnabled !== false ||
+      !parsed.workflowSteps.every((item) => item.id.startsWith("gov-human-approval-step-"))
+    ) {
+      throw new Error(`human approval workflow JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceHumanApprovalWorkflowPreviewChainArtifacts();
+
+    console.log("PASS governance-human-approval-workflow-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceHumanApprovalWorkflowPreviewChainArtifacts();
+    console.log("FAIL governance-human-approval-workflow-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceHumanApprovalWorkflowPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "human-approval-workflow-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "human-approval-workflow-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`human approval workflow artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Human Approval Workflow Preview") || artifact.humanApprovalGranted !== false) {
+      throw new Error(`human approval workflow artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceHumanApprovalWorkflowPreviewChainArtifacts();
+
+    console.log("PASS governance-human-approval-workflow-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceHumanApprovalWorkflowPreviewChainArtifacts();
+    console.log("FAIL governance-human-approval-workflow-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewNoApprovalUnit() {
+  try {
+    const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack());
+    if (
+      preview.humanApprovalGranted !== false ||
+      preview.approvalApplied !== false ||
+      preview.approvalWorkflowEnforced !== false ||
+      preview.designReviewApproved !== false ||
+      preview.designReviewApplied !== false
+    ) {
+      throw new Error(`human approval workflow approval mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-human-approval-workflow-preview-no-approval");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-no-approval");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceHumanApprovalWorkflowPreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceHumanApprovalWorkflowPreviewFromDesignReviewPack(createSyntheticDesignReviewPack());
+    assertGovernanceHumanApprovalWorkflowPreviewSafety(preview, "human approval workflow no autonomy");
+
+    console.log("PASS governance-human-approval-workflow-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-human-approval-workflow-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -20199,6 +20569,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceAutonomyDesignReviewPackNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewForbiddenPathsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewManualDecisionsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewNoApprovalUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceHumanApprovalWorkflowPreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

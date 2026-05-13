@@ -40,6 +40,7 @@
     "  node dist/cli.js governance runtime activation-gates-preview",
     "  node dist/cli.js governance autonomy readiness",
     "  node dist/cli.js governance autonomy design-review-pack",
+    "  node dist/cli.js governance autonomy approval-workflow-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -92,6 +93,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime activation-gates-preview",
     "  node dist/cli.js governance autonomy readiness",
     "  node dist/cli.js governance autonomy design-review-pack",
+    "  node dist/cli.js governance autonomy approval-workflow-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -286,6 +288,27 @@ export function renderGovernanceAutonomyDesignReviewPackHelp(): string {
     "Design-review preparation guarantee:",
     "  This command generates a deterministic controlled-autonomy design review pack only.",
     "  It does not approve autonomy, enable autonomy, perform autonomous actions, enforce governance, activate policies, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceHumanApprovalWorkflowPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance autonomy approval-workflow-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance autonomy approval-workflow-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance autonomy approval-workflow-preview",
+    "  node dist/cli.js governance autonomy approval-workflow-preview --json",
+    "",
+    "Approval workflow preview-only guarantee:",
+    "  This command models future human approval workflow steps only.",
+    "  It does not grant approval, apply approval, enable autonomy, perform autonomous actions, enforce governance, activate policies, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

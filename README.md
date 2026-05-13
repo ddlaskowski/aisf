@@ -4237,6 +4237,131 @@ v7.1 deterministic checks:
 * governance-autonomy-design-review-pack-no-approval
 * governance-autonomy-design-review-pack-no-autonomy
 
+## Human Approval Workflow Preview (v7.2)
+
+v7.2 models the deterministic human approval workflow required before controlled autonomy could ever be considered.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy approval-workflow-preview
+node dist/cli.js governance autonomy approval-workflow-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/human-approval-workflow-preview.json
+.factory/governance/human-approval-workflow-preview.md
+```
+
+The human approval workflow preview:
+
+* reuses deterministic controlled autonomy design review pack logic
+* models required workflow steps
+* models required manual decisions
+* summarizes approval blockers
+* lists permanently forbidden approval paths
+* assigns deterministic IDs such as `gov-human-approval-step-001`
+* does not grant approval
+* does not apply approval
+* does not enable autonomy
+* does not perform autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Approval workflow conclusion:
+workflow-ready-preview
+
+Human approval granted:
+false
+
+Approval applied:
+false
+
+Autonomy enabled:
+false
+
+Autonomous actions allowed:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceDesignReviewPackStatus`
+* `approvalWorkflowConclusion`
+* `humanApprovalGranted`
+* `approvalApplied`
+* `approvalWorkflowEnforced`
+* `workflowSteps`
+* `manualDecisions`
+* `approvalBlockers`
+* `permanentlyForbiddenApprovalPaths`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown workflow shape:
+
+```markdown
+# AI Software Factory - Human Approval Workflow Preview
+
+## Workflow Steps
+
+## Manual Decisions
+
+## Approval Blockers
+
+## Permanently Forbidden Approval Paths
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `humanApprovalGranted` is always `false`
+* `approvalApplied` is always `false`
+* `approvalWorkflowEnforced` is always `false`
+* `designReviewApproved` is always `false`
+* `designReviewApplied` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.2 deterministic checks:
+
+* governance-human-approval-workflow-preview-unit
+* governance-human-approval-workflow-preview-missing
+* governance-human-approval-workflow-preview-not-ready
+* governance-human-approval-workflow-preview-ready
+* governance-human-approval-workflow-preview-blocked
+* governance-human-approval-workflow-preview-forbidden-paths
+* governance-human-approval-workflow-preview-manual-decisions
+* governance-human-approval-workflow-preview-json-output
+* governance-human-approval-workflow-preview-artifact
+* governance-human-approval-workflow-preview-no-approval
+* governance-human-approval-workflow-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
