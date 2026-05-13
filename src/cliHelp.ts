@@ -39,6 +39,7 @@
     "  node dist/cli.js governance policy activation-candidates-preview",
     "  node dist/cli.js governance runtime activation-gates-preview",
     "  node dist/cli.js governance autonomy readiness",
+    "  node dist/cli.js governance autonomy design-review-pack",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -90,6 +91,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance policy activation-candidates-preview",
     "  node dist/cli.js governance runtime activation-gates-preview",
     "  node dist/cli.js governance autonomy readiness",
+    "  node dist/cli.js governance autonomy design-review-pack",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -263,6 +265,27 @@ export function renderGovernanceAutonomyReadinessHelp(): string {
     "Readiness-only guarantee:",
     "  This command evaluates future controlled-autonomy design-review readiness only.",
     "  It does not enable autonomy, perform autonomous actions, enforce governance, activate policies, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceAutonomyDesignReviewPackHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance autonomy design-review-pack",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance autonomy design-review-pack [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance autonomy design-review-pack",
+    "  node dist/cli.js governance autonomy design-review-pack --json",
+    "",
+    "Design-review preparation guarantee:",
+    "  This command generates a deterministic controlled-autonomy design review pack only.",
+    "  It does not approve autonomy, enable autonomy, perform autonomous actions, enforce governance, activate policies, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

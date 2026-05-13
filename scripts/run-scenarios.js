@@ -18150,6 +18150,381 @@ function runGovernanceAutonomyReadinessNoEnforcementUnit() {
     return false;
   }
 }
+
+function directGovernanceAutonomyDesignReviewPack(repo) {
+  const { buildGovernanceAutonomyDesignReviewPack } = require(path.join(projectRoot, "dist", "governance", "autonomyDesignReviewPack.js"));
+  return buildGovernanceAutonomyDesignReviewPack(repo);
+}
+
+function directGovernanceAutonomyDesignReviewPackFromReadiness(readiness) {
+  const { buildGovernanceAutonomyDesignReviewPackFromReadiness } = require(path.join(projectRoot, "dist", "governance", "autonomyDesignReviewPack.js"));
+  return buildGovernanceAutonomyDesignReviewPackFromReadiness(readiness);
+}
+
+function cleanupProjectGovernanceAutonomyDesignReviewPackArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-design-review-pack.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-design-review-pack.md"), { force: true });
+}
+
+function cleanupProjectGovernanceAutonomyDesignReviewPackChainArtifacts() {
+  cleanupProjectGovernanceAutonomyDesignReviewPackArtifacts();
+  cleanupProjectGovernanceAutonomyReadinessChainArtifacts();
+}
+
+function createSyntheticAutonomyReadiness(overrides = {}) {
+  const readiness = directGovernanceAutonomyReadinessFromActivationGates(createSyntheticRuntimeActivationGates());
+  return {
+    ...readiness,
+    ...overrides,
+    summary: {
+      ...readiness.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceAutonomyDesignReviewPackSafety(pack, label) {
+  if (
+    pack.designReviewApproved !== false ||
+    pack.designReviewApplied !== false ||
+    pack.autonomyEnabled !== false ||
+    pack.autonomousActionsAllowed !== false ||
+    pack.autonomyApplied !== false ||
+    pack.autonomyEnforced !== false ||
+    pack.activationGatePassed !== false ||
+    pack.runtimeActivationEnabled !== false ||
+    pack.policyActivated !== false ||
+    pack.guardedActivationEnabled !== false ||
+    pack.activationEnforced !== false ||
+    pack.governanceBypassAllowed !== false ||
+    pack.applied !== false ||
+    pack.enforced !== false ||
+    pack.policyRuntimeMode !== "preview-only" ||
+    pack.runtimeBehaviorChanged !== false ||
+    pack.governanceDecisionsChanged !== false ||
+    pack.repairOrchestrationChanged !== false ||
+    pack.safePatchEngineOnly !== true
+  ) {
+    throw new Error(`${label} changed autonomy or runtime behavior: ${JSON.stringify(pack)}`);
+  }
+}
+
+function assertGovernanceAutonomyDesignReviewPackOrdering(pack) {
+  const lists = [
+    ["gov-review-pack-section", pack.sections, (item) => `${item.category}:${item.title}`],
+    ["gov-review-req", pack.reviewRequirements, (item) => item.key],
+    ["gov-review-forbidden", pack.forbiddenCapabilities, (item) => item.key],
+    ["gov-review-invariant", pack.preservedSafetyInvariants, (item) => item.key]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`design review pack id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`design review pack ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackUnit() {
+  try {
+    const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness());
+    const { renderGovernanceAutonomyDesignReviewPackText } = require(path.join(projectRoot, "dist", "governance", "autonomyDesignReviewPack.js"));
+    const rendered = renderGovernanceAutonomyDesignReviewPackText(pack);
+    assertGovernanceAutonomyDesignReviewPackSafety(pack, "design review pack unit");
+    assertGovernanceAutonomyDesignReviewPackOrdering(pack);
+    if (
+      pack.schemaVersion !== 1 ||
+      pack.reviewPackStatus !== "created" ||
+      pack.reviewPackConclusion !== "review-ready-preview" ||
+      !rendered.includes("Controlled Autonomy Design Review Pack")
+    ) {
+      throw new Error(`design review pack unit mismatch: ${JSON.stringify(pack)}`);
+    }
+
+    console.log("PASS governance-autonomy-design-review-pack-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-autonomy-design-review-pack-missing");
+    const pack = directGovernanceAutonomyDesignReviewPack(repo);
+    assertGovernanceAutonomyDesignReviewPackSafety(pack, "design review pack missing");
+    if (
+      pack.reviewPackStatus !== "not-created" ||
+      pack.sourceAutonomyReadinessStatus !== "not-created" ||
+      pack.reviewPackConclusion !== "source-missing" ||
+      pack.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`design review pack missing mismatch: ${JSON.stringify(pack)}`);
+    }
+
+    console.log("PASS governance-autonomy-design-review-pack-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackReviewNotReadyUnit() {
+  try {
+    const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness({
+      readinessStatus: "not-ready",
+      autonomyStage: "readiness-preview",
+      sourceActivationGatesStatus: "created",
+      blockers: [
+        {
+          id: "gov-autonomy-blocker-001",
+          key: "runtime-activation-gates-warning-state",
+          reason: "Runtime activation gates preview has warning-state gates."
+        }
+      ],
+      recommendedNextStage: "continue-governance-hardening",
+      summary: {
+        blockerCount: 1,
+        structurallyReadyForDesignReview: false
+      }
+    }));
+    assertGovernanceAutonomyDesignReviewPackSafety(pack, "design review pack review not ready");
+    if (
+      pack.reviewPackStatus !== "created" ||
+      pack.sourceAutonomyReadinessStatus !== "created" ||
+      pack.reviewPackConclusion !== "review-not-ready" ||
+      pack.summary.structurallyReadyForReview !== false ||
+      pack.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`design review pack review-not-ready mismatch: ${JSON.stringify(pack)}`);
+    }
+
+    console.log("PASS governance-autonomy-design-review-pack-review-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-review-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackReviewReadyUnit() {
+  try {
+    const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness());
+    assertGovernanceAutonomyDesignReviewPackSafety(pack, "design review pack review ready");
+    assertGovernanceAutonomyDesignReviewPackOrdering(pack);
+    if (
+      pack.reviewPackStatus !== "created" ||
+      pack.sourceAutonomyReadinessStatus !== "created" ||
+      pack.reviewPackConclusion !== "review-ready-preview" ||
+      pack.summary.structurallyReadyForReview !== true ||
+      pack.summary.governanceMaturityLevel !== "design-review-preview" ||
+      pack.recommendedNextStage !== "prepare-future-human-review-workflows"
+    ) {
+      throw new Error(`design review pack review-ready mismatch: ${JSON.stringify(pack)}`);
+    }
+
+    console.log("PASS governance-autonomy-design-review-pack-review-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-review-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackBlockedUnit() {
+  try {
+    const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness({
+      readinessStatus: "blocked",
+      autonomyStage: "disabled",
+      sourceActivationGatesStatus: "blocked",
+      blockers: [
+        {
+          id: "gov-autonomy-blocker-001",
+          key: "runtime-activation-gates-blocked",
+          reason: "Runtime activation gates preview is blocked."
+        }
+      ],
+      recommendedNextStage: "blocked",
+      summary: {
+        blockerCount: 1,
+        structurallyReadyForDesignReview: false
+      }
+    }));
+    assertGovernanceAutonomyDesignReviewPackSafety(pack, "design review pack blocked");
+    if (
+      pack.reviewPackStatus !== "blocked" ||
+      pack.sourceAutonomyReadinessStatus !== "blocked" ||
+      pack.reviewPackConclusion !== "blocked-preview" ||
+      pack.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`design review pack blocked mismatch: ${JSON.stringify(pack)}`);
+    }
+
+    console.log("PASS governance-autonomy-design-review-pack-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackForbiddenCapabilitiesUnit() {
+  try {
+    const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness());
+    assertGovernanceAutonomyDesignReviewPackSafety(pack, "design review pack forbidden");
+    assertGovernanceAutonomyDesignReviewPackOrdering(pack);
+    if (
+      pack.summary.totalForbiddenCapabilities < 12 ||
+      !pack.forbiddenCapabilities.every((item) => item.permanentlyForbidden === true) ||
+      !pack.forbiddenCapabilities.some((item) => item.key === "bypassing-safe-patch-engine") ||
+      !pack.forbiddenCapabilities.some((item) => item.key === "uncontrolled-multi-agent-orchestration")
+    ) {
+      throw new Error(`design review pack forbidden mismatch: ${JSON.stringify(pack)}`);
+    }
+
+    console.log("PASS governance-autonomy-design-review-pack-forbidden-capabilities");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-forbidden-capabilities");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackSafetyInvariantsUnit() {
+  try {
+    const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness());
+    assertGovernanceAutonomyDesignReviewPackSafety(pack, "design review pack safety invariants");
+    assertGovernanceAutonomyDesignReviewPackOrdering(pack);
+    if (
+      pack.summary.totalSafetyInvariants < 13 ||
+      !pack.preservedSafetyInvariants.every((item) => item.preserved === true) ||
+      !pack.preservedSafetyInvariants.some((item) => item.key === "safe-patch-engine-only") ||
+      !pack.preservedSafetyInvariants.some((item) => item.key === "no-autonomy-enablement")
+    ) {
+      throw new Error(`design review pack safety invariant mismatch: ${JSON.stringify(pack)}`);
+    }
+
+    console.log("PASS governance-autonomy-design-review-pack-safety-invariants");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-safety-invariants");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyDesignReviewPackChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.designReviewApproved !== false ||
+      parsed.designReviewApplied !== false ||
+      parsed.autonomyEnabled !== false ||
+      parsed.autonomousActionsAllowed !== false ||
+      !parsed.reviewRequirements.every((item) => item.id.startsWith("gov-review-req-"))
+    ) {
+      throw new Error(`design review pack JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceAutonomyDesignReviewPackChainArtifacts();
+
+    console.log("PASS governance-autonomy-design-review-pack-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyDesignReviewPackChainArtifacts();
+    console.log("FAIL governance-autonomy-design-review-pack-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackArtifactUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyDesignReviewPackChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "autonomy-design-review-pack.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "autonomy-design-review-pack.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`design review pack artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Controlled Autonomy Design Review Pack") || artifact.designReviewApproved !== false) {
+      throw new Error(`design review pack artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceAutonomyDesignReviewPackChainArtifacts();
+
+    console.log("PASS governance-autonomy-design-review-pack-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyDesignReviewPackChainArtifacts();
+    console.log("FAIL governance-autonomy-design-review-pack-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackNoApprovalUnit() {
+  try {
+    const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness());
+    if (pack.designReviewApproved !== false || pack.designReviewApplied !== false) {
+      throw new Error(`design review pack approval mismatch: ${JSON.stringify(pack)}`);
+    }
+
+    console.log("PASS governance-autonomy-design-review-pack-no-approval");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-no-approval");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyDesignReviewPackNoAutonomyUnit() {
+  try {
+    const pack = directGovernanceAutonomyDesignReviewPackFromReadiness(createSyntheticAutonomyReadiness());
+    assertGovernanceAutonomyDesignReviewPackSafety(pack, "design review pack no autonomy");
+
+    console.log("PASS governance-autonomy-design-review-pack-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-design-review-pack-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -19791,6 +20166,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceAutonomyReadinessNoEnforcementUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackReviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackReviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackForbiddenCapabilitiesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackSafetyInvariantsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackNoApprovalUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyDesignReviewPackNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

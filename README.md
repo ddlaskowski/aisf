@@ -4115,6 +4115,128 @@ v7.0 deterministic checks:
 * governance-autonomy-readiness-no-autonomy
 * governance-autonomy-readiness-no-enforcement
 
+## Controlled Autonomy Design Review Pack (v7.1)
+
+v7.1 generates a deterministic human-review package for future controlled-autonomy design review.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy design-review-pack
+node dist/cli.js governance autonomy design-review-pack --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-design-review-pack.json
+.factory/governance/autonomy-design-review-pack.md
+```
+
+The controlled autonomy design review pack:
+
+* reuses deterministic autonomy readiness logic
+* summarizes governance maturity and activation readiness
+* summarizes required future human review gates
+* summarizes permanently forbidden autonomy capabilities
+* summarizes preserved safety invariants
+* assigns deterministic IDs such as `gov-review-pack-section-001`
+* does not approve autonomy
+* does not enable autonomy
+* does not perform autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Review pack status:
+created
+
+Review pack conclusion:
+review-ready-preview
+
+Design review approved:
+false
+
+Autonomy enabled:
+false
+
+Autonomous actions allowed:
+false
+
+Runtime activation enabled:
+false
+```
+
+Example JSON fields:
+
+* `reviewPackStatus`
+* `sourceAutonomyReadinessStatus`
+* `reviewPackConclusion`
+* `designReviewApproved`
+* `designReviewApplied`
+* `autonomyEnabled`
+* `autonomousActionsAllowed`
+* `sections`
+* `reviewRequirements`
+* `forbiddenCapabilities`
+* `preservedSafetyInvariants`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown review-pack shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Design Review Pack
+
+## Design Review Sections
+
+## Review Requirements
+
+## Forbidden Capabilities
+
+## Preserved Safety Invariants
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `designReviewApproved` is always `false`
+* `designReviewApplied` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.1 deterministic checks:
+
+* governance-autonomy-design-review-pack-unit
+* governance-autonomy-design-review-pack-missing
+* governance-autonomy-design-review-pack-review-not-ready
+* governance-autonomy-design-review-pack-review-ready
+* governance-autonomy-design-review-pack-blocked
+* governance-autonomy-design-review-pack-forbidden-capabilities
+* governance-autonomy-design-review-pack-safety-invariants
+* governance-autonomy-design-review-pack-json-output
+* governance-autonomy-design-review-pack-artifact
+* governance-autonomy-design-review-pack-no-approval
+* governance-autonomy-design-review-pack-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
