@@ -4490,6 +4490,134 @@ v7.3 deterministic checks:
 * governance-autonomy-scope-preview-no-approval
 * governance-autonomy-scope-preview-no-autonomy
 
+## Controlled Autonomy Risk Register Preview (v7.4)
+
+v7.4 collects and classifies future controlled-autonomy risks from the scope preview chain while keeping all autonomy disabled.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy risk-register-preview
+node dist/cli.js governance autonomy risk-register-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-risk-register-preview.json
+.factory/governance/autonomy-risk-register-preview.md
+```
+
+The controlled autonomy risk register preview:
+
+* reuses deterministic autonomy scope preview logic
+* classifies risks by category, severity, likelihood, impact, and reviewability
+* separates reviewable risks from non-reviewable risks
+* generates deterministic mitigation recommendations without applying them
+* lists deterministic risk blockers for permanently forbidden actions
+* assigns deterministic IDs such as `gov-autonomy-risk-001`
+* does not accept risks
+* does not apply mitigations
+* does not enable autonomy
+* does not allow autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Risk register conclusion:
+risk-review-ready-preview
+
+Risk accepted:
+false
+
+Risk mitigation applied:
+false
+
+Autonomy enabled:
+false
+
+Autonomous actions allowed:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceScopePreviewStatus`
+* `riskRegisterConclusion`
+* `riskAccepted`
+* `riskMitigationApplied`
+* `riskRegisterEnforced`
+* `risks`
+* `mitigationRecommendations`
+* `riskBlockers`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown risk-register shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Risk Register Preview
+
+## Risks
+
+## Mitigation Recommendations
+
+## Risk Blockers
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `riskAccepted` is always `false`
+* `riskMitigationApplied` is always `false`
+* `riskRegisterEnforced` is always `false`
+* `scopeApproved` is always `false`
+* `scopeApplied` is always `false`
+* `scopeEnforced` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `humanApprovalGranted` is always `false`
+* `approvalApplied` is always `false`
+* `approvalWorkflowEnforced` is always `false`
+* `designReviewApproved` is always `false`
+* `designReviewApplied` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.4 deterministic checks:
+
+* governance-autonomy-risk-register-preview-unit
+* governance-autonomy-risk-register-preview-missing
+* governance-autonomy-risk-register-preview-not-ready
+* governance-autonomy-risk-register-preview-ready
+* governance-autonomy-risk-register-preview-blocked
+* governance-autonomy-risk-register-preview-non-reviewable-risks
+* governance-autonomy-risk-register-preview-mitigations
+* governance-autonomy-risk-register-preview-json-output
+* governance-autonomy-risk-register-preview-artifact
+* governance-autonomy-risk-register-preview-no-acceptance
+* governance-autonomy-risk-register-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

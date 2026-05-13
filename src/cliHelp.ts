@@ -42,6 +42,7 @@
     "  node dist/cli.js governance autonomy design-review-pack",
     "  node dist/cli.js governance autonomy approval-workflow-preview",
     "  node dist/cli.js governance autonomy scope-preview",
+    "  node dist/cli.js governance autonomy risk-register-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -96,6 +97,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance autonomy design-review-pack",
     "  node dist/cli.js governance autonomy approval-workflow-preview",
     "  node dist/cli.js governance autonomy scope-preview",
+    "  node dist/cli.js governance autonomy risk-register-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -332,6 +334,27 @@ export function renderGovernanceAutonomyScopePreviewHelp(): string {
     "Scope preview-only guarantee:",
     "  This command models future controlled-autonomy scope candidates only.",
     "  It does not approve scope, apply scope, enable autonomy, allow autonomous actions, enforce governance, activate policies, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceAutonomyRiskRegisterPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance autonomy risk-register-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance autonomy risk-register-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance autonomy risk-register-preview",
+    "  node dist/cli.js governance autonomy risk-register-preview --json",
+    "",
+    "Risk register preview-only guarantee:",
+    "  This command models future controlled-autonomy risks and mitigation recommendations only.",
+    "  It does not accept risks, apply mitigations, enable autonomy, allow autonomous actions, enforce governance, activate policies, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

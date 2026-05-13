@@ -19278,6 +19278,402 @@ function runGovernanceAutonomyScopePreviewNoAutonomyUnit() {
     return false;
   }
 }
+
+function directGovernanceAutonomyRiskRegisterPreview(repo) {
+  const { buildGovernanceAutonomyRiskRegisterPreview } = require(path.join(projectRoot, "dist", "governance", "autonomyRiskRegisterPreview.js"));
+  return buildGovernanceAutonomyRiskRegisterPreview(repo);
+}
+
+function directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(source) {
+  const { buildGovernanceAutonomyRiskRegisterPreviewFromScopePreview } = require(path.join(projectRoot, "dist", "governance", "autonomyRiskRegisterPreview.js"));
+  return buildGovernanceAutonomyRiskRegisterPreviewFromScopePreview(source);
+}
+
+function cleanupProjectGovernanceAutonomyRiskRegisterPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-risk-register-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-risk-register-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceAutonomyRiskRegisterPreviewChainArtifacts() {
+  cleanupProjectGovernanceAutonomyRiskRegisterPreviewArtifacts();
+  cleanupProjectGovernanceAutonomyScopePreviewChainArtifacts();
+}
+
+function createSyntheticAutonomyScopePreview(overrides = {}) {
+  const preview = directGovernanceAutonomyScopePreviewFromApprovalWorkflow(createSyntheticHumanApprovalWorkflow());
+  return {
+    ...preview,
+    ...overrides,
+    summary: {
+      ...preview.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, label) {
+  if (
+    preview.riskAccepted !== false ||
+    preview.riskMitigationApplied !== false ||
+    preview.riskRegisterEnforced !== false ||
+    preview.scopeApproved !== false ||
+    preview.scopeApplied !== false ||
+    preview.scopeEnforced !== false ||
+    preview.autonomyEnabled !== false ||
+    preview.autonomousActionsAllowed !== false ||
+    preview.autonomyApplied !== false ||
+    preview.autonomyEnforced !== false ||
+    preview.humanApprovalGranted !== false ||
+    preview.approvalApplied !== false ||
+    preview.approvalWorkflowEnforced !== false ||
+    preview.designReviewApproved !== false ||
+    preview.designReviewApplied !== false ||
+    preview.runtimeActivationEnabled !== false ||
+    preview.policyActivated !== false ||
+    preview.guardedActivationEnabled !== false ||
+    preview.activationEnforced !== false ||
+    preview.governanceBypassAllowed !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true
+  ) {
+    throw new Error(`${label} changed risk, autonomy, or runtime behavior: ${JSON.stringify(preview)}`);
+  }
+  if (
+    !preview.risks.every((risk) => risk.riskAccepted === false && risk.riskMitigationApplied === false && risk.autonomyEnabled === false) ||
+    !preview.mitigationRecommendations.every((mitigation) => mitigation.applied === false)
+  ) {
+    throw new Error(`${label} applied risks or mitigations: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceAutonomyRiskRegisterPreviewOrdering(preview) {
+  const severityOrder = {
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3
+  };
+  const reviewabilityOrder = {
+    "non-reviewable": 0,
+    reviewable: 1
+  };
+  const lists = [
+    ["gov-autonomy-risk", preview.risks, (item) => `${severityOrder[item.severity]}:${reviewabilityOrder[item.reviewability]}:${item.category}:${item.key}`],
+    ["gov-autonomy-mitigation", preview.mitigationRecommendations, (item) => item.riskKey],
+    ["gov-autonomy-risk-blocker", preview.riskBlockers, (item) => item.key]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`autonomy risk id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`autonomy risk ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewUnit() {
+  try {
+    const preview = directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(createSyntheticAutonomyScopePreview());
+    const { renderGovernanceAutonomyRiskRegisterPreviewText } = require(path.join(projectRoot, "dist", "governance", "autonomyRiskRegisterPreview.js"));
+    const rendered = renderGovernanceAutonomyRiskRegisterPreviewText(preview);
+    assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, "autonomy risk unit");
+    assertGovernanceAutonomyRiskRegisterPreviewOrdering(preview);
+    if (
+      preview.schemaVersion !== 1 ||
+      preview.previewStatus !== "created" ||
+      preview.riskRegisterConclusion !== "risk-review-ready-preview" ||
+      preview.summary.totalRisks === 0 ||
+      !rendered.includes("Controlled Autonomy Risk Register Preview")
+    ) {
+      throw new Error(`autonomy risk unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-risk-register-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-autonomy-risk-register-preview-missing");
+    const preview = directGovernanceAutonomyRiskRegisterPreview(repo);
+    assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, "autonomy risk missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceScopePreviewStatus !== "not-created" ||
+      preview.riskRegisterConclusion !== "source-missing" ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy risk missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-risk-register-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(createSyntheticAutonomyScopePreview({
+      previewStatus: "created",
+      sourceApprovalWorkflowStatus: "created",
+      scopeConclusion: "scope-not-ready",
+      recommendedNextStage: "continue-governance-hardening",
+      summary: {
+        scopeReadyForFutureReview: false
+      }
+    }));
+    assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, "autonomy risk not ready");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.riskRegisterConclusion !== "risk-review-not-ready" ||
+      preview.summary.riskRegisterReadyForFutureReview !== false ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy risk not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-risk-register-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewReadyUnit() {
+  try {
+    const preview = directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(createSyntheticAutonomyScopePreview());
+    assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, "autonomy risk ready");
+    assertGovernanceAutonomyRiskRegisterPreviewOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourceScopePreviewStatus !== "created" ||
+      preview.riskRegisterConclusion !== "risk-review-ready-preview" ||
+      preview.summary.riskRegisterReadyForFutureReview !== true ||
+      preview.summary.reviewableRisks === 0 ||
+      preview.recommendedNextStage !== "prepare-autonomy-sandbox-plan-preview"
+    ) {
+      throw new Error(`autonomy risk ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-risk-register-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(createSyntheticAutonomyScopePreview({
+      previewStatus: "blocked",
+      sourceApprovalWorkflowStatus: "blocked",
+      scopeConclusion: "blocked-preview",
+      recommendedNextStage: "blocked",
+      summary: {
+        scopeReadyForFutureReview: false
+      }
+    }));
+    assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, "autonomy risk blocked");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.sourceScopePreviewStatus !== "blocked" ||
+      preview.riskRegisterConclusion !== "blocked-preview" ||
+      preview.summary.criticalRisks === 0 ||
+      preview.summary.nonReviewableRisks === 0 ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`autonomy risk blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-risk-register-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewNonReviewableRisksUnit() {
+  try {
+    const preview = directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(createSyntheticAutonomyScopePreview({
+      previewStatus: "blocked",
+      scopeConclusion: "blocked-preview"
+    }));
+    assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, "autonomy risk non-reviewable");
+    assertGovernanceAutonomyRiskRegisterPreviewOrdering(preview);
+    if (
+      !preview.risks.some((risk) => risk.reviewability === "non-reviewable" && risk.severity === "critical") ||
+      !preview.riskBlockers.some((blocker) => blocker.key === "safe-patch-engine-bypass") ||
+      preview.riskRegisterConclusion !== "blocked-preview"
+    ) {
+      throw new Error(`autonomy risk non-reviewable mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-risk-register-preview-non-reviewable-risks");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-non-reviewable-risks");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewMitigationsUnit() {
+  try {
+    const preview = directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(createSyntheticAutonomyScopePreview());
+    assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, "autonomy risk mitigations");
+    if (
+      preview.summary.mitigationRecommendationCount !== preview.summary.totalRisks ||
+      !preview.mitigationRecommendations.every((item) => item.applied === false) ||
+      !preview.mitigationRecommendations.some((item) => item.recommendation.includes("human review") || item.recommendation.includes("preview-only"))
+    ) {
+      throw new Error(`autonomy risk mitigations mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-risk-register-preview-mitigations");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-mitigations");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyRiskRegisterPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "risk-register-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.riskAccepted !== false ||
+      parsed.riskMitigationApplied !== false ||
+      parsed.riskRegisterEnforced !== false ||
+      parsed.autonomyEnabled !== false ||
+      !parsed.risks.every((item) => item.id.startsWith("gov-autonomy-risk-"))
+    ) {
+      throw new Error(`autonomy risk JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceAutonomyRiskRegisterPreviewChainArtifacts();
+
+    console.log("PASS governance-autonomy-risk-register-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyRiskRegisterPreviewChainArtifacts();
+    console.log("FAIL governance-autonomy-risk-register-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyRiskRegisterPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "risk-register-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "autonomy-risk-register-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "autonomy-risk-register-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`autonomy risk artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Controlled Autonomy Risk Register Preview") || artifact.riskAccepted !== false) {
+      throw new Error(`autonomy risk artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceAutonomyRiskRegisterPreviewChainArtifacts();
+
+    console.log("PASS governance-autonomy-risk-register-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyRiskRegisterPreviewChainArtifacts();
+    console.log("FAIL governance-autonomy-risk-register-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewNoAcceptanceUnit() {
+  try {
+    const preview = directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(createSyntheticAutonomyScopePreview());
+    if (
+      preview.riskAccepted !== false ||
+      preview.riskMitigationApplied !== false ||
+      preview.riskRegisterEnforced !== false ||
+      !preview.risks.every((risk) => risk.riskAccepted === false && risk.riskMitigationApplied === false) ||
+      !preview.mitigationRecommendations.every((mitigation) => mitigation.applied === false)
+    ) {
+      throw new Error(`autonomy risk acceptance mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-risk-register-preview-no-acceptance");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-no-acceptance");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyRiskRegisterPreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceAutonomyRiskRegisterPreviewFromScopePreview(createSyntheticAutonomyScopePreview());
+    assertGovernanceAutonomyRiskRegisterPreviewSafety(preview, "autonomy risk no autonomy");
+
+    console.log("PASS governance-autonomy-risk-register-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-risk-register-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -21018,6 +21414,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceAutonomyScopePreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewNonReviewableRisksUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewMitigationsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewNoAcceptanceUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyRiskRegisterPreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
