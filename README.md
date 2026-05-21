@@ -4910,6 +4910,144 @@ v7.6 deterministic checks:
 * governance-autonomy-sandbox-evidence-preview-no-evidence-application
 * governance-autonomy-sandbox-evidence-preview-no-autonomy
 
+## Controlled Autonomy Observability Preview (v7.7)
+
+v7.7 generates a deterministic controlled-autonomy observability preview from the sandbox evidence preview without applying observability, executing telemetry, creating a sandbox, or enabling autonomy.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy observability-preview
+node dist/cli.js governance autonomy observability-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-observability-preview.json
+.factory/governance/autonomy-observability-preview.md
+```
+
+The controlled autonomy observability preview:
+
+* reuses deterministic autonomy sandbox evidence preview logic
+* documents future telemetry signal definitions
+* documents future immutable audit event definitions
+* documents future alert candidates
+* documents operator visibility requirements
+* summarizes missing observability coverage
+* assigns deterministic IDs such as `gov-observability-signal-001`
+* does not apply observability
+* does not enforce observability
+* does not execute telemetry
+* does not create metrics pipelines
+* does not create observability backends
+* does not create network calls
+* does not create or execute sandboxes
+* does not enable autonomy
+* does not allow autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Observability conclusion:
+observability-ready-preview
+
+Observability applied:
+false
+
+Sandbox executed:
+false
+
+Autonomy enabled:
+false
+
+Telemetry signal count:
+13
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceSandboxEvidenceStatus`
+* `observabilityConclusion`
+* `observabilityApplied`
+* `observabilityEnforced`
+* `sandboxCreated`
+* `sandboxExecuted`
+* `autonomyEnabled`
+* `autonomousActionsAllowed`
+* `telemetrySignals`
+* `auditEvents`
+* `alertCandidates`
+* `operatorVisibilityRequirements`
+* `missingObservabilityCoverage`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown observability-preview shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Observability Preview
+
+## Telemetry Signals
+
+## Audit Events
+
+## Alert Candidates
+
+## Operator Visibility Requirements
+
+## Missing Observability Coverage
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `observabilityApplied` is always `false`
+* `observabilityEnforced` is always `false`
+* `sandboxCreated` is always `false`
+* `sandboxExecuted` is always `false`
+* `evidenceApplied` is always `false`
+* `evidenceEnforced` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.7 deterministic checks:
+
+* governance-autonomy-observability-preview-unit
+* governance-autonomy-observability-preview-missing
+* governance-autonomy-observability-preview-not-ready
+* governance-autonomy-observability-preview-ready
+* governance-autonomy-observability-preview-blocked
+* governance-autonomy-observability-preview-alerts
+* governance-autonomy-observability-preview-audit-events
+* governance-autonomy-observability-preview-json-output
+* governance-autonomy-observability-preview-artifact
+* governance-autonomy-observability-preview-no-observability-application
+* governance-autonomy-observability-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

@@ -45,6 +45,7 @@
     "  node dist/cli.js governance autonomy risk-register-preview",
     "  node dist/cli.js governance autonomy sandbox-plan-preview",
     "  node dist/cli.js governance autonomy sandbox-evidence-preview",
+    "  node dist/cli.js governance autonomy observability-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -102,6 +103,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance autonomy risk-register-preview",
     "  node dist/cli.js governance autonomy sandbox-plan-preview",
     "  node dist/cli.js governance autonomy sandbox-evidence-preview",
+    "  node dist/cli.js governance autonomy observability-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -401,6 +403,27 @@ export function renderGovernanceAutonomySandboxEvidencePreviewHelp(): string {
     "Sandbox evidence preview-only guarantee:",
     "  This command models future controlled-autonomy sandbox evidence only.",
     "  It does not create sandboxes, execute sandboxes, apply evidence, enable autonomy, allow autonomous actions, enforce governance, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceAutonomyObservabilityPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance autonomy observability-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance autonomy observability-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance autonomy observability-preview",
+    "  node dist/cli.js governance autonomy observability-preview --json",
+    "",
+    "Observability preview-only guarantee:",
+    "  This command models future controlled-autonomy observability, telemetry, audit events, alerts, and operator visibility only.",
+    "  It does not apply observability, execute telemetry, create sandboxes, execute sandboxes, enable autonomy, allow autonomous actions, enforce governance, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 
