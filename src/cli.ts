@@ -213,6 +213,11 @@ import {
   writeGovernanceAutonomyRiskRegisterPreviewArtifacts
 } from "./governance/autonomyRiskRegisterPreview.js";
 import {
+  buildGovernanceAutonomySandboxPlanPreview,
+  renderGovernanceAutonomySandboxPlanPreviewText,
+  writeGovernanceAutonomySandboxPlanPreviewArtifacts
+} from "./governance/autonomySandboxPlanPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -237,6 +242,7 @@ import {
   renderGovernanceAutonomyDesignReviewPackHelp,
   renderGovernanceHumanApprovalWorkflowPreviewHelp,
   renderGovernanceAutonomyRiskRegisterPreviewHelp,
+  renderGovernanceAutonomySandboxPlanPreviewHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
@@ -1148,6 +1154,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceAutonomyRiskRegisterPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "autonomy" && args[2] === "sandbox-plan-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance autonomy sandbox-plan-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceAutonomySandboxPlanPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceAutonomySandboxPlanPreview(process.cwd());
+    writeGovernanceAutonomySandboxPlanPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceAutonomySandboxPlanPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

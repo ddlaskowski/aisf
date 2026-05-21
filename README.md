@@ -4618,6 +4618,152 @@ v7.4 deterministic checks:
 * governance-autonomy-risk-register-preview-no-acceptance
 * governance-autonomy-risk-register-preview-no-autonomy
 
+## Controlled Autonomy Sandbox Plan Preview (v7.5)
+
+v7.5 generates deterministic future sandbox planning based on the autonomy risk register preview without creating or executing any sandbox.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy sandbox-plan-preview
+node dist/cli.js governance autonomy sandbox-plan-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-sandbox-plan-preview.json
+.factory/governance/autonomy-sandbox-plan-preview.md
+```
+
+The controlled autonomy sandbox plan preview:
+
+* reuses deterministic autonomy risk register preview logic
+* documents sandbox objectives
+* documents sandbox boundaries
+* lists future-only tests that require human approval
+* lists permanently prohibited tests
+* defines deterministic exit criteria
+* defines deterministic human review checkpoints
+* assigns deterministic IDs such as `gov-sandbox-objective-001`
+* does not create sandbox directories
+* does not execute sandbox commands
+* does not accept risks
+* does not apply mitigations
+* does not enable autonomy
+* does not allow autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Sandbox plan conclusion:
+sandbox-plan-ready-preview
+
+Sandbox created:
+false
+
+Sandbox executed:
+false
+
+Autonomy enabled:
+false
+
+Autonomous actions allowed:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceRiskRegisterStatus`
+* `sandboxPlanConclusion`
+* `sandboxCreated`
+* `sandboxExecuted`
+* `sandboxPlanApplied`
+* `sandboxObjectives`
+* `sandboxBoundaries`
+* `futureOnlyTests`
+* `prohibitedTests`
+* `exitCriteria`
+* `humanReviewCheckpoints`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown sandbox-plan shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Sandbox Plan Preview
+
+## Sandbox Objectives
+
+## Sandbox Boundaries
+
+## Future-Only Tests
+
+## Prohibited Tests
+
+## Exit Criteria
+
+## Human Review Checkpoints
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `sandboxCreated` is always `false`
+* `sandboxExecuted` is always `false`
+* `sandboxPlanApplied` is always `false`
+* `sandboxEnforced` is always `false`
+* `riskAccepted` is always `false`
+* `riskMitigationApplied` is always `false`
+* `riskRegisterEnforced` is always `false`
+* `scopeApproved` is always `false`
+* `scopeApplied` is always `false`
+* `scopeEnforced` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `humanApprovalGranted` is always `false`
+* `approvalApplied` is always `false`
+* `approvalWorkflowEnforced` is always `false`
+* `designReviewApproved` is always `false`
+* `designReviewApplied` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.5 deterministic checks:
+
+* governance-autonomy-sandbox-plan-preview-unit
+* governance-autonomy-sandbox-plan-preview-missing
+* governance-autonomy-sandbox-plan-preview-not-ready
+* governance-autonomy-sandbox-plan-preview-ready
+* governance-autonomy-sandbox-plan-preview-blocked
+* governance-autonomy-sandbox-plan-preview-boundaries
+* governance-autonomy-sandbox-plan-preview-prohibited-tests
+* governance-autonomy-sandbox-plan-preview-exit-criteria
+* governance-autonomy-sandbox-plan-preview-json-output
+* governance-autonomy-sandbox-plan-preview-artifact
+* governance-autonomy-sandbox-plan-preview-no-sandbox
+* governance-autonomy-sandbox-plan-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
