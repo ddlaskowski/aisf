@@ -44,6 +44,7 @@
     "  node dist/cli.js governance autonomy scope-preview",
     "  node dist/cli.js governance autonomy risk-register-preview",
     "  node dist/cli.js governance autonomy sandbox-plan-preview",
+    "  node dist/cli.js governance autonomy sandbox-evidence-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -100,6 +101,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance autonomy scope-preview",
     "  node dist/cli.js governance autonomy risk-register-preview",
     "  node dist/cli.js governance autonomy sandbox-plan-preview",
+    "  node dist/cli.js governance autonomy sandbox-evidence-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -378,6 +380,27 @@ export function renderGovernanceAutonomySandboxPlanPreviewHelp(): string {
     "Sandbox plan preview-only guarantee:",
     "  This command models future controlled-autonomy sandbox planning only.",
     "  It does not create sandboxes, execute sandboxes, enable autonomy, allow autonomous actions, accept risks, apply mitigations, enforce governance, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceAutonomySandboxEvidencePreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance autonomy sandbox-evidence-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance autonomy sandbox-evidence-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance autonomy sandbox-evidence-preview",
+    "  node dist/cli.js governance autonomy sandbox-evidence-preview --json",
+    "",
+    "Sandbox evidence preview-only guarantee:",
+    "  This command models future controlled-autonomy sandbox evidence only.",
+    "  It does not create sandboxes, execute sandboxes, apply evidence, enable autonomy, allow autonomous actions, enforce governance, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

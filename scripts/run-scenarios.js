@@ -20085,6 +20085,398 @@ function runGovernanceAutonomySandboxPlanPreviewNoAutonomyUnit() {
     return false;
   }
 }
+
+function directGovernanceAutonomySandboxEvidencePreview(repo) {
+  const { buildGovernanceAutonomySandboxEvidencePreview } = require(path.join(projectRoot, "dist", "governance", "autonomySandboxEvidencePreview.js"));
+  return buildGovernanceAutonomySandboxEvidencePreview(repo);
+}
+
+function directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(source) {
+  const { buildGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan } = require(path.join(projectRoot, "dist", "governance", "autonomySandboxEvidencePreview.js"));
+  return buildGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(source);
+}
+
+function cleanupProjectGovernanceAutonomySandboxEvidencePreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-sandbox-evidence-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-sandbox-evidence-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceAutonomySandboxEvidencePreviewChainArtifacts() {
+  cleanupProjectGovernanceAutonomySandboxEvidencePreviewArtifacts();
+  cleanupProjectGovernanceAutonomySandboxPlanPreviewChainArtifacts();
+}
+
+function createSyntheticAutonomySandboxPlanPreview(overrides = {}) {
+  const preview = directGovernanceAutonomySandboxPlanPreviewFromRiskRegister(createSyntheticAutonomyRiskRegisterPreview());
+  return {
+    ...preview,
+    ...overrides,
+    summary: {
+      ...preview.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, label) {
+  if (
+    preview.sandboxCreated !== false ||
+    preview.sandboxExecuted !== false ||
+    preview.sandboxPlanApplied !== false ||
+    preview.sandboxEnforced !== false ||
+    preview.evidenceApplied !== false ||
+    preview.evidenceEnforced !== false ||
+    preview.riskAccepted !== false ||
+    preview.riskMitigationApplied !== false ||
+    preview.riskRegisterEnforced !== false ||
+    preview.scopeApproved !== false ||
+    preview.scopeApplied !== false ||
+    preview.scopeEnforced !== false ||
+    preview.autonomyEnabled !== false ||
+    preview.autonomousActionsAllowed !== false ||
+    preview.autonomyApplied !== false ||
+    preview.autonomyEnforced !== false ||
+    preview.humanApprovalGranted !== false ||
+    preview.approvalApplied !== false ||
+    preview.approvalWorkflowEnforced !== false ||
+    preview.designReviewApproved !== false ||
+    preview.designReviewApplied !== false ||
+    preview.runtimeActivationEnabled !== false ||
+    preview.policyActivated !== false ||
+    preview.guardedActivationEnabled !== false ||
+    preview.activationEnforced !== false ||
+    preview.governanceBypassAllowed !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true
+  ) {
+    throw new Error(`${label} applied evidence, enabled autonomy, or changed runtime behavior: ${JSON.stringify(preview)}`);
+  }
+  if (
+    !preview.requiredHumanReviewEvidence.every((item) => item.required === true) ||
+    !preview.forbiddenEvidenceCategories.every((item) => item.permanentlyForbidden === true)
+  ) {
+    throw new Error(`${label} relaxed evidence gating: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceAutonomySandboxEvidencePreviewOrdering(preview) {
+  const lists = [
+    ["gov-sandbox-evidence-section", preview.evidenceSections, (item) => `${item.category}:${item.title}`],
+    ["gov-sandbox-evidence-ref", preview.evidenceReferences, (item) => `${item.source}:${item.key}`],
+    ["gov-sandbox-missing-evidence", preview.missingEvidence, (item) => item.key],
+    ["gov-sandbox-human-review-evidence", preview.requiredHumanReviewEvidence, (item) => item.key],
+    ["gov-sandbox-forbidden-evidence", preview.forbiddenEvidenceCategories, (item) => item.key]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`autonomy sandbox evidence id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`autonomy sandbox evidence ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewUnit() {
+  try {
+    const preview = directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(createSyntheticAutonomySandboxPlanPreview());
+    const { renderGovernanceAutonomySandboxEvidencePreviewText } = require(path.join(projectRoot, "dist", "governance", "autonomySandboxEvidencePreview.js"));
+    const rendered = renderGovernanceAutonomySandboxEvidencePreviewText(preview);
+    assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, "autonomy sandbox evidence unit");
+    assertGovernanceAutonomySandboxEvidencePreviewOrdering(preview);
+    if (
+      preview.schemaVersion !== 1 ||
+      preview.previewStatus !== "created" ||
+      preview.sandboxEvidenceConclusion !== "sandbox-evidence-ready-preview" ||
+      preview.summary.totalEvidenceReferences === 0 ||
+      !rendered.includes("Controlled Autonomy Sandbox Evidence Preview")
+    ) {
+      throw new Error(`autonomy sandbox evidence unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-autonomy-sandbox-evidence-preview-missing");
+    const preview = directGovernanceAutonomySandboxEvidencePreview(repo);
+    assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, "autonomy sandbox evidence missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceSandboxPlanStatus !== "not-created" ||
+      preview.sandboxEvidenceConclusion !== "source-missing" ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy sandbox evidence missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(createSyntheticAutonomySandboxPlanPreview({
+      previewStatus: "created",
+      sourceRiskRegisterStatus: "created",
+      sandboxPlanConclusion: "sandbox-plan-not-ready",
+      recommendedNextStage: "continue-governance-hardening",
+      summary: {
+        sandboxReadyForFutureReview: false
+      }
+    }));
+    assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, "autonomy sandbox evidence not ready");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sandboxEvidenceConclusion !== "sandbox-evidence-not-ready" ||
+      preview.summary.evidenceReadyForFutureReview !== false ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy sandbox evidence not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewReadyUnit() {
+  try {
+    const preview = directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(createSyntheticAutonomySandboxPlanPreview());
+    assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, "autonomy sandbox evidence ready");
+    assertGovernanceAutonomySandboxEvidencePreviewOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourceSandboxPlanStatus !== "created" ||
+      preview.sandboxEvidenceConclusion !== "sandbox-evidence-ready-preview" ||
+      preview.summary.evidenceReadyForFutureReview !== true ||
+      preview.recommendedNextStage !== "prepare-autonomy-observability-preview"
+    ) {
+      throw new Error(`autonomy sandbox evidence ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(createSyntheticAutonomySandboxPlanPreview({
+      previewStatus: "blocked",
+      sourceRiskRegisterStatus: "blocked",
+      sandboxPlanConclusion: "blocked-preview",
+      recommendedNextStage: "blocked",
+      summary: {
+        sandboxReadyForFutureReview: false
+      }
+    }));
+    assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, "autonomy sandbox evidence blocked");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.sourceSandboxPlanStatus !== "blocked" ||
+      preview.sandboxEvidenceConclusion !== "blocked-preview" ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`autonomy sandbox evidence blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewMissingEvidenceUnit() {
+  try {
+    const preview = directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(createSyntheticAutonomySandboxPlanPreview());
+    assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, "autonomy sandbox evidence missing evidence");
+    assertGovernanceAutonomySandboxEvidencePreviewOrdering(preview);
+    if (
+      preview.summary.totalMissingEvidence < 7 ||
+      !preview.missingEvidence.some((item) => item.key === "missing-human-review-documentation") ||
+      !preview.evidenceReferences.some((item) => item.source === "autonomy-sandbox-plan-preview")
+    ) {
+      throw new Error(`autonomy sandbox evidence missing-evidence mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-missing-evidence");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-missing-evidence");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewForbiddenCategoriesUnit() {
+  try {
+    const preview = directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(createSyntheticAutonomySandboxPlanPreview());
+    assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, "autonomy sandbox evidence forbidden categories");
+    if (
+      preview.summary.totalForbiddenEvidenceCategories < 11 ||
+      !preview.forbiddenEvidenceCategories.every((item) => item.permanentlyForbidden === true) ||
+      !preview.forbiddenEvidenceCategories.some((item) => item.key === "safe-patch-engine-bypass")
+    ) {
+      throw new Error(`autonomy sandbox evidence forbidden mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-forbidden-categories");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-forbidden-categories");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceAutonomySandboxEvidencePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "risk-register-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-plan-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-evidence-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.sandboxCreated !== false ||
+      parsed.sandboxExecuted !== false ||
+      parsed.evidenceApplied !== false ||
+      parsed.evidenceEnforced !== false ||
+      parsed.autonomyEnabled !== false ||
+      !parsed.evidenceReferences.every((item) => item.id.startsWith("gov-sandbox-evidence-ref-"))
+    ) {
+      throw new Error(`autonomy sandbox evidence JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceAutonomySandboxEvidencePreviewChainArtifacts();
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomySandboxEvidencePreviewChainArtifacts();
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceAutonomySandboxEvidencePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "risk-register-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-plan-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-evidence-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "autonomy-sandbox-evidence-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "autonomy-sandbox-evidence-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`autonomy sandbox evidence artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Controlled Autonomy Sandbox Evidence Preview") || artifact.evidenceApplied !== false) {
+      throw new Error(`autonomy sandbox evidence artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceAutonomySandboxEvidencePreviewChainArtifacts();
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomySandboxEvidencePreviewChainArtifacts();
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewNoEvidenceApplicationUnit() {
+  try {
+    const preview = directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(createSyntheticAutonomySandboxPlanPreview());
+    if (
+      preview.evidenceApplied !== false ||
+      preview.evidenceEnforced !== false ||
+      preview.sandboxCreated !== false ||
+      preview.sandboxExecuted !== false
+    ) {
+      throw new Error(`autonomy sandbox evidence application mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-no-evidence-application");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-no-evidence-application");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomySandboxEvidencePreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceAutonomySandboxEvidencePreviewFromSandboxPlan(createSyntheticAutonomySandboxPlanPreview());
+    assertGovernanceAutonomySandboxEvidencePreviewSafety(preview, "autonomy sandbox evidence no autonomy");
+
+    console.log("PASS governance-autonomy-sandbox-evidence-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-sandbox-evidence-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -21894,6 +22286,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceAutonomySandboxPlanPreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewMissingEvidenceUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewForbiddenCategoriesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewNoEvidenceApplicationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomySandboxEvidencePreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

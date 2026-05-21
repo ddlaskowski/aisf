@@ -4764,6 +4764,152 @@ v7.5 deterministic checks:
 * governance-autonomy-sandbox-plan-preview-no-sandbox
 * governance-autonomy-sandbox-plan-preview-no-autonomy
 
+## Controlled Autonomy Sandbox Evidence Preview (v7.6)
+
+v7.6 generates a deterministic sandbox evidence preview package from the sandbox plan preview without creating a sandbox, executing a sandbox, or applying evidence.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy sandbox-evidence-preview
+node dist/cli.js governance autonomy sandbox-evidence-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-sandbox-evidence-preview.json
+.factory/governance/autonomy-sandbox-evidence-preview.md
+```
+
+The controlled autonomy sandbox evidence preview:
+
+* reuses deterministic autonomy sandbox plan preview logic
+* documents sandbox evidence sections
+* references governance and autonomy preview chain evidence
+* summarizes missing evidence
+* summarizes required human-review evidence
+* lists permanently forbidden evidence categories
+* assigns deterministic IDs such as `gov-sandbox-evidence-section-001`
+* does not create sandbox directories
+* does not execute sandbox commands
+* does not apply evidence
+* does not enforce evidence
+* does not accept risks
+* does not apply mitigations
+* does not enable autonomy
+* does not allow autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Sandbox evidence conclusion:
+sandbox-evidence-ready-preview
+
+Sandbox created:
+false
+
+Sandbox executed:
+false
+
+Evidence applied:
+false
+
+Autonomy enabled:
+false
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceSandboxPlanStatus`
+* `sandboxEvidenceConclusion`
+* `sandboxCreated`
+* `sandboxExecuted`
+* `evidenceApplied`
+* `evidenceEnforced`
+* `evidenceSections`
+* `evidenceReferences`
+* `missingEvidence`
+* `requiredHumanReviewEvidence`
+* `forbiddenEvidenceCategories`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown sandbox-evidence shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Sandbox Evidence Preview
+
+## Evidence Sections
+
+## Evidence References
+
+## Missing Evidence
+
+## Required Human Review Evidence
+
+## Forbidden Evidence Categories
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `sandboxCreated` is always `false`
+* `sandboxExecuted` is always `false`
+* `sandboxPlanApplied` is always `false`
+* `sandboxEnforced` is always `false`
+* `evidenceApplied` is always `false`
+* `evidenceEnforced` is always `false`
+* `riskAccepted` is always `false`
+* `riskMitigationApplied` is always `false`
+* `riskRegisterEnforced` is always `false`
+* `scopeApproved` is always `false`
+* `scopeApplied` is always `false`
+* `scopeEnforced` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `humanApprovalGranted` is always `false`
+* `approvalApplied` is always `false`
+* `approvalWorkflowEnforced` is always `false`
+* `designReviewApproved` is always `false`
+* `designReviewApplied` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.6 deterministic checks:
+
+* governance-autonomy-sandbox-evidence-preview-unit
+* governance-autonomy-sandbox-evidence-preview-missing
+* governance-autonomy-sandbox-evidence-preview-not-ready
+* governance-autonomy-sandbox-evidence-preview-ready
+* governance-autonomy-sandbox-evidence-preview-blocked
+* governance-autonomy-sandbox-evidence-preview-missing-evidence
+* governance-autonomy-sandbox-evidence-preview-forbidden-categories
+* governance-autonomy-sandbox-evidence-preview-json-output
+* governance-autonomy-sandbox-evidence-preview-artifact
+* governance-autonomy-sandbox-evidence-preview-no-evidence-application
+* governance-autonomy-sandbox-evidence-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
