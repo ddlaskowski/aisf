@@ -20874,6 +20874,406 @@ function runGovernanceAutonomyObservabilityPreviewNoAutonomyUnit() {
     return false;
   }
 }
+
+function directGovernanceAutonomyControlPlanePreview(repo) {
+  const { buildGovernanceAutonomyControlPlanePreview } = require(path.join(projectRoot, "dist", "governance", "autonomyControlPlanePreview.js"));
+  return buildGovernanceAutonomyControlPlanePreview(repo);
+}
+
+function directGovernanceAutonomyControlPlanePreviewFromObservability(source) {
+  const { buildGovernanceAutonomyControlPlanePreviewFromObservability } = require(path.join(projectRoot, "dist", "governance", "autonomyControlPlanePreview.js"));
+  return buildGovernanceAutonomyControlPlanePreviewFromObservability(source);
+}
+
+function cleanupProjectGovernanceAutonomyControlPlanePreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-control-plane-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "autonomy-control-plane-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceAutonomyControlPlanePreviewChainArtifacts() {
+  cleanupProjectGovernanceAutonomyControlPlanePreviewArtifacts();
+  cleanupProjectGovernanceAutonomyObservabilityPreviewChainArtifacts();
+}
+
+function createSyntheticAutonomyObservabilityPreview(overrides = {}) {
+  const preview = directGovernanceAutonomyObservabilityPreviewFromSandboxEvidence(createSyntheticAutonomySandboxEvidencePreview());
+  return {
+    ...preview,
+    ...overrides,
+    summary: {
+      ...preview.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceAutonomyControlPlanePreviewSafety(preview, label) {
+  if (
+    preview.controlPlaneApplied !== false ||
+    preview.controlPlaneEnforced !== false ||
+    preview.killSwitchActivated !== false ||
+    preview.operatorOverrideApplied !== false ||
+    preview.sandboxControlApplied !== false ||
+    preview.scopeControlApplied !== false ||
+    preview.observabilityControlApplied !== false ||
+    preview.observabilityApplied !== false ||
+    preview.observabilityEnforced !== false ||
+    preview.sandboxCreated !== false ||
+    preview.sandboxExecuted !== false ||
+    preview.autonomyEnabled !== false ||
+    preview.autonomousActionsAllowed !== false ||
+    preview.autonomyApplied !== false ||
+    preview.autonomyEnforced !== false ||
+    preview.runtimeActivationEnabled !== false ||
+    preview.policyActivated !== false ||
+    preview.guardedActivationEnabled !== false ||
+    preview.activationEnforced !== false ||
+    preview.governanceBypassAllowed !== false ||
+    preview.applied !== false ||
+    preview.enforced !== false ||
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.runtimeBehaviorChanged !== false ||
+    preview.governanceDecisionsChanged !== false ||
+    preview.repairOrchestrationChanged !== false ||
+    preview.safePatchEngineOnly !== true
+  ) {
+    throw new Error(`${label} applied control plane behavior, enabled autonomy, or changed runtime behavior: ${JSON.stringify(preview)}`);
+  }
+  if (
+    !preview.operatorControls.every((item) => item.requiresHumanReview === true) ||
+    !preview.killSwitchCandidates.every((item) => item.activationAllowed === false) ||
+    !preview.approvalControls.every((item) => item.required === true) ||
+    !preview.sandboxControls.every((item) => item.required === true) ||
+    !preview.scopeControls.every((item) => item.required === true) ||
+    !preview.observabilityControls.every((item) => item.required === true)
+  ) {
+    throw new Error(`${label} relaxed control plane gating: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceAutonomyControlPlanePreviewOrdering(preview) {
+  const lists = [
+    ["gov-control-plane-operator", preview.operatorControls, (item) => `${item.category}:${item.key}`],
+    ["gov-control-plane-killswitch", preview.killSwitchCandidates, (item) => `${item.category}:${item.key}:${item.severity}`],
+    ["gov-control-plane-approval", preview.approvalControls, (item) => item.key],
+    ["gov-control-plane-sandbox", preview.sandboxControls, (item) => item.key],
+    ["gov-control-plane-scope", preview.scopeControls, (item) => item.key],
+    ["gov-control-plane-observability", preview.observabilityControls, (item) => item.key],
+    ["gov-control-plane-missing", preview.missingControlCoverage, (item) => item.key]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`autonomy control plane id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`autonomy control plane ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewUnit() {
+  try {
+    const preview = directGovernanceAutonomyControlPlanePreviewFromObservability(createSyntheticAutonomyObservabilityPreview());
+    const { renderGovernanceAutonomyControlPlanePreviewText } = require(path.join(projectRoot, "dist", "governance", "autonomyControlPlanePreview.js"));
+    const rendered = renderGovernanceAutonomyControlPlanePreviewText(preview);
+    assertGovernanceAutonomyControlPlanePreviewSafety(preview, "autonomy control plane unit");
+    assertGovernanceAutonomyControlPlanePreviewOrdering(preview);
+    if (
+      preview.schemaVersion !== 1 ||
+      preview.previewStatus !== "created" ||
+      preview.controlPlaneConclusion !== "control-plane-ready-preview" ||
+      preview.summary.totalKillSwitchCandidates === 0 ||
+      !rendered.includes("Controlled Autonomy Control Plane Preview")
+    ) {
+      throw new Error(`autonomy control plane unit mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-control-plane-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-autonomy-control-plane-preview-missing");
+    const preview = directGovernanceAutonomyControlPlanePreview(repo);
+    assertGovernanceAutonomyControlPlanePreviewSafety(preview, "autonomy control plane missing");
+    if (
+      preview.previewStatus !== "not-created" ||
+      preview.sourceObservabilityStatus !== "not-created" ||
+      preview.controlPlaneConclusion !== "source-missing" ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy control plane missing mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-control-plane-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceAutonomyControlPlanePreviewFromObservability(createSyntheticAutonomyObservabilityPreview({
+      previewStatus: "created",
+      observabilityConclusion: "observability-not-ready",
+      recommendedNextStage: "continue-governance-hardening",
+      summary: {
+        observabilityReadyForFutureReview: false
+      }
+    }));
+    assertGovernanceAutonomyControlPlanePreviewSafety(preview, "autonomy control plane not ready");
+    if (
+      preview.previewStatus !== "created" ||
+      preview.controlPlaneConclusion !== "control-plane-not-ready" ||
+      preview.summary.controlPlaneReadyForFutureReview !== false ||
+      preview.recommendedNextStage !== "continue-governance-hardening"
+    ) {
+      throw new Error(`autonomy control plane not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-control-plane-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewReadyUnit() {
+  try {
+    const preview = directGovernanceAutonomyControlPlanePreviewFromObservability(createSyntheticAutonomyObservabilityPreview());
+    assertGovernanceAutonomyControlPlanePreviewSafety(preview, "autonomy control plane ready");
+    assertGovernanceAutonomyControlPlanePreviewOrdering(preview);
+    if (
+      preview.previewStatus !== "created" ||
+      preview.sourceObservabilityStatus !== "created" ||
+      preview.controlPlaneConclusion !== "control-plane-ready-preview" ||
+      preview.summary.controlPlaneReadyForFutureReview !== true ||
+      preview.recommendedNextStage !== "prepare-autonomy-governance-lifecycle-preview"
+    ) {
+      throw new Error(`autonomy control plane ready mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-control-plane-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceAutonomyControlPlanePreviewFromObservability(createSyntheticAutonomyObservabilityPreview({
+      previewStatus: "blocked",
+      observabilityConclusion: "blocked-preview",
+      recommendedNextStage: "blocked",
+      summary: {
+        observabilityReadyForFutureReview: false
+      }
+    }));
+    assertGovernanceAutonomyControlPlanePreviewSafety(preview, "autonomy control plane blocked");
+    if (
+      preview.previewStatus !== "blocked" ||
+      preview.sourceObservabilityStatus !== "blocked" ||
+      preview.controlPlaneConclusion !== "blocked-preview" ||
+      preview.recommendedNextStage !== "blocked"
+    ) {
+      throw new Error(`autonomy control plane blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-control-plane-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewKillswitchesUnit() {
+  try {
+    const preview = directGovernanceAutonomyControlPlanePreviewFromObservability(createSyntheticAutonomyObservabilityPreview());
+    assertGovernanceAutonomyControlPlanePreviewSafety(preview, "autonomy control plane killswitches");
+    assertGovernanceAutonomyControlPlanePreviewOrdering(preview);
+    if (
+      preview.summary.totalKillSwitchCandidates < 11 ||
+      !preview.killSwitchCandidates.every((item) => item.activationAllowed === false) ||
+      !preview.killSwitchCandidates.some((item) => item.key === "safe-patch-engine-bypass-detection")
+    ) {
+      throw new Error(`autonomy control plane killswitch mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-control-plane-preview-killswitches");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-killswitches");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewOperatorControlsUnit() {
+  try {
+    const preview = directGovernanceAutonomyControlPlanePreviewFromObservability(createSyntheticAutonomyObservabilityPreview());
+    assertGovernanceAutonomyControlPlanePreviewSafety(preview, "autonomy control plane operator controls");
+    assertGovernanceAutonomyControlPlanePreviewOrdering(preview);
+    if (
+      preview.summary.totalOperatorControls < 8 ||
+      !preview.operatorControls.every((item) => item.requiresHumanReview === true) ||
+      !preview.approvalControls.every((item) => item.required === true) ||
+      !preview.sandboxControls.every((item) => item.required === true) ||
+      !preview.scopeControls.every((item) => item.required === true) ||
+      !preview.observabilityControls.every((item) => item.required === true)
+    ) {
+      throw new Error(`autonomy control plane operator controls mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-control-plane-preview-operator-controls");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-operator-controls");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyControlPlanePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "risk-register-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-plan-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-evidence-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "observability-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "control-plane-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (
+      result.status !== 0 ||
+      parsed.controlPlaneApplied !== false ||
+      parsed.controlPlaneEnforced !== false ||
+      parsed.killSwitchActivated !== false ||
+      parsed.autonomyEnabled !== false ||
+      !parsed.killSwitchCandidates.every((item) => item.id.startsWith("gov-control-plane-killswitch-"))
+    ) {
+      throw new Error(`autonomy control plane JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceAutonomyControlPlanePreviewChainArtifacts();
+
+    console.log("PASS governance-autonomy-control-plane-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyControlPlanePreviewChainArtifacts();
+    console.log("FAIL governance-autonomy-control-plane-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceAutonomyControlPlanePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "risk-register-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-plan-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-evidence-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "observability-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "control-plane-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "autonomy-control-plane-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "autonomy-control-plane-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`autonomy control plane artifact missing: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Controlled Autonomy Control Plane Preview") || artifact.controlPlaneApplied !== false) {
+      throw new Error(`autonomy control plane artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceAutonomyControlPlanePreviewChainArtifacts();
+
+    console.log("PASS governance-autonomy-control-plane-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceAutonomyControlPlanePreviewChainArtifacts();
+    console.log("FAIL governance-autonomy-control-plane-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewNoControlApplicationUnit() {
+  try {
+    const preview = directGovernanceAutonomyControlPlanePreviewFromObservability(createSyntheticAutonomyObservabilityPreview());
+    if (
+      preview.controlPlaneApplied !== false ||
+      preview.controlPlaneEnforced !== false ||
+      preview.killSwitchActivated !== false ||
+      preview.operatorOverrideApplied !== false ||
+      preview.sandboxControlApplied !== false ||
+      preview.scopeControlApplied !== false ||
+      preview.observabilityControlApplied !== false
+    ) {
+      throw new Error(`autonomy control plane application mismatch: ${JSON.stringify(preview)}`);
+    }
+
+    console.log("PASS governance-autonomy-control-plane-preview-no-control-application");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-no-control-application");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceAutonomyControlPlanePreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceAutonomyControlPlanePreviewFromObservability(createSyntheticAutonomyObservabilityPreview());
+    assertGovernanceAutonomyControlPlanePreviewSafety(preview, "autonomy control plane no autonomy");
+
+    console.log("PASS governance-autonomy-control-plane-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-autonomy-control-plane-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -22749,6 +23149,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceAutonomyObservabilityPreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewKillswitchesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewOperatorControlsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewNoControlApplicationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceAutonomyControlPlanePreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

@@ -228,6 +228,11 @@ import {
   writeGovernanceAutonomyObservabilityPreviewArtifacts
 } from "./governance/autonomyObservabilityPreview.js";
 import {
+  buildGovernanceAutonomyControlPlanePreview,
+  renderGovernanceAutonomyControlPlanePreviewText,
+  writeGovernanceAutonomyControlPlanePreviewArtifacts
+} from "./governance/autonomyControlPlanePreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -255,6 +260,7 @@ import {
   renderGovernanceAutonomySandboxPlanPreviewHelp,
   renderGovernanceAutonomySandboxEvidencePreviewHelp,
   renderGovernanceAutonomyObservabilityPreviewHelp,
+  renderGovernanceAutonomyControlPlanePreviewHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
@@ -1238,6 +1244,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceAutonomyObservabilityPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "autonomy" && args[2] === "control-plane-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance autonomy control-plane-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceAutonomyControlPlanePreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceAutonomyControlPlanePreview(process.cwd());
+    writeGovernanceAutonomyControlPlanePreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceAutonomyControlPlanePreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

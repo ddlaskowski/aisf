@@ -5048,6 +5048,156 @@ v7.7 deterministic checks:
 * governance-autonomy-observability-preview-no-observability-application
 * governance-autonomy-observability-preview-no-autonomy
 
+## Controlled Autonomy Control Plane Preview (v7.8)
+
+v7.8 generates a deterministic controlled-autonomy control plane preview from the observability preview without applying control plane behavior, activating kill switches, or enabling autonomy.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy control-plane-preview
+node dist/cli.js governance autonomy control-plane-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-control-plane-preview.json
+.factory/governance/autonomy-control-plane-preview.md
+```
+
+The controlled autonomy control plane preview:
+
+* reuses deterministic autonomy observability preview logic
+* documents future operator controls
+* documents future kill-switch candidates
+* documents future approval controls
+* documents future sandbox controls
+* documents future scope controls
+* documents future observability controls
+* summarizes missing control coverage
+* assigns deterministic IDs such as `gov-control-plane-killswitch-001`
+* does not apply control plane behavior
+* does not enforce control plane behavior
+* does not activate kill switches
+* does not apply operator overrides
+* does not apply sandbox, scope, or observability controls
+* does not enable autonomy
+* does not allow autonomous actions
+* does not activate runtime governance
+* does not activate policies
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Control plane conclusion:
+control-plane-ready-preview
+
+Control plane applied:
+false
+
+Kill switch activated:
+false
+
+Autonomy enabled:
+false
+
+Kill switch candidate count:
+11
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceObservabilityStatus`
+* `controlPlaneConclusion`
+* `controlPlaneApplied`
+* `controlPlaneEnforced`
+* `killSwitchActivated`
+* `operatorOverrideApplied`
+* `sandboxControlApplied`
+* `scopeControlApplied`
+* `observabilityControlApplied`
+* `operatorControls`
+* `killSwitchCandidates`
+* `approvalControls`
+* `sandboxControls`
+* `scopeControls`
+* `observabilityControls`
+* `missingControlCoverage`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown control-plane-preview shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Control Plane Preview
+
+## Operator Controls
+
+## Kill Switch Candidates
+
+## Approval Controls
+
+## Sandbox Controls
+
+## Scope Controls
+
+## Observability Controls
+
+## Missing Control Coverage
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `controlPlaneApplied` is always `false`
+* `controlPlaneEnforced` is always `false`
+* `killSwitchActivated` is always `false`
+* `operatorOverrideApplied` is always `false`
+* `sandboxControlApplied` is always `false`
+* `scopeControlApplied` is always `false`
+* `observabilityControlApplied` is always `false`
+* `observabilityApplied` is always `false`
+* `observabilityEnforced` is always `false`
+* `sandboxCreated` is always `false`
+* `sandboxExecuted` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v7.8 deterministic checks:
+
+* governance-autonomy-control-plane-preview-unit
+* governance-autonomy-control-plane-preview-missing
+* governance-autonomy-control-plane-preview-not-ready
+* governance-autonomy-control-plane-preview-ready
+* governance-autonomy-control-plane-preview-blocked
+* governance-autonomy-control-plane-preview-killswitches
+* governance-autonomy-control-plane-preview-operator-controls
+* governance-autonomy-control-plane-preview-json-output
+* governance-autonomy-control-plane-preview-artifact
+* governance-autonomy-control-plane-preview-no-control-application
+* governance-autonomy-control-plane-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
