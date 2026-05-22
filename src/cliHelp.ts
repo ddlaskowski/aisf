@@ -65,6 +65,7 @@
     "  node dist/cli.js governance runtime research-timeline-preview",
     "  node dist/cli.js governance runtime research-archive-preview",
     "  node dist/cli.js governance runtime research-catalog-preview",
+    "  node dist/cli.js governance runtime research-registry-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -142,6 +143,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime research-timeline-preview",
     "  node dist/cli.js governance runtime research-archive-preview",
     "  node dist/cli.js governance runtime research-catalog-preview",
+    "  node dist/cli.js governance runtime research-registry-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -860,6 +862,27 @@ export function renderGovernanceRuntimeResearchCatalogPreviewHelp(): string {
     "",
     "Runtime governance research catalog preview-only guarantee:",
     "  This command models runtime governance catalog groups, catalog entries, artifact references, version summaries, preview-only posture summaries, forbidden capability summaries, and future-only catalog notes only.",
+    "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeResearchRegistryPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime research-registry-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime research-registry-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime research-registry-preview",
+    "  node dist/cli.js governance runtime research-registry-preview --json",
+    "",
+    "Runtime governance research registry preview-only guarantee:",
+    "  This command models runtime governance registry groups, registry records, artifact identity records, ownership summaries, preview-only registry summaries, forbidden capability registry records, and future-only registry notes only.",
     "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
   ].join("\n") + "\n";
 }
