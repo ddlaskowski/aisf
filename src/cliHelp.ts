@@ -51,6 +51,7 @@
     "  node dist/cli.js governance runtime safety-design-preview",
     "  node dist/cli.js governance runtime safety-evidence-preview",
     "  node dist/cli.js governance runtime safety-observability-preview",
+    "  node dist/cli.js governance runtime control-plane-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -114,6 +115,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime safety-design-preview",
     "  node dist/cli.js governance runtime safety-evidence-preview",
     "  node dist/cli.js governance runtime safety-observability-preview",
+    "  node dist/cli.js governance runtime control-plane-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -539,6 +541,27 @@ export function renderGovernanceRuntimeSafetyObservabilityPreviewHelp(): string 
     "Runtime safety observability preview-only guarantee:",
     "  This command models future runtime telemetry signals, audit events, safety alerts, operator visibility, invariant monitoring, and rollback visibility only.",
     "  It does not apply runtime observability, execute telemetry, activate runtime governance, enable runtime autonomy, enforce runtime policies, activate config, execute sandboxes, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeControlPlanePreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime control-plane-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime control-plane-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime control-plane-preview",
+    "  node dist/cli.js governance runtime control-plane-preview --json",
+    "",
+    "Runtime control plane preview-only guarantee:",
+    "  This command models future runtime operator controls, freezes, emergency stops, rollbacks, overrides, and kill-switch candidates only.",
+    "  It does not apply runtime control plane behavior, activate kill switches, execute emergency stops, execute rollback, apply overrides, enable runtime governance or autonomy, enforce policies, activate config, execute sandboxes, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

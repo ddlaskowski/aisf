@@ -5800,6 +5800,174 @@ v8.2 deterministic checks:
 * governance-runtime-safety-observability-preview-no-runtime-activation
 * governance-runtime-safety-observability-preview-no-autonomy
 
+## Runtime Control Plane Preview (v8.3)
+
+v8.3 generates deterministic runtime-level control plane previews from the runtime safety observability preview. It is preview-only: runtime control plane behavior is not applied, kill switches are not activated, emergency stops are not executed, runtime governance is not enabled, runtime autonomy is not enabled, runtime policies are not enforced, and runtime behavior does not change.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance runtime control-plane-preview
+node dist/cli.js governance runtime control-plane-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/runtime-control-plane-preview.json
+.factory/governance/runtime-control-plane-preview.md
+```
+
+The runtime control plane preview:
+
+* reuses deterministic runtime safety observability preview logic
+* inspects runtime telemetry signal definitions
+* inspects runtime safety alerts
+* documents runtime operator control definitions
+* documents runtime freeze control definitions
+* documents runtime emergency-stop definitions
+* documents runtime rollback control definitions
+* documents runtime override control definitions
+* documents runtime kill-switch candidate definitions
+* assigns deterministic IDs such as `gov-runtime-control-killswitch-001`
+* does not apply runtime control plane behavior
+* does not activate kill switches
+* does not execute emergency stops
+* does not execute rollback
+* does not apply operator overrides
+* does not activate runtime governance
+* does not enable runtime autonomy
+* does not enforce runtime policies
+* does not activate runtime config
+* does not execute runtime sandboxes
+* does not enable plugins, scripts, runtime learning, ML decisioning, or multi-agent coordination
+* does not change runtime behavior, governance decisions, repair orchestration, or Safe Patch Engine behavior
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Runtime control plane conclusion:
+runtime-control-plane-ready-preview
+
+Runtime control plane applied:
+false
+
+Runtime kill switch activated:
+false
+
+Runtime emergency stop executed:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Kill-switch candidate count:
+10
+
+Runtime control plane ready for future review:
+true
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceRuntimeObservabilityStatus`
+* `runtimeControlPlaneConclusion`
+* `runtimeControlPlaneApplied`
+* `runtimeControlPlaneActivated`
+* `runtimeKillSwitchActivated`
+* `runtimeEmergencyStopExecuted`
+* `runtimeOperatorOverrideApplied`
+* `runtimeRollbackExecuted`
+* `runtimeGovernanceEnabled`
+* `runtimeAutonomyEnabled`
+* `runtimePolicyEnforcementEnabled`
+* `runtimeOperatorControls`
+* `runtimeFreezeControls`
+* `runtimeEmergencyStops`
+* `runtimeRollbackControls`
+* `runtimeOverrideControls`
+* `runtimeKillSwitchCandidates`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown runtime-control-plane-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Control Plane Preview
+
+## Runtime Operator Controls
+
+## Runtime Freeze Controls
+
+## Runtime Emergency Stops
+
+## Runtime Rollback Controls
+
+## Runtime Override Controls
+
+## Runtime Kill-Switch Candidates
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneEnforced` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.3 deterministic checks:
+
+* governance-runtime-control-plane-preview-unit
+* governance-runtime-control-plane-preview-missing
+* governance-runtime-control-plane-preview-not-ready
+* governance-runtime-control-plane-preview-ready
+* governance-runtime-control-plane-preview-blocked
+* governance-runtime-control-plane-preview-emergency-stops
+* governance-runtime-control-plane-preview-killswitches
+* governance-runtime-control-plane-preview-json-output
+* governance-runtime-control-plane-preview-artifact
+* governance-runtime-control-plane-preview-no-runtime-activation
+* governance-runtime-control-plane-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

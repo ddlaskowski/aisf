@@ -22732,6 +22732,361 @@ function runGovernanceRuntimeSafetyObservabilityPreviewNoAutonomyUnit() {
     return false;
   }
 }
+
+function directGovernanceRuntimeControlPlanePreview(repo) {
+  const { buildGovernanceRuntimeControlPlanePreview } = require(path.join(projectRoot, "dist", "governance", "runtimeControlPlanePreview.js"));
+  return buildGovernanceRuntimeControlPlanePreview(repo);
+}
+
+function directGovernanceRuntimeControlPlanePreviewFromObservability(source) {
+  const { buildGovernanceRuntimeControlPlanePreviewFromObservability } = require(path.join(projectRoot, "dist", "governance", "runtimeControlPlanePreview.js"));
+  return buildGovernanceRuntimeControlPlanePreviewFromObservability(source);
+}
+
+function cleanupProjectGovernanceRuntimeControlPlanePreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-control-plane-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-control-plane-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceRuntimeControlPlanePreviewChainArtifacts() {
+  cleanupProjectGovernanceRuntimeControlPlanePreviewArtifacts();
+  cleanupProjectGovernanceRuntimeSafetyObservabilityPreviewChainArtifacts();
+}
+
+function createSyntheticRuntimeSafetyObservabilityPreview(overrides = {}) {
+  const preview = directGovernanceRuntimeSafetyObservabilityPreviewFromEvidence(createSyntheticRuntimeSafetyEvidencePreview());
+  return {
+    ...preview,
+    ...overrides,
+    summary: {
+      ...preview.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceRuntimeControlPlanePreviewSafety(preview, label) {
+  const runtimeFlags = [
+    "runtimeControlPlaneApplied",
+    "runtimeControlPlaneEnforced",
+    "runtimeControlPlaneActivated",
+    "runtimeKillSwitchActivated",
+    "runtimeEmergencyStopExecuted",
+    "runtimeOperatorOverrideApplied",
+    "runtimeRollbackExecuted",
+    "runtimeObservabilityApplied",
+    "runtimeObservabilityEnforced",
+    "runtimeSafetyApplied",
+    "runtimeSafetyEnforced",
+    "runtimeSafetyActivated",
+    "runtimeGovernanceEnabled",
+    "runtimeAutonomyEnabled",
+    "runtimeAutonomyActionsAllowed",
+    "runtimePolicyEnforcementEnabled",
+    "runtimeConfigActivationEnabled",
+    "runtimeSandboxExecutionAllowed",
+    "runtimeSandboxExecuted",
+    "runtimeMutationScopeExpanded",
+    "runtimeExternalExecutionAllowed",
+    "runtimePluginExecutionAllowed",
+    "runtimeScriptEvaluationAllowed",
+    "runtimeLearningEnabled",
+    "runtimeMlDecisioningEnabled",
+    "runtimeMultiAgentCoordinationEnabled",
+    "governanceBypassAllowed",
+    "applied",
+    "enforced",
+    "runtimeBehaviorChanged",
+    "governanceDecisionsChanged",
+    "repairOrchestrationChanged"
+  ];
+  for (const key of runtimeFlags) {
+    if (preview[key] !== false) {
+      throw new Error(`${label} expected ${key}=false: ${JSON.stringify(preview)}`);
+    }
+  }
+  if (
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.safePatchEngineOnly !== true ||
+    !preview.runtimeOperatorControls.every((item) => item.requiresHumanReview === true) ||
+    !preview.runtimeFreezeControls.every((item) => item.activationAllowed === false) ||
+    !preview.runtimeEmergencyStops.every((item) => item.executionAllowed === false) ||
+    !preview.runtimeRollbackControls.every((item) => item.planningOnly === true) ||
+    !preview.runtimeOverrideControls.every((item) => item.requiresHumanReview === true && item.executionAllowed === false) ||
+    !preview.runtimeKillSwitchCandidates.every((item) => item.activationAllowed === false)
+  ) {
+    throw new Error(`${label} relaxed runtime control plane invariants: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceRuntimeControlPlanePreviewOrdering(preview) {
+  const lists = [
+    ["gov-runtime-control-operator", preview.runtimeOperatorControls, (item) => `${item.category}:${item.key}`],
+    ["gov-runtime-control-freeze", preview.runtimeFreezeControls, (item) => `${item.freezeType}:${item.key}`],
+    ["gov-runtime-control-emergency", preview.runtimeEmergencyStops, (item) => `${item.severity}:${item.key}`],
+    ["gov-runtime-control-rollback", preview.runtimeRollbackControls, (item) => item.key],
+    ["gov-runtime-control-override", preview.runtimeOverrideControls, (item) => item.key],
+    ["gov-runtime-control-killswitch", preview.runtimeKillSwitchCandidates, (item) => `${item.category}:${item.key}`]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`runtime control plane id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`runtime control plane ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewUnit() {
+  try {
+    const preview = directGovernanceRuntimeControlPlanePreviewFromObservability(createSyntheticRuntimeSafetyObservabilityPreview());
+    const { renderGovernanceRuntimeControlPlanePreviewText } = require(path.join(projectRoot, "dist", "governance", "runtimeControlPlanePreview.js"));
+    const rendered = renderGovernanceRuntimeControlPlanePreviewText(preview);
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane unit");
+    assertGovernanceRuntimeControlPlanePreviewOrdering(preview);
+    if (
+      preview.schemaVersion !== 1 ||
+      preview.previewStatus !== "created" ||
+      preview.runtimeControlPlaneConclusion !== "runtime-control-plane-ready-preview" ||
+      preview.summary.totalOperatorControls === 0 ||
+      !rendered.includes("Runtime Control Plane Preview")
+    ) {
+      throw new Error(`runtime control plane unit mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-control-plane-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-runtime-control-plane-preview-missing");
+    const preview = directGovernanceRuntimeControlPlanePreview(repo);
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane missing");
+    if (preview.previewStatus !== "not-created" || preview.sourceRuntimeObservabilityStatus !== "not-created" || preview.runtimeControlPlaneConclusion !== "source-missing") {
+      throw new Error(`runtime control plane missing mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-control-plane-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeControlPlanePreviewFromObservability(createSyntheticRuntimeSafetyObservabilityPreview({
+      previewStatus: "created",
+      runtimeSafetyObservabilityConclusion: "runtime-safety-observability-not-ready",
+      recommendedNextStage: "continue-runtime-safety-hardening",
+      summary: { runtimeSafetyObservabilityReadyForFutureReview: false }
+    }));
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane not ready");
+    if (preview.previewStatus !== "created" || preview.runtimeControlPlaneConclusion !== "runtime-control-plane-not-ready" || preview.recommendedNextStage !== "continue-runtime-safety-hardening") {
+      throw new Error(`runtime control plane not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-control-plane-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeControlPlanePreviewFromObservability(createSyntheticRuntimeSafetyObservabilityPreview());
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane ready");
+    assertGovernanceRuntimeControlPlanePreviewOrdering(preview);
+    if (preview.runtimeControlPlaneConclusion !== "runtime-control-plane-ready-preview" || preview.recommendedNextStage !== "prepare-runtime-governance-lifecycle-preview") {
+      throw new Error(`runtime control plane ready mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-control-plane-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceRuntimeControlPlanePreviewFromObservability(createSyntheticRuntimeSafetyObservabilityPreview({
+      previewStatus: "blocked",
+      runtimeSafetyObservabilityConclusion: "blocked-preview",
+      recommendedNextStage: "blocked",
+      summary: { runtimeSafetyObservabilityReadyForFutureReview: false }
+    }));
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane blocked");
+    if (preview.previewStatus !== "blocked" || preview.sourceRuntimeObservabilityStatus !== "blocked" || preview.runtimeControlPlaneConclusion !== "blocked-preview") {
+      throw new Error(`runtime control plane blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-control-plane-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewEmergencyStopsUnit() {
+  try {
+    const preview = directGovernanceRuntimeControlPlanePreviewFromObservability(createSyntheticRuntimeSafetyObservabilityPreview());
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane emergency stops");
+    assertGovernanceRuntimeControlPlanePreviewOrdering(preview);
+    if (preview.runtimeEmergencyStops.length < 10 || !preview.runtimeEmergencyStops.some((item) => item.key === "runtime-safe-patch-engine-bypass-emergency-stop")) {
+      throw new Error(`runtime control plane emergency stop mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-control-plane-preview-emergency-stops");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-emergency-stops");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewKillswitchesUnit() {
+  try {
+    const preview = directGovernanceRuntimeControlPlanePreviewFromObservability(createSyntheticRuntimeSafetyObservabilityPreview());
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane killswitches");
+    assertGovernanceRuntimeControlPlanePreviewOrdering(preview);
+    if (preview.runtimeKillSwitchCandidates.length < 10 || !preview.runtimeKillSwitchCandidates.every((item) => item.activationAllowed === false)) {
+      throw new Error(`runtime control plane kill-switch mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-control-plane-preview-killswitches");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-killswitches");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeControlPlanePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "risk-register-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-plan-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-evidence-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "observability-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "control-plane-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "lifecycle-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "safety-design-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "safety-evidence-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "safety-observability-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "control-plane-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.runtimeControlPlaneApplied !== false || !parsed.runtimeKillSwitchCandidates.every((item) => item.id.startsWith("gov-runtime-control-killswitch-"))) {
+      throw new Error(`runtime control plane JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceRuntimeControlPlanePreviewChainArtifacts();
+    console.log("PASS governance-runtime-control-plane-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeControlPlanePreviewChainArtifacts();
+    console.log("FAIL governance-runtime-control-plane-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeControlPlanePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createProjectCiAnnotationsReadyChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "ci", "annotations-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "github", "pr-summary-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "exception", "review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "simulation", "preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "policy", "activation-candidates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-gates-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "readiness", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "design-review-pack", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "approval-workflow-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "scope-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "risk-register-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-plan-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "sandbox-evidence-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "observability-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "control-plane-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "autonomy", "lifecycle-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "safety-design-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "safety-evidence-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "safety-observability-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "control-plane-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "runtime-control-plane-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "runtime-control-plane-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`runtime control plane artifact missing: status=${result.status}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Runtime Control Plane Preview") || artifact.runtimeControlPlaneApplied !== false) {
+      throw new Error(`runtime control plane artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceRuntimeControlPlanePreviewChainArtifacts();
+    console.log("PASS governance-runtime-control-plane-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeControlPlanePreviewChainArtifacts();
+    console.log("FAIL governance-runtime-control-plane-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewNoRuntimeActivationUnit() {
+  try {
+    const preview = directGovernanceRuntimeControlPlanePreviewFromObservability(createSyntheticRuntimeSafetyObservabilityPreview());
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane no activation");
+    console.log("PASS governance-runtime-control-plane-preview-no-runtime-activation");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-no-runtime-activation");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeControlPlanePreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceRuntimeControlPlanePreviewFromObservability(createSyntheticRuntimeSafetyObservabilityPreview());
+    assertGovernanceRuntimeControlPlanePreviewSafety(preview, "runtime control plane no autonomy");
+    console.log("PASS governance-runtime-control-plane-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-control-plane-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -24775,6 +25130,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceRuntimeSafetyObservabilityPreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewEmergencyStopsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewKillswitchesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewNoRuntimeActivationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeControlPlanePreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
