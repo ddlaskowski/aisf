@@ -299,6 +299,16 @@ import {
   writeGovernancePostV9RuntimeResearchPreviewArtifacts
 } from "./governance/postV9RuntimeResearchPreview.js";
 import {
+  buildGovernanceRuntimeResearchIndexPreview,
+  renderGovernanceRuntimeResearchIndexPreviewText,
+  writeGovernanceRuntimeResearchIndexPreviewArtifacts
+} from "./governance/runtimeGovernanceResearchIndexPreview.js";
+import {
+  buildGovernanceRuntimeResearchMapPreview,
+  renderGovernanceRuntimeResearchMapPreviewText,
+  writeGovernanceRuntimeResearchMapPreviewArtifacts
+} from "./governance/runtimeGovernanceResearchMapPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -340,6 +350,8 @@ import {
   renderGovernanceRuntimeActivationFreezePreviewHelp,
   renderGovernanceRuntimeSafetyFinalReviewPreviewHelp,
   renderGovernancePostV9RuntimeResearchPreviewHelp,
+  renderGovernanceRuntimeResearchIndexPreviewHelp,
+  renderGovernanceRuntimeResearchMapPreviewHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
@@ -1659,6 +1671,54 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernancePostV9RuntimeResearchPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "runtime" && args[2] === "research-index-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance runtime research-index-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceRuntimeResearchIndexPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceRuntimeResearchIndexPreview(process.cwd());
+    writeGovernanceRuntimeResearchIndexPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceRuntimeResearchIndexPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "runtime" && args[2] === "research-map-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance runtime research-map-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceRuntimeResearchMapPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceRuntimeResearchMapPreview(process.cwd());
+    writeGovernanceRuntimeResearchMapPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceRuntimeResearchMapPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

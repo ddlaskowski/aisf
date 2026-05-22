@@ -7623,6 +7623,479 @@ v9.1 deterministic checks:
 * governance-post-v9-runtime-research-preview-no-research-application
 * governance-post-v9-runtime-research-preview-no-autonomy
 
+## Runtime Governance Research Index Preview (v9.2)
+
+v9.2 generates a deterministic runtime governance research index from the post-v9 runtime research preview. It is preview-only: the runtime research index is not applied or enforced; runtime research is not applied or enforced; runtime activation is not approved or executed; runtime governance is not enabled; runtime autonomy is not enabled; runtime policies are not enforced; and runtime behavior does not change.
+
+Commands:
+
+```bash
+node dist/cli.js governance runtime research-index-preview
+node dist/cli.js governance runtime research-index-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-governance-research-index-preview.json
+.factory/governance/runtime-governance-research-index-preview.md
+```
+
+The preview:
+
+* reuses post-v9 runtime research preview logic
+* inspects the complete runtime research chain
+* documents deterministic research index entries
+* documents deterministic category summaries
+* documents deterministic preview-only references
+* documents deterministic forbidden capability references
+* documents deterministic human research requirement references
+* documents deterministic future feasibility references
+* never applies or enforces the research index
+* never applies or enforces runtime research
+* never approves runtime final review
+* never approves runtime activation
+* never executes runtime activation
+* never enables runtime governance
+* never enables runtime autonomy
+* never allows autonomous actions
+* never enforces runtime policies
+* never activates runtime config
+* never changes runtime behavior
+* never changes governance decisions
+* never changes repair orchestration
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Governance Research Index Preview
+
+Preview status:
+created
+
+Source runtime research status:
+created
+
+Runtime research index conclusion:
+research-index-ready
+
+Runtime research index applied:
+false
+
+Runtime research index enforced:
+false
+
+Runtime research applied:
+false
+
+Runtime research enforced:
+false
+
+Runtime final review approved:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime autonomy actions allowed:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Policy runtime mode:
+preview-only
+
+Research index score:
+80
+
+Research index rating:
+research-index-ready
+
+Research index ready:
+true
+
+Recommended next stage:
+prepare-runtime-governance-research-map-preview
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeResearchStatus": "created",
+  "runtimeResearchIndexConclusion": "research-index-ready",
+  "runtimeResearchIndexApplied": false,
+  "runtimeResearchIndexEnforced": false,
+  "runtimeResearchApplied": false,
+  "runtimeResearchEnforced": false,
+  "runtimeFinalReviewApproved": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeAutonomyActionsAllowed": false,
+  "runtimePolicyEnforcementEnabled": false,
+  "runtimeConfigActivationEnabled": false,
+  "governanceBypassAllowed": false,
+  "applied": false,
+  "enforced": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "governanceDecisionsChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "researchIndexScore": {
+    "score": 80,
+    "rating": "research-index-ready"
+  },
+  "summary": {
+    "researchIndexReady": true
+  },
+  "recommendedNextStage": "prepare-runtime-governance-research-map-preview"
+}
+```
+
+Example markdown runtime-governance-research-index-preview shape:
+
+```text
+# AI Software Factory - Runtime Governance Research Index Preview
+
+Preview status:
+created
+
+Runtime research index conclusion:
+research-index-ready
+
+Runtime research index applied:
+false
+
+Runtime research index enforced:
+false
+
+## Research Index Entries
+- [runtime-safety/indexed-preview] gov-runtime-research-index-entry-001 ...
+
+## Category Summaries
+- [runtime-safety/entries=1/previewOnly=true] gov-runtime-research-index-category-001 ...
+
+## Preview-only References
+- [post-v9-runtime-research-preview] gov-runtime-research-index-preview-only-001 ...
+
+## Forbidden Capability References
+- gov-runtime-research-index-forbidden-001 runtime-autonomy-enablement permanentlyForbidden=true ...
+
+## Human Research Requirement References
+- gov-runtime-research-index-human-001 mandatory-human-governance-review required=true ...
+
+## Future Feasibility References
+- gov-runtime-research-index-feasibility-001 future-runtime-separate-design-review futureOnly=true ...
+```
+
+Safety guarantees:
+
+* `runtimeResearchIndexApplied` is always `false`
+* `runtimeResearchIndexEnforced` is always `false`
+* `runtimeResearchApplied` is always `false`
+* `runtimeResearchEnforced` is always `false`
+* `runtimeFinalReviewApproved` is always `false`
+* `runtimeFinalReviewApplied` is always `false`
+* `runtimeFinalReviewEnforced` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v9.2 deterministic checks:
+
+* governance-runtime-research-index-preview-unit
+* governance-runtime-research-index-preview-missing
+* governance-runtime-research-index-preview-not-ready
+* governance-runtime-research-index-preview-ready
+* governance-runtime-research-index-preview-blocked
+* governance-runtime-research-index-preview-score
+* governance-runtime-research-index-preview-forbidden-capabilities
+* governance-runtime-research-index-preview-json-output
+* governance-runtime-research-index-preview-artifact
+* governance-runtime-research-index-preview-no-index-application
+* governance-runtime-research-index-preview-no-autonomy
+
+## Runtime Governance Research Map Preview (v9.3)
+
+v9.3 generates a deterministic runtime governance research map from the runtime governance research index preview. It is preview-only: the runtime research map is not applied or enforced; runtime activation is not approved or executed; runtime governance is not enabled; runtime autonomy is not enabled; runtime policies are not enforced; and runtime behavior does not change.
+
+Commands:
+
+```bash
+node dist/cli.js governance runtime research-map-preview
+node dist/cli.js governance runtime research-map-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-governance-research-map-preview.json
+.factory/governance/runtime-governance-research-map-preview.md
+```
+
+The preview:
+
+* reuses runtime governance research index preview logic
+* inspects the full runtime governance preview chain
+* documents deterministic research map nodes
+* documents deterministic dependency edges
+* documents deterministic prerequisite chains
+* documents deterministic architectural stage groupings
+* documents deterministic forbidden-runtime dependency boundaries
+* documents deterministic future-only dependency notes
+* never applies or enforces the research map
+* never applies or enforces runtime research index output
+* never applies or enforces runtime research
+* never approves runtime activation
+* never executes runtime activation
+* never enables runtime governance
+* never enables runtime autonomy
+* never allows autonomous actions
+* never enforces runtime policies
+* never activates runtime config
+* never changes runtime behavior
+* never changes governance decisions
+* never changes repair orchestration
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Governance Research Map Preview
+
+Preview status:
+created
+
+Source runtime research index status:
+created
+
+Runtime research map conclusion:
+research-map-ready
+
+Runtime research map applied:
+false
+
+Runtime research map enforced:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime autonomy actions allowed:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Policy runtime mode:
+preview-only
+
+Research map score:
+80
+
+Research map rating:
+research-map-ready
+
+Research map ready:
+true
+
+Recommended next stage:
+prepare-runtime-governance-research-timeline-preview
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeResearchIndexStatus": "created",
+  "runtimeResearchMapConclusion": "research-map-ready",
+  "runtimeResearchMapApplied": false,
+  "runtimeResearchMapEnforced": false,
+  "runtimeResearchIndexApplied": false,
+  "runtimeResearchIndexEnforced": false,
+  "runtimeResearchApplied": false,
+  "runtimeResearchEnforced": false,
+  "runtimeFinalReviewApproved": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeAutonomyActionsAllowed": false,
+  "runtimePolicyEnforcementEnabled": false,
+  "runtimeConfigActivationEnabled": false,
+  "governanceBypassAllowed": false,
+  "applied": false,
+  "enforced": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "governanceDecisionsChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "researchMapScore": {
+    "score": 80,
+    "rating": "research-map-ready"
+  },
+  "summary": {
+    "researchMapReady": true
+  },
+  "recommendedNextStage": "prepare-runtime-governance-research-timeline-preview"
+}
+```
+
+Example markdown runtime-governance-research-map-preview shape:
+
+```text
+# AI Software Factory - Runtime Governance Research Map Preview
+
+Preview status:
+created
+
+Runtime research map conclusion:
+research-map-ready
+
+Runtime research map applied:
+false
+
+Runtime research map enforced:
+false
+
+## Research Map Nodes
+- [runtime-safety/runtime-safety/mapped-preview] gov-runtime-research-map-node-001 ...
+
+## Dependency Edges
+- gov-runtime-research-map-edge-001 runtime-safety-design -> runtime-safety-evidence [requires/futureOnly=true] ...
+
+## Prerequisite Chains
+- gov-runtime-research-map-chain-001 runtime-activation-safety-chain previewOnly=true steps=...
+
+## Stage Groups
+- [runtime-safety/nodes=3/previewOnly=true] gov-runtime-research-map-stage-001 ...
+
+## Forbidden Dependency Boundaries
+- [runtime-autonomy] gov-runtime-research-map-boundary-001 permanentlyForbidden=true ...
+
+## Future-only Dependency Notes
+- [future-human-review] gov-runtime-research-map-note-001 futureOnly=true ...
+```
+
+Safety guarantees:
+
+* `runtimeResearchMapApplied` is always `false`
+* `runtimeResearchMapEnforced` is always `false`
+* `runtimeResearchIndexApplied` is always `false`
+* `runtimeResearchIndexEnforced` is always `false`
+* `runtimeResearchApplied` is always `false`
+* `runtimeResearchEnforced` is always `false`
+* `runtimeFinalReviewApproved` is always `false`
+* `runtimeFinalReviewApplied` is always `false`
+* `runtimeFinalReviewEnforced` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v9.3 deterministic checks:
+
+* governance-runtime-research-map-preview-unit
+* governance-runtime-research-map-preview-missing
+* governance-runtime-research-map-preview-not-ready
+* governance-runtime-research-map-preview-ready
+* governance-runtime-research-map-preview-blocked
+* governance-runtime-research-map-preview-score
+* governance-runtime-research-map-preview-boundaries
+* governance-runtime-research-map-preview-json-output
+* governance-runtime-research-map-preview-artifact
+* governance-runtime-research-map-preview-no-map-application
+* governance-runtime-research-map-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
