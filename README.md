@@ -8331,6 +8331,209 @@ v9.4 deterministic checks:
 * governance-runtime-research-timeline-preview-no-timeline-application
 * governance-runtime-research-timeline-preview-no-autonomy
 
+## Runtime Governance Research Archive Preview (v9.5)
+
+v9.5 adds a deterministic runtime governance research archive preview command:
+
+```bash
+node dist/cli.js governance runtime research-archive-preview
+node dist/cli.js governance runtime research-archive-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-governance-research-archive-preview.json
+.factory/governance/runtime-governance-research-archive-preview.md
+```
+
+The archive preview consolidates the runtime governance research chain into deterministic archive sections, archive entries, archive references, preview-only archive summaries, forbidden capability archive summaries, and future-only archival notes.
+
+Safety guarantees:
+
+* runtime research archive is preview-only
+* runtime research archive is not applied
+* runtime research archive is not enforced
+* runtime governance is NOT enabled
+* runtime autonomy is NOT enabled
+* runtime activation is NOT approved
+* runtime activation is NOT executed
+* runtime policies are NOT enforced
+* runtime config activation is disabled
+* runtime control plane behavior is not applied
+* runtime sandbox execution is not allowed
+* runtime behavior does not change
+* governance decisions do not change
+* repair orchestration does not change
+* Safe Patch Engine remains the only mutation layer
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Governance Research Archive Preview
+
+Preview status:
+created
+
+Source runtime research timeline status:
+created
+
+Runtime research archive conclusion:
+research-archive-ready
+
+Runtime research archive applied:
+false
+
+Runtime research archive enforced:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Policy runtime mode:
+preview-only
+
+Research archive score:
+80
+
+Research archive rating:
+research-archive-ready
+
+Recommended next stage:
+prepare-runtime-governance-research-catalog-preview
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeResearchTimelineStatus": "created",
+  "runtimeResearchArchiveConclusion": "research-archive-ready",
+  "runtimeResearchArchiveApplied": false,
+  "runtimeResearchArchiveEnforced": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "researchArchiveScore": {
+    "score": 80,
+    "rating": "research-archive-ready"
+  }
+}
+```
+
+Example markdown runtime-governance-research-archive-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Governance Research Archive Preview
+
+Preview status:
+created
+
+Runtime research archive conclusion:
+research-archive-ready
+
+Runtime research archive applied:
+false
+
+Runtime research archive enforced:
+false
+
+## Archive Sections
+
+## Archive Entries
+
+## Archive References
+
+## Preview-only Archive Summaries
+
+## Forbidden Capability Archive Summaries
+
+## Future-only Archival Notes
+
+## Warnings
+```
+
+v9.5 hard invariants:
+
+* `runtimeResearchArchiveApplied` is always `false`
+* `runtimeResearchArchiveEnforced` is always `false`
+* `runtimeResearchTimelineApplied` is always `false`
+* `runtimeResearchTimelineEnforced` is always `false`
+* `runtimeResearchMapApplied` is always `false`
+* `runtimeResearchMapEnforced` is always `false`
+* `runtimeResearchIndexApplied` is always `false`
+* `runtimeResearchIndexEnforced` is always `false`
+* `runtimeResearchApplied` is always `false`
+* `runtimeResearchEnforced` is always `false`
+* `runtimeFinalReviewApproved` is always `false`
+* `runtimeFinalReviewApplied` is always `false`
+* `runtimeFinalReviewEnforced` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v9.5 deterministic checks:
+
+* governance-runtime-research-archive-preview-unit
+* governance-runtime-research-archive-preview-missing
+* governance-runtime-research-archive-preview-not-ready
+* governance-runtime-research-archive-preview-ready
+* governance-runtime-research-archive-preview-blocked
+* governance-runtime-research-archive-preview-score
+* governance-runtime-research-archive-preview-forbidden-capabilities
+* governance-runtime-research-archive-preview-json-output
+* governance-runtime-research-archive-preview-artifact
+* governance-runtime-research-archive-preview-no-archive-application
+* governance-runtime-research-archive-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
