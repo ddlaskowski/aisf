@@ -5643,6 +5643,163 @@ v8.1 deterministic checks:
 * governance-runtime-safety-evidence-preview-no-runtime-activation
 * governance-runtime-safety-evidence-preview-no-autonomy
 
+## Runtime Safety Observability Preview (v8.2)
+
+v8.2 generates deterministic runtime-level observability previews from the runtime safety evidence preview. It is preview-only: runtime observability is not applied, telemetry is not executed, runtime governance is not enabled, runtime autonomy is not enabled, runtime policies are not enforced, and runtime behavior does not change.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance runtime safety-observability-preview
+node dist/cli.js governance runtime safety-observability-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/runtime-safety-observability-preview.json
+.factory/governance/runtime-safety-observability-preview.md
+```
+
+The runtime safety observability preview:
+
+* reuses deterministic runtime safety evidence preview logic
+* inspects runtime safety evidence sections
+* documents runtime telemetry signal definitions
+* documents runtime audit event definitions
+* documents runtime safety alert definitions
+* documents runtime operator visibility requirements
+* documents runtime invariant monitoring definitions
+* documents runtime rollback visibility definitions
+* assigns deterministic IDs such as `gov-runtime-observability-signal-001`
+* does not apply runtime observability
+* does not execute runtime telemetry
+* does not create telemetry pipelines, event streams, or observability backends
+* does not activate runtime governance
+* does not enable runtime autonomy
+* does not apply runtime safety controls
+* does not enforce runtime policies
+* does not activate runtime config
+* does not execute runtime sandboxes
+* does not enable plugins, scripts, runtime learning, ML decisioning, or multi-agent coordination
+* does not change runtime behavior, governance decisions, repair orchestration, or Safe Patch Engine behavior
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Runtime safety observability conclusion:
+runtime-safety-observability-ready-preview
+
+Runtime observability applied:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Telemetry signal count:
+14
+
+Runtime safety observability ready for future review:
+true
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceRuntimeSafetyEvidenceStatus`
+* `runtimeSafetyObservabilityConclusion`
+* `runtimeObservabilityApplied`
+* `runtimeObservabilityEnforced`
+* `runtimeObservabilityActivated`
+* `runtimeGovernanceEnabled`
+* `runtimeAutonomyEnabled`
+* `runtimePolicyEnforcementEnabled`
+* `runtimeConfigActivationEnabled`
+* `runtimeTelemetrySignals`
+* `runtimeAuditEvents`
+* `runtimeSafetyAlerts`
+* `runtimeOperatorVisibilityRequirements`
+* `runtimeInvariantMonitoringDefinitions`
+* `runtimeRollbackVisibilityDefinitions`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown runtime-safety-observability-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Safety Observability Preview
+
+## Runtime Telemetry Signals
+
+## Runtime Audit Events
+
+## Runtime Safety Alerts
+
+## Runtime Operator Visibility Requirements
+
+## Runtime Invariant Monitoring Definitions
+
+## Runtime Rollback Visibility Definitions
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeObservabilityActivated` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.2 deterministic checks:
+
+* governance-runtime-safety-observability-preview-unit
+* governance-runtime-safety-observability-preview-missing
+* governance-runtime-safety-observability-preview-not-ready
+* governance-runtime-safety-observability-preview-ready
+* governance-runtime-safety-observability-preview-blocked
+* governance-runtime-safety-observability-preview-alerts
+* governance-runtime-safety-observability-preview-monitoring
+* governance-runtime-safety-observability-preview-json-output
+* governance-runtime-safety-observability-preview-artifact
+* governance-runtime-safety-observability-preview-no-runtime-activation
+* governance-runtime-safety-observability-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

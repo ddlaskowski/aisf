@@ -50,6 +50,7 @@
     "  node dist/cli.js governance autonomy lifecycle-preview",
     "  node dist/cli.js governance runtime safety-design-preview",
     "  node dist/cli.js governance runtime safety-evidence-preview",
+    "  node dist/cli.js governance runtime safety-observability-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -112,6 +113,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance autonomy lifecycle-preview",
     "  node dist/cli.js governance runtime safety-design-preview",
     "  node dist/cli.js governance runtime safety-evidence-preview",
+    "  node dist/cli.js governance runtime safety-observability-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -516,6 +518,27 @@ export function renderGovernanceRuntimeSafetyEvidencePreviewHelp(): string {
     "Runtime safety evidence preview-only guarantee:",
     "  This command models future runtime safety evidence sections, references, and missing evidence only.",
     "  It does not apply runtime safety evidence, activate runtime governance, enable runtime autonomy, enforce runtime policies, activate config, execute sandboxes, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeSafetyObservabilityPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime safety-observability-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime safety-observability-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime safety-observability-preview",
+    "  node dist/cli.js governance runtime safety-observability-preview --json",
+    "",
+    "Runtime safety observability preview-only guarantee:",
+    "  This command models future runtime telemetry signals, audit events, safety alerts, operator visibility, invariant monitoring, and rollback visibility only.",
+    "  It does not apply runtime observability, execute telemetry, activate runtime governance, enable runtime autonomy, enforce runtime policies, activate config, execute sandboxes, or change repair orchestration."
   ].join("\n") + "\n";
 }
 
