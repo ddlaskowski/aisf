@@ -6923,6 +6923,232 @@ v8.8 deterministic checks:
 * governance-runtime-activation-boundary-preview-no-boundary-application
 * governance-runtime-activation-boundary-preview-no-autonomy
 
+## Runtime Activation Freeze Preview (v8.9)
+
+v8.9 generates deterministic runtime activation freeze previews from the runtime activation boundary preview. It is preview-only: runtime freeze behavior is not applied, enforced, or executed; runtime activation is not approved; runtime activation is not executed; runtime governance is not enabled; runtime autonomy is not enabled; runtime policies are not enforced; and runtime behavior does not change.
+
+Commands:
+
+```bash
+node dist/cli.js governance runtime activation-freeze-preview
+node dist/cli.js governance runtime activation-freeze-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-activation-freeze-preview.json
+.factory/governance/runtime-activation-freeze-preview.md
+```
+
+The preview:
+
+* reuses runtime activation boundary preview logic
+* inspects the complete runtime boundary review chain
+* documents deterministic runtime freeze domains
+* documents deterministic runtime freeze conditions
+* documents deterministic runtime freeze blockers
+* documents deterministic freeze-trigger findings
+* documents deterministic rollback freeze planning
+* never applies, enforces, or executes runtime freeze behavior
+* never approves runtime activation
+* never executes runtime activation
+* never applies runtime boundaries
+* never enables runtime governance
+* never enables runtime autonomy
+* never allows autonomous actions
+* never enforces runtime policies
+* never activates runtime config
+* never changes runtime behavior
+* never changes governance decisions
+* never changes repair orchestration
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Activation Freeze Preview
+
+Preview status:
+created
+
+Source runtime boundary status:
+created
+
+Runtime freeze conclusion:
+future-freeze-review-ready
+
+Runtime freeze applied:
+false
+
+Runtime freeze enforced:
+false
+
+Runtime freeze executed:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime autonomy actions allowed:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Policy runtime mode:
+preview-only
+
+Freeze score:
+80
+
+Freeze rating:
+future-freeze-review-ready
+
+Future freeze review ready:
+true
+
+Recommended next stage:
+prepare-runtime-safety-final-review-preview
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeBoundaryStatus": "created",
+  "runtimeFreezeConclusion": "future-freeze-review-ready",
+  "runtimeFreezeApplied": false,
+  "runtimeFreezeEnforced": false,
+  "runtimeFreezeExecuted": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "runtimeBoundaryApplied": false,
+  "runtimeBoundaryEnforced": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeAutonomyActionsAllowed": false,
+  "runtimeCertificationApplied": false,
+  "runtimePolicyEnforcementEnabled": false,
+  "runtimeConfigActivationEnabled": false,
+  "runtimeControlPlaneApplied": false,
+  "runtimeControlPlaneActivated": false,
+  "governanceBypassAllowed": false,
+  "applied": false,
+  "enforced": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "governanceDecisionsChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "freezeScore": {
+    "score": 80,
+    "rating": "future-freeze-review-ready"
+  },
+  "summary": {
+    "futureFreezeReviewReady": true
+  },
+  "recommendedNextStage": "prepare-runtime-safety-final-review-preview"
+}
+```
+
+Example markdown runtime-activation-freeze-preview shape:
+
+```text
+# AI Software Factory - Runtime Activation Freeze Preview
+
+Preview status:
+created
+
+Runtime freeze conclusion:
+future-freeze-review-ready
+
+Runtime freeze applied:
+false
+
+Runtime freeze executed:
+false
+
+## Freeze Domains
+- [activation-freeze/passed-preview/applied=false] gov-runtime-freeze-domain-001 ...
+
+## Freeze Conditions
+- [activation-freeze/hard-freeze] gov-runtime-freeze-condition-001 ...
+
+## Freeze Blockers
+- [high] gov-runtime-freeze-blocker-001 ...
+
+## Freeze Trigger Findings
+- [runtime-autonomy] gov-runtime-freeze-trigger-001 permanentlyForbidden=true ...
+
+## Rollback Freeze Planning
+Rollback execution allowed: false
+Rollback prepared: false
+```
+
+Safety guarantees:
+
+* `runtimeFreezeApplied` is always `false`
+* `runtimeFreezeEnforced` is always `false`
+* `runtimeFreezeExecuted` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeBoundaryApplied` is always `false`
+* `runtimeBoundaryEnforced` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimeCertificationApplied` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.9 deterministic checks:
+
+* governance-runtime-activation-freeze-preview-unit
+* governance-runtime-activation-freeze-preview-missing
+* governance-runtime-activation-freeze-preview-not-ready
+* governance-runtime-activation-freeze-preview-ready
+* governance-runtime-activation-freeze-preview-blocked
+* governance-runtime-activation-freeze-preview-score
+* governance-runtime-activation-freeze-preview-triggers
+* governance-runtime-activation-freeze-preview-json-output
+* governance-runtime-activation-freeze-preview-artifact
+* governance-runtime-activation-freeze-preview-no-freeze-application
+* governance-runtime-activation-freeze-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

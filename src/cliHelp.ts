@@ -57,6 +57,7 @@
     "  node dist/cli.js governance runtime certification-preview",
     "  node dist/cli.js governance runtime activation-governance-review-preview",
     "  node dist/cli.js governance runtime activation-boundary-preview",
+    "  node dist/cli.js governance runtime activation-freeze-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -126,6 +127,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime certification-preview",
     "  node dist/cli.js governance runtime activation-governance-review-preview",
     "  node dist/cli.js governance runtime activation-boundary-preview",
+    "  node dist/cli.js governance runtime activation-freeze-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -677,6 +679,27 @@ export function renderGovernanceRuntimeActivationBoundaryPreviewHelp(): string {
     "Runtime activation boundary preview-only guarantee:",
     "  This command models future runtime activation boundary domains, definitions, blockers, forbidden boundary crossings, and rollback planning only.",
     "  It does not approve runtime activation, execute runtime activation, apply runtime boundaries, enable runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeActivationFreezePreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime activation-freeze-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime activation-freeze-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime activation-freeze-preview",
+    "  node dist/cli.js governance runtime activation-freeze-preview --json",
+    "",
+    "Runtime activation freeze preview-only guarantee:",
+    "  This command models future runtime activation freeze domains, conditions, blockers, freeze trigger findings, and rollback planning only.",
+    "  It does not execute runtime freeze behavior, approve runtime activation, execute runtime activation, apply runtime boundaries, enable runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

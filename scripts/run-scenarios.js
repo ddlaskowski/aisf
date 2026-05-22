@@ -24747,6 +24747,338 @@ function runGovernanceRuntimeActivationBoundaryPreviewNoAutonomyUnit() {
   }
 }
 
+function directGovernanceRuntimeActivationFreezePreview(repo) {
+  const { buildGovernanceRuntimeActivationFreezePreview } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationFreezePreview.js"));
+  return buildGovernanceRuntimeActivationFreezePreview(repo);
+}
+
+function directGovernanceRuntimeActivationFreezePreviewFromBoundary(source) {
+  const { buildGovernanceRuntimeActivationFreezePreviewFromBoundary } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationFreezePreview.js"));
+  return buildGovernanceRuntimeActivationFreezePreviewFromBoundary(source);
+}
+
+function cleanupProjectGovernanceRuntimeActivationFreezePreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-activation-freeze-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-activation-freeze-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceRuntimeActivationFreezePreviewChainArtifacts() {
+  cleanupProjectGovernanceRuntimeActivationFreezePreviewArtifacts();
+  cleanupProjectGovernanceRuntimeActivationBoundaryPreviewChainArtifacts();
+}
+
+function createSyntheticRuntimeActivationBoundaryPreview(overrides = {}) {
+  const preview = directGovernanceRuntimeActivationBoundaryPreviewFromGovernanceReview(createSyntheticRuntimeActivationGovernanceReviewPreview());
+  return {
+    ...preview,
+    ...overrides,
+    summary: {
+      ...preview.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceRuntimeActivationFreezePreviewSafety(preview, label) {
+  const runtimeFlags = [
+    "runtimeFreezeApplied",
+    "runtimeFreezeEnforced",
+    "runtimeFreezeExecuted",
+    "runtimeActivationApproved",
+    "runtimeActivationExecuted",
+    "runtimeBoundaryApplied",
+    "runtimeBoundaryEnforced",
+    "runtimeGovernanceEnabled",
+    "runtimeAutonomyEnabled",
+    "runtimeAutonomyActionsAllowed",
+    "runtimeCertificationApplied",
+    "runtimePolicyEnforcementEnabled",
+    "runtimeConfigActivationEnabled",
+    "runtimeControlPlaneApplied",
+    "runtimeControlPlaneActivated",
+    "runtimeKillSwitchActivated",
+    "runtimeEmergencyStopExecuted",
+    "runtimeOperatorOverrideApplied",
+    "runtimeRollbackExecuted",
+    "runtimeObservabilityApplied",
+    "runtimeObservabilityEnforced",
+    "runtimeSafetyApplied",
+    "runtimeSafetyEnforced",
+    "runtimeSafetyActivated",
+    "runtimeSandboxExecutionAllowed",
+    "runtimeSandboxExecuted",
+    "runtimeMutationScopeExpanded",
+    "runtimeExternalExecutionAllowed",
+    "runtimePluginExecutionAllowed",
+    "runtimeScriptEvaluationAllowed",
+    "runtimeLearningEnabled",
+    "runtimeMlDecisioningEnabled",
+    "runtimeMultiAgentCoordinationEnabled",
+    "governanceBypassAllowed",
+    "applied",
+    "enforced",
+    "runtimeBehaviorChanged",
+    "governanceDecisionsChanged",
+    "repairOrchestrationChanged"
+  ];
+  for (const key of runtimeFlags) {
+    if (preview[key] !== false) {
+      throw new Error(`${label} expected ${key}=false: ${JSON.stringify(preview)}`);
+    }
+  }
+  if (
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.safePatchEngineOnly !== true ||
+    preview.freezeScore.score === 100 ||
+    !preview.freezeDomains.every((item) => item.applied === false) ||
+    !preview.freezeTriggerFindings.every((item) => item.permanentlyForbidden === true) ||
+    preview.rollbackFreezePlanning.rollbackExecutionAllowed !== false ||
+    preview.rollbackFreezePlanning.rollbackPrepared !== false
+  ) {
+    throw new Error(`${label} relaxed runtime activation freeze invariants: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceRuntimeActivationFreezePreviewOrdering(preview) {
+  const lists = [
+    ["gov-runtime-freeze-domain", preview.freezeDomains, (item) => `${item.category}:${item.key}:${item.domainStatus}`],
+    ["gov-runtime-freeze-condition", preview.freezeConditions, (item) => `${item.category}:${item.key}:${item.freezeType}`],
+    ["gov-runtime-freeze-blocker", preview.freezeBlockers, (item) => `${item.severity}:${item.key}`],
+    ["gov-runtime-freeze-trigger", preview.freezeTriggerFindings, (item) => item.category],
+    ["gov-runtime-freeze-rollback", preview.rollbackFreezePlanning.rollbackPlanningSteps, (item) => item.key]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`runtime activation freeze id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`runtime activation freeze ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationFreezePreviewFromBoundary(createSyntheticRuntimeActivationBoundaryPreview());
+    const { renderGovernanceRuntimeActivationFreezePreviewText } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationFreezePreview.js"));
+    const rendered = renderGovernanceRuntimeActivationFreezePreviewText(preview);
+    assertGovernanceRuntimeActivationFreezePreviewSafety(preview, "runtime activation freeze unit");
+    assertGovernanceRuntimeActivationFreezePreviewOrdering(preview);
+    if (preview.schemaVersion !== 1 || preview.previewStatus !== "created" || preview.runtimeFreezeConclusion !== "future-freeze-review-ready" || preview.freezeScore.score !== 80 || preview.runtimeFreezeApplied !== false || !rendered.includes("Runtime Activation Freeze Preview")) {
+      throw new Error(`runtime activation freeze unit mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-freeze-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-runtime-activation-freeze-preview-missing");
+    const preview = directGovernanceRuntimeActivationFreezePreview(repo);
+    assertGovernanceRuntimeActivationFreezePreviewSafety(preview, "runtime activation freeze missing");
+    if (preview.previewStatus !== "not-created" || preview.sourceRuntimeBoundaryStatus !== "not-created" || preview.runtimeFreezeConclusion !== "source-missing" || preview.freezeScore.score !== 20) {
+      throw new Error(`runtime activation freeze missing mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-freeze-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationFreezePreviewFromBoundary(createSyntheticRuntimeActivationBoundaryPreview({
+      previewStatus: "created",
+      runtimeBoundaryConclusion: "not-ready",
+      recommendedNextStage: "continue-runtime-safety-hardening",
+      summary: { futureBoundaryReviewReady: false }
+    }));
+    assertGovernanceRuntimeActivationFreezePreviewSafety(preview, "runtime activation freeze not ready");
+    if (preview.runtimeFreezeConclusion !== "not-ready" || preview.freezeScore.score !== 40 || preview.recommendedNextStage !== "continue-runtime-safety-hardening") {
+      throw new Error(`runtime activation freeze not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-freeze-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationFreezePreviewFromBoundary(createSyntheticRuntimeActivationBoundaryPreview());
+    assertGovernanceRuntimeActivationFreezePreviewSafety(preview, "runtime activation freeze ready");
+    assertGovernanceRuntimeActivationFreezePreviewOrdering(preview);
+    if (preview.runtimeFreezeConclusion !== "future-freeze-review-ready" || preview.recommendedNextStage !== "prepare-runtime-safety-final-review-preview" || preview.summary.passedDomains !== preview.summary.totalDomains) {
+      throw new Error(`runtime activation freeze ready mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-freeze-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationFreezePreviewFromBoundary(createSyntheticRuntimeActivationBoundaryPreview({
+      previewStatus: "blocked",
+      runtimeBoundaryConclusion: "blocked",
+      recommendedNextStage: "blocked",
+      summary: { futureBoundaryReviewReady: false }
+    }));
+    assertGovernanceRuntimeActivationFreezePreviewSafety(preview, "runtime activation freeze blocked");
+    if (preview.previewStatus !== "blocked" || preview.sourceRuntimeBoundaryStatus !== "blocked" || preview.runtimeFreezeConclusion !== "blocked" || preview.freezeScore.score !== 0) {
+      throw new Error(`runtime activation freeze blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-freeze-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewScoreUnit() {
+  try {
+    const cases = [
+      [createSyntheticRuntimeActivationBoundaryPreview({ previewStatus: "not-created", runtimeBoundaryConclusion: "source-missing" }), 20, "not-ready"],
+      [createSyntheticRuntimeActivationBoundaryPreview({ previewStatus: "created", runtimeBoundaryConclusion: "not-ready" }), 40, "partial-freeze-readiness"],
+      [createSyntheticRuntimeActivationBoundaryPreview(), 80, "future-freeze-review-ready"],
+      [createSyntheticRuntimeActivationBoundaryPreview({ previewStatus: "blocked", runtimeBoundaryConclusion: "blocked" }), 0, "blocked"]
+    ];
+    for (const [source, score, rating] of cases) {
+      const preview = directGovernanceRuntimeActivationFreezePreviewFromBoundary(source);
+      if (preview.freezeScore.score !== score || preview.freezeScore.rating !== rating) {
+        throw new Error(`runtime activation freeze score mismatch: ${JSON.stringify(preview)}`);
+      }
+    }
+    console.log("PASS governance-runtime-activation-freeze-preview-score");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-score");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewTriggersUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationFreezePreviewFromBoundary(createSyntheticRuntimeActivationBoundaryPreview());
+    assertGovernanceRuntimeActivationFreezePreviewSafety(preview, "runtime activation freeze triggers");
+    assertGovernanceRuntimeActivationFreezePreviewOrdering(preview);
+    if (preview.freezeTriggerFindings.length !== 9 || !preview.freezeTriggerFindings.some((item) => item.category === "safe-patch-engine-bypass")) {
+      throw new Error(`runtime activation freeze trigger mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-freeze-preview-triggers");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-triggers");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeActivationFreezePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createRuntimeLifecycleReadyProjectChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "lifecycle-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-readiness-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "certification-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-governance-review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-boundary-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-freeze-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.runtimeFreezeApplied !== false || parsed.runtimeFreezeExecuted !== false || parsed.freezeScore.score === 100 || !parsed.freezeTriggerFindings.every((item) => item.id.startsWith("gov-runtime-freeze-trigger-"))) {
+      throw new Error(`runtime activation freeze JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceRuntimeActivationFreezePreviewChainArtifacts();
+    console.log("PASS governance-runtime-activation-freeze-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeActivationFreezePreviewChainArtifacts();
+    console.log("FAIL governance-runtime-activation-freeze-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeActivationFreezePreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createRuntimeLifecycleReadyProjectChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "lifecycle-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-readiness-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "certification-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-governance-review-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-boundary-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-freeze-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "runtime-activation-freeze-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "runtime-activation-freeze-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`runtime activation freeze artifact missing: status=${result.status}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Runtime Activation Freeze Preview") || artifact.runtimeFreezeApplied !== false || artifact.runtimeFreezeExecuted !== false) {
+      throw new Error(`runtime activation freeze artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceRuntimeActivationFreezePreviewChainArtifacts();
+    console.log("PASS governance-runtime-activation-freeze-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeActivationFreezePreviewChainArtifacts();
+    console.log("FAIL governance-runtime-activation-freeze-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewNoFreezeApplicationUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationFreezePreviewFromBoundary(createSyntheticRuntimeActivationBoundaryPreview());
+    assertGovernanceRuntimeActivationFreezePreviewSafety(preview, "runtime activation freeze no freeze application");
+    console.log("PASS governance-runtime-activation-freeze-preview-no-freeze-application");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-no-freeze-application");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationFreezePreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationFreezePreviewFromBoundary(createSyntheticRuntimeActivationBoundaryPreview());
+    assertGovernanceRuntimeActivationFreezePreviewSafety(preview, "runtime activation freeze no autonomy");
+    console.log("PASS governance-runtime-activation-freeze-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-freeze-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -26988,6 +27320,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceRuntimeActivationBoundaryPreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewScoreUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewTriggersUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewNoFreezeApplicationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationFreezePreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
