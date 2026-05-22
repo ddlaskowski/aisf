@@ -62,6 +62,7 @@
     "  node dist/cli.js governance runtime research-preview",
     "  node dist/cli.js governance runtime research-index-preview",
     "  node dist/cli.js governance runtime research-map-preview",
+    "  node dist/cli.js governance runtime research-timeline-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -136,6 +137,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime research-preview",
     "  node dist/cli.js governance runtime research-index-preview",
     "  node dist/cli.js governance runtime research-map-preview",
+    "  node dist/cli.js governance runtime research-timeline-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -791,6 +793,27 @@ export function renderGovernanceRuntimeResearchMapPreviewHelp(): string {
     "",
     "Runtime governance research map preview-only guarantee:",
     "  This command models runtime governance dependency nodes, edges, prerequisite chains, stage groups, forbidden boundaries, and future-only dependency notes only.",
+    "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeResearchTimelinePreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime research-timeline-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime research-timeline-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime research-timeline-preview",
+    "  node dist/cli.js governance runtime research-timeline-preview --json",
+    "",
+    "Runtime governance research timeline preview-only guarantee:",
+    "  This command models runtime governance timeline stages, maturity progression entries, research milestones, preview-only maturity boundaries, and future-only progression notes only.",
     "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
   ].join("\n") + "\n";
 }

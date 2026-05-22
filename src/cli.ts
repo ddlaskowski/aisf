@@ -309,6 +309,11 @@ import {
   writeGovernanceRuntimeResearchMapPreviewArtifacts
 } from "./governance/runtimeGovernanceResearchMapPreview.js";
 import {
+  buildGovernanceRuntimeResearchTimelinePreview,
+  renderGovernanceRuntimeResearchTimelinePreviewText,
+  writeGovernanceRuntimeResearchTimelinePreviewArtifacts
+} from "./governance/runtimeGovernanceResearchTimelinePreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -352,6 +357,7 @@ import {
   renderGovernancePostV9RuntimeResearchPreviewHelp,
   renderGovernanceRuntimeResearchIndexPreviewHelp,
   renderGovernanceRuntimeResearchMapPreviewHelp,
+  renderGovernanceRuntimeResearchTimelinePreviewHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
@@ -1719,6 +1725,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceRuntimeResearchMapPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "runtime" && args[2] === "research-timeline-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance runtime research-timeline-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceRuntimeResearchTimelinePreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceRuntimeResearchTimelinePreview(process.cwd());
+    writeGovernanceRuntimeResearchTimelinePreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceRuntimeResearchTimelinePreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

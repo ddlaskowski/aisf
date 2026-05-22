@@ -8096,6 +8096,241 @@ v9.3 deterministic checks:
 * governance-runtime-research-map-preview-no-map-application
 * governance-runtime-research-map-preview-no-autonomy
 
+## Runtime Governance Research Timeline Preview (v9.4)
+
+v9.4 generates a deterministic runtime governance research timeline from the runtime governance research map preview. It is preview-only: the runtime research timeline is not applied or enforced; runtime activation is not approved or executed; runtime governance is not enabled; runtime autonomy is not enabled; runtime policies are not enforced; and runtime behavior does not change.
+
+Commands:
+
+```bash
+node dist/cli.js governance runtime research-timeline-preview
+node dist/cli.js governance runtime research-timeline-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-governance-research-timeline-preview.json
+.factory/governance/runtime-governance-research-timeline-preview.md
+```
+
+The preview:
+
+* reuses runtime governance research map preview logic
+* inspects the complete runtime governance preview chain
+* documents deterministic timeline stages
+* documents deterministic maturity progression entries
+* documents deterministic research milestones
+* documents deterministic preview-only maturity boundaries
+* documents deterministic future-only progression notes
+* never applies or enforces the research timeline
+* never applies or enforces runtime research map output
+* never applies or enforces runtime research index output
+* never applies or enforces runtime research
+* never approves runtime activation
+* never executes runtime activation
+* never enables runtime governance
+* never enables runtime autonomy
+* never allows autonomous actions
+* never enforces runtime policies
+* never activates runtime config
+* never changes runtime behavior
+* never changes governance decisions
+* never changes repair orchestration
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Governance Research Timeline Preview
+
+Preview status:
+created
+
+Source runtime research map status:
+created
+
+Runtime research timeline conclusion:
+research-timeline-ready
+
+Runtime research timeline applied:
+false
+
+Runtime research timeline enforced:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime autonomy actions allowed:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Policy runtime mode:
+preview-only
+
+Research timeline score:
+80
+
+Research timeline rating:
+research-timeline-ready
+
+Research timeline ready:
+true
+
+Recommended next stage:
+prepare-runtime-governance-research-archive-preview
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeResearchMapStatus": "created",
+  "runtimeResearchTimelineConclusion": "research-timeline-ready",
+  "runtimeResearchTimelineApplied": false,
+  "runtimeResearchTimelineEnforced": false,
+  "runtimeResearchMapApplied": false,
+  "runtimeResearchMapEnforced": false,
+  "runtimeResearchIndexApplied": false,
+  "runtimeResearchIndexEnforced": false,
+  "runtimeResearchApplied": false,
+  "runtimeResearchEnforced": false,
+  "runtimeFinalReviewApproved": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeAutonomyActionsAllowed": false,
+  "runtimePolicyEnforcementEnabled": false,
+  "runtimeConfigActivationEnabled": false,
+  "governanceBypassAllowed": false,
+  "applied": false,
+  "enforced": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "governanceDecisionsChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "researchTimelineScore": {
+    "score": 80,
+    "rating": "research-timeline-ready"
+  },
+  "summary": {
+    "researchTimelineReady": true
+  },
+  "recommendedNextStage": "prepare-runtime-governance-research-archive-preview"
+}
+```
+
+Example markdown runtime-governance-research-timeline-preview shape:
+
+```text
+# AI Software Factory - Runtime Governance Research Timeline Preview
+
+Preview status:
+created
+
+Runtime research timeline conclusion:
+research-timeline-ready
+
+Runtime research timeline applied:
+false
+
+Runtime research timeline enforced:
+false
+
+## Timeline Stages
+- [v8.0/runtime-safety/timeline-preview] gov-runtime-research-timeline-stage-001 ...
+
+## Maturity Progression Entries
+- gov-runtime-research-timeline-progression-001 v8.0 -> v8.1 [extends/futureOnly=true] ...
+
+## Research Milestones
+- gov-runtime-research-timeline-milestone-001 runtime-safety-design achievedIn=v8.0 previewOnly=true ...
+
+## Preview-only Maturity Boundaries
+- [runtime-autonomy] gov-runtime-research-timeline-boundary-001 permanentlyForbidden=true ...
+
+## Future-only Progression Notes
+- [future-human-review] gov-runtime-research-timeline-note-001 futureOnly=true ...
+```
+
+Safety guarantees:
+
+* `runtimeResearchTimelineApplied` is always `false`
+* `runtimeResearchTimelineEnforced` is always `false`
+* `runtimeResearchMapApplied` is always `false`
+* `runtimeResearchMapEnforced` is always `false`
+* `runtimeResearchIndexApplied` is always `false`
+* `runtimeResearchIndexEnforced` is always `false`
+* `runtimeResearchApplied` is always `false`
+* `runtimeResearchEnforced` is always `false`
+* `runtimeFinalReviewApproved` is always `false`
+* `runtimeFinalReviewApplied` is always `false`
+* `runtimeFinalReviewEnforced` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v9.4 deterministic checks:
+
+* governance-runtime-research-timeline-preview-unit
+* governance-runtime-research-timeline-preview-missing
+* governance-runtime-research-timeline-preview-not-ready
+* governance-runtime-research-timeline-preview-ready
+* governance-runtime-research-timeline-preview-blocked
+* governance-runtime-research-timeline-preview-score
+* governance-runtime-research-timeline-preview-boundaries
+* governance-runtime-research-timeline-preview-json-output
+* governance-runtime-research-timeline-preview-artifact
+* governance-runtime-research-timeline-preview-no-timeline-application
+* governance-runtime-research-timeline-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
