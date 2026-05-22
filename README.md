@@ -5968,6 +5968,167 @@ v8.3 deterministic checks:
 * governance-runtime-control-plane-preview-no-runtime-activation
 * governance-runtime-control-plane-preview-no-autonomy
 
+## Runtime Governance Lifecycle Preview (v8.4)
+
+v8.4 generates deterministic runtime governance lifecycle previews from the runtime control plane preview. It is preview-only: runtime lifecycle behavior is not applied, lifecycle transitions are not executed, runtime governance is not enabled, runtime autonomy is not enabled, runtime policies are not enforced, and runtime behavior does not change.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance runtime lifecycle-preview
+node dist/cli.js governance runtime lifecycle-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/runtime-lifecycle-preview.json
+.factory/governance/runtime-lifecycle-preview.md
+```
+
+The runtime governance lifecycle preview:
+
+* reuses deterministic runtime control plane preview logic
+* inspects the complete v8.x runtime preview chain
+* documents deterministic runtime lifecycle stages
+* documents deterministic runtime lifecycle transitions
+* documents deterministic runtime lifecycle blockers
+* documents deterministic runtime rollback lifecycle planning
+* assigns deterministic IDs such as `gov-runtime-lifecycle-transition-001`
+* does not apply runtime lifecycle behavior
+* does not execute lifecycle transitions
+* does not activate runtime governance
+* does not enable runtime autonomy
+* does not enforce runtime policies
+* does not activate runtime config
+* does not execute runtime sandboxes
+* does not activate kill switches, emergency stops, rollback, or operator overrides
+* does not enable plugins, scripts, runtime learning, ML decisioning, or multi-agent coordination
+* does not change runtime behavior, governance decisions, repair orchestration, or Safe Patch Engine behavior
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Runtime lifecycle conclusion:
+runtime-lifecycle-ready-preview
+
+Runtime lifecycle applied:
+false
+
+Runtime lifecycle transition executed:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Lifecycle transition count:
+13
+
+Rollback step count:
+7
+
+Runtime lifecycle ready for future review:
+true
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceRuntimeControlPlaneStatus`
+* `runtimeLifecycleConclusion`
+* `runtimeLifecycleApplied`
+* `runtimeLifecycleEnforced`
+* `runtimeLifecycleTransitionExecuted`
+* `runtimeKillSwitchActivated`
+* `runtimeEmergencyStopExecuted`
+* `runtimeOperatorOverrideApplied`
+* `runtimeRollbackExecuted`
+* `runtimeGovernanceEnabled`
+* `runtimeAutonomyEnabled`
+* `runtimePolicyEnforcementEnabled`
+* `runtimeLifecycleStages`
+* `runtimeLifecycleTransitions`
+* `runtimeLifecycleBlockers`
+* `runtimeRollbackLifecyclePlan`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown runtime-lifecycle-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Governance Lifecycle Preview
+
+## Runtime Lifecycle Stages
+
+## Runtime Lifecycle Transitions
+
+## Runtime Lifecycle Blockers
+
+## Runtime Rollback Lifecycle Plan
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `runtimeLifecycleApplied` is always `false`
+* `runtimeLifecycleEnforced` is always `false`
+* `runtimeLifecycleTransitionExecuted` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneEnforced` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.4 deterministic checks:
+
+* governance-runtime-lifecycle-preview-unit
+* governance-runtime-lifecycle-preview-missing
+* governance-runtime-lifecycle-preview-not-ready
+* governance-runtime-lifecycle-preview-ready
+* governance-runtime-lifecycle-preview-blocked
+* governance-runtime-lifecycle-preview-forbidden-transitions
+* governance-runtime-lifecycle-preview-rollback-plan
+* governance-runtime-lifecycle-preview-json-output
+* governance-runtime-lifecycle-preview-artifact
+* governance-runtime-lifecycle-preview-no-runtime-activation
+* governance-runtime-lifecycle-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
