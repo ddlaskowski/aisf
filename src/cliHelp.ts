@@ -54,6 +54,7 @@
     "  node dist/cli.js governance runtime control-plane-preview",
     "  node dist/cli.js governance runtime lifecycle-preview",
     "  node dist/cli.js governance runtime activation-readiness-preview",
+    "  node dist/cli.js governance runtime certification-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -120,6 +121,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime control-plane-preview",
     "  node dist/cli.js governance runtime lifecycle-preview",
     "  node dist/cli.js governance runtime activation-readiness-preview",
+    "  node dist/cli.js governance runtime certification-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -608,6 +610,27 @@ export function renderGovernanceRuntimeActivationReadinessPreviewHelp(): string 
     "Runtime activation readiness preview-only guarantee:",
     "  This command models future runtime activation readiness scoring, prerequisites, blockers, freeze conditions, forbidden paths, and rollback planning only.",
     "  It does not execute runtime activation, enable runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeSafetyCertificationPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime certification-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime certification-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime certification-preview",
+    "  node dist/cli.js governance runtime certification-preview --json",
+    "",
+    "Runtime safety certification preview-only guarantee:",
+    "  This command models future runtime safety certification domains, findings, blockers, forbidden capability findings, and recommendations only.",
+    "  It does not certify runtime governance for execution, execute runtime activation, enable runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

@@ -23761,6 +23761,332 @@ function runGovernanceRuntimeActivationReadinessPreviewNoAutonomyUnit() {
     return false;
   }
 }
+
+function directGovernanceRuntimeSafetyCertificationPreview(repo) {
+  const { buildGovernanceRuntimeSafetyCertificationPreview } = require(path.join(projectRoot, "dist", "governance", "runtimeSafetyCertificationPreview.js"));
+  return buildGovernanceRuntimeSafetyCertificationPreview(repo);
+}
+
+function directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(source) {
+  const { buildGovernanceRuntimeSafetyCertificationPreviewFromReadiness } = require(path.join(projectRoot, "dist", "governance", "runtimeSafetyCertificationPreview.js"));
+  return buildGovernanceRuntimeSafetyCertificationPreviewFromReadiness(source);
+}
+
+function cleanupProjectGovernanceRuntimeSafetyCertificationPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-safety-certification-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-safety-certification-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceRuntimeSafetyCertificationPreviewChainArtifacts() {
+  cleanupProjectGovernanceRuntimeSafetyCertificationPreviewArtifacts();
+  cleanupProjectGovernanceRuntimeActivationReadinessPreviewChainArtifacts();
+}
+
+function createSyntheticRuntimeActivationReadinessPreview(overrides = {}) {
+  const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(createSyntheticRuntimeLifecyclePreview());
+  return {
+    ...preview,
+    ...overrides,
+    summary: {
+      ...preview.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, label) {
+  const runtimeFlags = [
+    "runtimeCertified",
+    "runtimeCertificationApplied",
+    "runtimeCertificationEnforced",
+    "runtimeGovernanceEnabled",
+    "runtimeAutonomyEnabled",
+    "runtimeAutonomyActionsAllowed",
+    "runtimeActivationExecuted",
+    "runtimePolicyEnforcementEnabled",
+    "runtimeConfigActivationEnabled",
+    "runtimeControlPlaneApplied",
+    "runtimeControlPlaneActivated",
+    "runtimeKillSwitchActivated",
+    "runtimeEmergencyStopExecuted",
+    "runtimeOperatorOverrideApplied",
+    "runtimeRollbackExecuted",
+    "runtimeObservabilityApplied",
+    "runtimeObservabilityEnforced",
+    "runtimeSafetyApplied",
+    "runtimeSafetyEnforced",
+    "runtimeSafetyActivated",
+    "runtimeSandboxExecutionAllowed",
+    "runtimeSandboxExecuted",
+    "runtimeMutationScopeExpanded",
+    "runtimeExternalExecutionAllowed",
+    "runtimePluginExecutionAllowed",
+    "runtimeScriptEvaluationAllowed",
+    "runtimeLearningEnabled",
+    "runtimeMlDecisioningEnabled",
+    "runtimeMultiAgentCoordinationEnabled",
+    "governanceBypassAllowed",
+    "applied",
+    "enforced",
+    "runtimeBehaviorChanged",
+    "governanceDecisionsChanged",
+    "repairOrchestrationChanged"
+  ];
+  for (const key of runtimeFlags) {
+    if (preview[key] !== false) {
+      throw new Error(`${label} expected ${key}=false: ${JSON.stringify(preview)}`);
+    }
+  }
+  if (
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.safePatchEngineOnly !== true ||
+    preview.certificationScore.score === 100 ||
+    !preview.certificationDomains.every((item) => item.certified === false) ||
+    !preview.forbiddenCapabilityFindings.every((item) => item.permanentlyForbidden === true)
+  ) {
+    throw new Error(`${label} relaxed runtime certification invariants: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceRuntimeSafetyCertificationPreviewOrdering(preview) {
+  const lists = [
+    ["gov-runtime-cert-domain", preview.certificationDomains, (item) => `${item.category}:${item.key}:${item.domainStatus}`],
+    ["gov-runtime-cert-finding", preview.certificationFindings, (item) => `${item.severity}:${item.key}`],
+    ["gov-runtime-cert-blocker", preview.certificationBlockers, (item) => `${item.severity}:${item.key}`],
+    ["gov-runtime-cert-forbidden", preview.forbiddenCapabilityFindings, (item) => item.category],
+    ["gov-runtime-cert-recommendation", preview.certificationRecommendations, (item) => `${item.priority}:${item.key}`]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`runtime certification id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`runtime certification ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewUnit() {
+  try {
+    const preview = directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(createSyntheticRuntimeActivationReadinessPreview());
+    const { renderGovernanceRuntimeSafetyCertificationPreviewText } = require(path.join(projectRoot, "dist", "governance", "runtimeSafetyCertificationPreview.js"));
+    const rendered = renderGovernanceRuntimeSafetyCertificationPreviewText(preview);
+    assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, "runtime certification unit");
+    assertGovernanceRuntimeSafetyCertificationPreviewOrdering(preview);
+    if (
+      preview.schemaVersion !== 1 ||
+      preview.previewStatus !== "created" ||
+      preview.runtimeCertificationConclusion !== "future-review-ready" ||
+      preview.certificationScore.score !== 80 ||
+      !rendered.includes("Runtime Safety Certification Preview")
+    ) {
+      throw new Error(`runtime certification unit mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-safety-certification-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-runtime-safety-certification-preview-missing");
+    const preview = directGovernanceRuntimeSafetyCertificationPreview(repo);
+    assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, "runtime certification missing");
+    if (preview.previewStatus !== "not-created" || preview.sourceRuntimeActivationReadinessStatus !== "not-created" || preview.runtimeCertificationConclusion !== "source-missing" || preview.certificationScore.score !== 20) {
+      throw new Error(`runtime certification missing mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-safety-certification-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(createSyntheticRuntimeActivationReadinessPreview({
+      previewStatus: "created",
+      runtimeActivationReadinessConclusion: "not-ready",
+      recommendedNextStage: "continue-runtime-safety-hardening",
+      summary: { runtimeReadyForFutureReview: false }
+    }));
+    assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, "runtime certification not ready");
+    if (preview.runtimeCertificationConclusion !== "not-ready" || preview.certificationScore.score !== 40 || preview.recommendedNextStage !== "continue-runtime-safety-hardening") {
+      throw new Error(`runtime certification not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-safety-certification-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(createSyntheticRuntimeActivationReadinessPreview());
+    assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, "runtime certification ready");
+    assertGovernanceRuntimeSafetyCertificationPreviewOrdering(preview);
+    if (preview.runtimeCertificationConclusion !== "future-review-ready" || preview.recommendedNextStage !== "prepare-runtime-activation-governance-review" || preview.summary.passedDomains !== preview.summary.totalDomains) {
+      throw new Error(`runtime certification ready mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-safety-certification-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(createSyntheticRuntimeActivationReadinessPreview({
+      previewStatus: "blocked",
+      runtimeActivationReadinessConclusion: "blocked",
+      recommendedNextStage: "blocked",
+      summary: { runtimeReadyForFutureReview: false }
+    }));
+    assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, "runtime certification blocked");
+    if (preview.previewStatus !== "blocked" || preview.sourceRuntimeActivationReadinessStatus !== "blocked" || preview.runtimeCertificationConclusion !== "blocked" || preview.certificationScore.score !== 0) {
+      throw new Error(`runtime certification blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-safety-certification-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewScoreUnit() {
+  try {
+    const cases = [
+      [createSyntheticRuntimeActivationReadinessPreview({ previewStatus: "not-created", runtimeActivationReadinessConclusion: "source-missing" }), 20, "not-ready"],
+      [createSyntheticRuntimeActivationReadinessPreview({ previewStatus: "created", runtimeActivationReadinessConclusion: "not-ready" }), 40, "partial-review-readiness"],
+      [createSyntheticRuntimeActivationReadinessPreview(), 80, "future-review-ready"],
+      [createSyntheticRuntimeActivationReadinessPreview({ previewStatus: "blocked", runtimeActivationReadinessConclusion: "blocked" }), 0, "blocked"]
+    ];
+    for (const [source, score, rating] of cases) {
+      const preview = directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(source);
+      if (preview.certificationScore.score !== score || preview.certificationScore.rating !== rating) {
+        throw new Error(`runtime certification score mismatch: ${JSON.stringify(preview)}`);
+      }
+    }
+    console.log("PASS governance-runtime-safety-certification-preview-score");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-score");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewForbiddenCapabilitiesUnit() {
+  try {
+    const preview = directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(createSyntheticRuntimeActivationReadinessPreview());
+    assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, "runtime certification forbidden capabilities");
+    assertGovernanceRuntimeSafetyCertificationPreviewOrdering(preview);
+    if (preview.forbiddenCapabilityFindings.length !== 9 || !preview.forbiddenCapabilityFindings.some((item) => item.category === "safe-patch-engine-bypass")) {
+      throw new Error(`runtime certification forbidden capability mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-safety-certification-preview-forbidden-capabilities");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-forbidden-capabilities");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeSafetyCertificationPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createRuntimeLifecycleReadyProjectChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "lifecycle-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-readiness-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "certification-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.runtimeCertified !== false || parsed.certificationScore.score === 100 || !parsed.forbiddenCapabilityFindings.every((item) => item.id.startsWith("gov-runtime-cert-forbidden-"))) {
+      throw new Error(`runtime certification JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceRuntimeSafetyCertificationPreviewChainArtifacts();
+    console.log("PASS governance-runtime-safety-certification-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeSafetyCertificationPreviewChainArtifacts();
+    console.log("FAIL governance-runtime-safety-certification-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeSafetyCertificationPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createRuntimeLifecycleReadyProjectChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "lifecycle-preview", "--json"]));
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-readiness-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "certification-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "runtime-safety-certification-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "runtime-safety-certification-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`runtime certification artifact missing: status=${result.status}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Runtime Safety Certification Preview") || artifact.runtimeCertificationApplied !== false) {
+      throw new Error(`runtime certification artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceRuntimeSafetyCertificationPreviewChainArtifacts();
+    console.log("PASS governance-runtime-safety-certification-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeSafetyCertificationPreviewChainArtifacts();
+    console.log("FAIL governance-runtime-safety-certification-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewNoRuntimeCertificationUnit() {
+  try {
+    const preview = directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(createSyntheticRuntimeActivationReadinessPreview());
+    assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, "runtime certification no certification");
+    console.log("PASS governance-runtime-safety-certification-preview-no-runtime-certification");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-no-runtime-certification");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeSafetyCertificationPreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceRuntimeSafetyCertificationPreviewFromReadiness(createSyntheticRuntimeActivationReadinessPreview());
+    assertGovernanceRuntimeSafetyCertificationPreviewSafety(preview, "runtime certification no autonomy");
+    console.log("PASS governance-runtime-safety-certification-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-safety-certification-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -25903,6 +26229,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceRuntimeActivationReadinessPreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewScoreUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewForbiddenCapabilitiesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewNoRuntimeCertificationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeSafetyCertificationPreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

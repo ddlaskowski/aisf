@@ -6295,6 +6295,179 @@ v8.5 deterministic checks:
 * governance-runtime-activation-readiness-preview-no-runtime-activation
 * governance-runtime-activation-readiness-preview-no-autonomy
 
+## Runtime Safety Certification Preview (v8.6)
+
+v8.6 generates deterministic runtime safety certification previews from the runtime activation readiness preview. It is preview-only: runtime governance is not certified for execution, runtime certification is not applied, runtime governance is not enabled, runtime autonomy is not enabled, runtime policies are not enforced, and runtime behavior does not change.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance runtime certification-preview
+node dist/cli.js governance runtime certification-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/runtime-safety-certification-preview.json
+.factory/governance/runtime-safety-certification-preview.md
+```
+
+The runtime safety certification preview:
+
+* reuses deterministic runtime activation readiness preview logic
+* inspects the complete runtime safety chain
+* documents deterministic runtime certification domains
+* documents deterministic runtime certification findings
+* documents deterministic runtime certification blockers
+* documents deterministic forbidden runtime capability findings
+* documents deterministic certification readiness scoring
+* documents deterministic certification recommendations
+* assigns deterministic IDs such as `gov-runtime-cert-domain-001`
+* never certifies runtime governance for execution
+* never applies or enforces runtime certification
+* never produces a v8.x certification score of `100`
+* does not execute runtime activation
+* does not enable runtime governance
+* does not enable runtime autonomy
+* does not allow autonomous actions
+* does not enforce runtime policies
+* does not activate runtime config
+* does not execute runtime sandboxes
+* does not activate kill switches, emergency stops, rollback, or operator overrides
+* does not enable plugins, scripts, runtime learning, ML decisioning, or multi-agent coordination
+* does not change runtime behavior, governance decisions, repair orchestration, or Safe Patch Engine behavior
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Runtime certification conclusion:
+future-review-ready
+
+Runtime certified:
+false
+
+Runtime certification applied:
+false
+
+Runtime certification enforced:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Certification score:
+80
+
+Certification rating:
+future-review-ready
+
+Forbidden capability finding count:
+9
+
+Future review ready:
+true
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceRuntimeActivationReadinessStatus`
+* `runtimeCertificationConclusion`
+* `runtimeCertified`
+* `runtimeCertificationApplied`
+* `runtimeCertificationEnforced`
+* `runtimeGovernanceEnabled`
+* `runtimeAutonomyEnabled`
+* `runtimeActivationExecuted`
+* `runtimePolicyEnforcementEnabled`
+* `certificationScore`
+* `certificationDomains`
+* `certificationFindings`
+* `certificationBlockers`
+* `forbiddenCapabilityFindings`
+* `certificationRecommendations`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown runtime-safety-certification-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Safety Certification Preview
+
+## Certification Domains
+
+## Certification Findings
+
+## Certification Blockers
+
+## Forbidden Runtime Capability Findings
+
+## Certification Recommendations
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `runtimeCertified` is always `false`
+* `runtimeCertificationApplied` is always `false`
+* `runtimeCertificationEnforced` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.6 deterministic checks:
+
+* governance-runtime-safety-certification-preview-unit
+* governance-runtime-safety-certification-preview-missing
+* governance-runtime-safety-certification-preview-not-ready
+* governance-runtime-safety-certification-preview-ready
+* governance-runtime-safety-certification-preview-blocked
+* governance-runtime-safety-certification-preview-score
+* governance-runtime-safety-certification-preview-forbidden-capabilities
+* governance-runtime-safety-certification-preview-json-output
+* governance-runtime-safety-certification-preview-artifact
+* governance-runtime-safety-certification-preview-no-runtime-certification
+* governance-runtime-safety-certification-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
