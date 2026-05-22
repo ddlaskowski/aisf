@@ -49,6 +49,7 @@
     "  node dist/cli.js governance autonomy control-plane-preview",
     "  node dist/cli.js governance autonomy lifecycle-preview",
     "  node dist/cli.js governance runtime safety-design-preview",
+    "  node dist/cli.js governance runtime safety-evidence-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -110,6 +111,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance autonomy control-plane-preview",
     "  node dist/cli.js governance autonomy lifecycle-preview",
     "  node dist/cli.js governance runtime safety-design-preview",
+    "  node dist/cli.js governance runtime safety-evidence-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -493,6 +495,27 @@ export function renderGovernanceRuntimeSafetyDesignPreviewHelp(): string {
     "Runtime safety design preview-only guarantee:",
     "  This command models future runtime safety architecture, boundaries, invariants, gates, forbidden capabilities, and rollback preparation only.",
     "  It does not activate runtime governance, enable runtime autonomy, enforce runtime policies, apply runtime controls, activate config, execute sandboxes, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeSafetyEvidencePreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime safety-evidence-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime safety-evidence-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime safety-evidence-preview",
+    "  node dist/cli.js governance runtime safety-evidence-preview --json",
+    "",
+    "Runtime safety evidence preview-only guarantee:",
+    "  This command models future runtime safety evidence sections, references, and missing evidence only.",
+    "  It does not apply runtime safety evidence, activate runtime governance, enable runtime autonomy, enforce runtime policies, activate config, execute sandboxes, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

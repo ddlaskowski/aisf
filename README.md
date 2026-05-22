@@ -5495,6 +5495,154 @@ v8.0 deterministic checks:
 * governance-runtime-safety-design-preview-no-runtime-activation
 * governance-runtime-safety-design-preview-no-autonomy
 
+## Runtime Safety Evidence Preview (v8.1)
+
+v8.1 generates deterministic runtime safety evidence previews from the runtime safety design preview. It is preview-only: runtime safety evidence is not applied, runtime governance is not enabled, runtime autonomy is not enabled, runtime policies are not enforced, and runtime behavior does not change.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance runtime safety-evidence-preview
+node dist/cli.js governance runtime safety-evidence-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/runtime-safety-evidence-preview.json
+.factory/governance/runtime-safety-evidence-preview.md
+```
+
+The runtime safety evidence preview:
+
+* reuses deterministic runtime safety design preview logic
+* inspects runtime safety architecture sections
+* inspects runtime safety boundaries
+* inspects runtime safety invariants
+* inspects runtime safety gates
+* inspects forbidden runtime capabilities
+* inspects rollback-preparation concepts
+* documents runtime safety evidence sections
+* documents runtime safety evidence references
+* documents missing runtime safety evidence
+* assigns deterministic IDs such as `gov-runtime-evidence-ref-001`
+* does not apply runtime safety evidence
+* does not activate runtime governance
+* does not enable runtime autonomy
+* does not apply runtime safety controls
+* does not enforce runtime policies
+* does not activate runtime config
+* does not execute runtime sandboxes
+* does not enable plugins, scripts, runtime learning, ML decisioning, or multi-agent coordination
+* does not change runtime behavior, governance decisions, repair orchestration, or Safe Patch Engine behavior
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Runtime safety evidence conclusion:
+runtime-safety-evidence-ready-preview
+
+Runtime safety evidence applied:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Evidence reference count:
+4
+
+Runtime safety evidence ready for future review:
+true
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceRuntimeSafetyStatus`
+* `runtimeSafetyEvidenceConclusion`
+* `runtimeSafetyApplied`
+* `runtimeSafetyEvidenceApplied`
+* `runtimeSafetyEvidenceEnforced`
+* `runtimeGovernanceEnabled`
+* `runtimeAutonomyEnabled`
+* `runtimePolicyEnforcementEnabled`
+* `runtimeConfigActivationEnabled`
+* `runtimeSafetyEvidenceSections`
+* `runtimeSafetyEvidenceReferences`
+* `missingRuntimeSafetyEvidence`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown runtime-safety-evidence-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Safety Evidence Preview
+
+## Runtime Safety Evidence Sections
+
+## Runtime Safety Evidence References
+
+## Missing Runtime Safety Evidence
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeSafetyEvidenceApplied` is always `false`
+* `runtimeSafetyEvidenceEnforced` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeOverrideApplied` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.1 deterministic checks:
+
+* governance-runtime-safety-evidence-preview-unit
+* governance-runtime-safety-evidence-preview-missing
+* governance-runtime-safety-evidence-preview-not-ready
+* governance-runtime-safety-evidence-preview-ready
+* governance-runtime-safety-evidence-preview-blocked
+* governance-runtime-safety-evidence-preview-references
+* governance-runtime-safety-evidence-preview-missing-evidence
+* governance-runtime-safety-evidence-preview-json-output
+* governance-runtime-safety-evidence-preview-artifact
+* governance-runtime-safety-evidence-preview-no-runtime-activation
+* governance-runtime-safety-evidence-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
