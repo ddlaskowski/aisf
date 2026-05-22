@@ -45,6 +45,9 @@ export type GovernanceConfigExampleWriteResult = {
   warnings: string[];
 };
 
+const EXAMPLE_CONFIG_PATH = ".factory/governance.config.example.json";
+const ACTIVE_CONFIG_PATH = ".factory/governance.config.json";
+
 export function buildGovernanceConfigExample(): GovernanceConfigExample {
   const preview = buildGovernanceConfigPreview();
   const profiles = listGovernancePolicyProfiles();
@@ -148,16 +151,55 @@ export function renderGovernanceConfigExampleMarkdown(example: GovernanceConfigE
 }
 
 export function writeGovernanceConfigExample(projectRoot: string): GovernanceConfigExampleWriteResult {
-  const relativePath = ".factory/governance.config.example.json";
-  const targetPath = path.join(projectRoot, relativePath);
+  const targetPath = path.join(projectRoot, EXAMPLE_CONFIG_PATH);
+  const activeConfigPath = path.join(projectRoot, ACTIVE_CONFIG_PATH);
   const example = buildGovernanceConfigExample();
+  const warnings = fs.existsSync(activeConfigPath)
+    ? [`Existing ${ACTIVE_CONFIG_PATH} was left unchanged and was not loaded, applied, or enforced.`]
+    : [];
 
   fs.ensureDirSync(path.dirname(targetPath));
   fs.writeFileSync(targetPath, `${JSON.stringify(example, null, 2)}\n`, "utf8");
 
   return {
     written: true,
-    path: relativePath,
-    warnings: []
+    path: EXAMPLE_CONFIG_PATH,
+    warnings
   };
+}
+
+export function renderGovernanceConfigExampleWriteText(result: GovernanceConfigExampleWriteResult): string {
+  const lines = [
+    "Governance config example write:",
+    "",
+    "written:",
+    String(result.written),
+    "",
+    "path:",
+    result.path,
+    "",
+    "warnings:"
+  ];
+  if (result.warnings.length === 0) {
+    lines.push("- none");
+  } else {
+    for (const warning of result.warnings) {
+      lines.push(`- ${warning}`);
+    }
+  }
+  lines.push(
+    "",
+    "Runtime config loading enabled:",
+    "false",
+    "",
+    "Runtime governance enabled:",
+    "false",
+    "",
+    "Applied:",
+    "false",
+    "",
+    "Enforced:",
+    "false"
+  );
+  return `${lines.join("\n")}\n`;
 }
