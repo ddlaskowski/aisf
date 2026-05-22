@@ -8946,6 +8946,183 @@ v9.7 deterministic checks:
 * governance-runtime-research-registry-preview-no-registry-application
 * governance-runtime-research-registry-preview-no-autonomy
 
+## Runtime Governance Research Manifest Preview (v9.8)
+
+v9.8 adds a deterministic runtime governance research manifest preview command:
+
+```bash
+node dist/cli.js governance runtime research-manifest-preview
+node dist/cli.js governance runtime research-manifest-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-governance-research-manifest-preview.json
+.factory/governance/runtime-governance-research-manifest-preview.md
+```
+
+The manifest preview consolidates registry state into manifest groups, manifest records, manifest ownership entries, manifest version entries, preview-only manifest summaries, forbidden capability manifest records, and future-only manifest notes.
+
+Safety guarantees:
+
+* runtime research manifest is preview-only
+* runtime research manifest is not applied
+* runtime research manifest is not enforced
+* runtime governance is NOT enabled
+* runtime autonomy is NOT enabled
+* runtime activation is NOT approved
+* runtime activation is NOT executed
+* runtime policies are NOT enforced
+* runtime config activation is disabled
+* runtime behavior does not change
+* governance decisions do not change
+* repair orchestration does not change
+* Safe Patch Engine remains the only mutation layer
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Governance Research Manifest Preview
+
+Preview status:
+created
+
+Source runtime research registry status:
+created
+
+Runtime research manifest conclusion:
+research-manifest-ready
+
+Runtime research manifest applied:
+false
+
+Runtime research manifest enforced:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Policy runtime mode:
+preview-only
+
+Research manifest score:
+80
+
+Research manifest rating:
+research-manifest-ready
+
+Recommended next stage:
+prepare-runtime-governance-research-attestation-preview
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeResearchRegistryStatus": "created",
+  "runtimeResearchManifestConclusion": "research-manifest-ready",
+  "runtimeResearchManifestApplied": false,
+  "runtimeResearchManifestEnforced": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "researchManifestScore": {
+    "score": 80,
+    "rating": "research-manifest-ready"
+  }
+}
+```
+
+Example markdown runtime-governance-research-manifest-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Governance Research Manifest Preview
+
+Preview status:
+created
+
+Runtime research manifest conclusion:
+research-manifest-ready
+
+Runtime research manifest applied:
+false
+
+Runtime research manifest enforced:
+false
+
+## Manifest Groups
+
+## Manifest Records
+
+## Manifest Ownership Entries
+
+## Manifest Version Entries
+
+## Preview-only Manifest Summaries
+
+## Forbidden Capability Manifest Records
+
+## Future-only Manifest Notes
+
+## Warnings
+```
+
+v9.8 hard invariants:
+
+* `runtimeResearchManifestApplied` is always `false`
+* `runtimeResearchManifestEnforced` is always `false`
+* `runtimeResearchRegistryApplied` is always `false`
+* `runtimeResearchRegistryEnforced` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v9.8 deterministic checks:
+
+* governance-runtime-research-manifest-preview-unit
+* governance-runtime-research-manifest-preview-missing
+* governance-runtime-research-manifest-preview-not-ready
+* governance-runtime-research-manifest-preview-ready
+* governance-runtime-research-manifest-preview-blocked
+* governance-runtime-research-manifest-preview-score
+* governance-runtime-research-manifest-preview-forbidden-capabilities
+* governance-runtime-research-manifest-preview-json-output
+* governance-runtime-research-manifest-preview-artifact
+* governance-runtime-research-manifest-preview-no-manifest-application
+* governance-runtime-research-manifest-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
