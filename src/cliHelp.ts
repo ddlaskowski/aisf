@@ -47,6 +47,7 @@
     "  node dist/cli.js governance autonomy sandbox-evidence-preview",
     "  node dist/cli.js governance autonomy observability-preview",
     "  node dist/cli.js governance autonomy control-plane-preview",
+    "  node dist/cli.js governance autonomy lifecycle-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -106,6 +107,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance autonomy sandbox-evidence-preview",
     "  node dist/cli.js governance autonomy observability-preview",
     "  node dist/cli.js governance autonomy control-plane-preview",
+    "  node dist/cli.js governance autonomy lifecycle-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -447,6 +449,27 @@ export function renderGovernanceAutonomyControlPlanePreviewHelp(): string {
     "Control plane preview-only guarantee:",
     "  This command models future controlled-autonomy operator controls, kill-switch candidates, approval controls, sandbox controls, scope controls, and observability controls only.",
     "  It does not apply a control plane, activate kill switches, apply operator controls, enable autonomy, allow autonomous actions, enforce governance, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceAutonomyLifecyclePreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance autonomy lifecycle-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance autonomy lifecycle-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance autonomy lifecycle-preview",
+    "  node dist/cli.js governance autonomy lifecycle-preview --json",
+    "",
+    "Lifecycle preview-only guarantee:",
+    "  This command models future controlled-autonomy lifecycle stages, transitions, blockers, and rollback planning only.",
+    "  It does not apply lifecycle behavior, execute transitions, execute rollback, enable autonomy, allow autonomous actions, enforce governance, activate config, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

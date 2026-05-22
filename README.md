@@ -5198,6 +5198,151 @@ v7.8 deterministic checks:
 * governance-autonomy-control-plane-preview-no-control-application
 * governance-autonomy-control-plane-preview-no-autonomy
 
+## Controlled Autonomy Governance Lifecycle Preview (v7.9)
+
+v7.9 generates a deterministic controlled-autonomy governance lifecycle preview from the control plane preview without applying lifecycle behavior, executing lifecycle transitions, or enabling autonomy.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance autonomy lifecycle-preview
+node dist/cli.js governance autonomy lifecycle-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/autonomy-lifecycle-preview.json
+.factory/governance/autonomy-lifecycle-preview.md
+```
+
+The controlled autonomy governance lifecycle preview:
+
+* reuses deterministic autonomy control plane preview logic
+* consolidates the full v7.x controlled-autonomy preview chain
+* documents lifecycle stages
+* documents lifecycle transition definitions
+* documents permanently forbidden transitions
+* documents lifecycle blockers
+* documents rollback planning notes
+* assigns deterministic IDs such as `gov-lifecycle-stage-001`
+* does not apply lifecycle behavior
+* does not enforce lifecycle behavior
+* does not execute lifecycle transitions
+* does not execute rollback
+* does not activate kill switches
+* does not create or execute sandboxes
+* does not apply observability
+* does not accept risks or apply mitigations
+* does not approve scope, grant human approval, or approve design review
+* does not enable autonomy
+* does not allow autonomous actions
+* does not enforce governance
+* does not change runtime behavior or repair orchestration
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Lifecycle conclusion:
+lifecycle-ready-preview
+
+Lifecycle applied:
+false
+
+Lifecycle transition executed:
+false
+
+Autonomy enabled:
+false
+
+Rollback step count:
+9
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceControlPlaneStatus`
+* `lifecycleConclusion`
+* `lifecycleApplied`
+* `lifecycleEnforced`
+* `lifecycleTransitionExecuted`
+* `lifecycleStages`
+* `lifecycleTransitions`
+* `lifecycleBlockers`
+* `rollbackPlan`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown lifecycle-preview shape:
+
+```markdown
+# AI Software Factory - Controlled Autonomy Governance Lifecycle Preview
+
+## Lifecycle Stages
+
+## Lifecycle Transitions
+
+## Lifecycle Blockers
+
+## Rollback Plan
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `lifecycleApplied` is always `false`
+* `lifecycleEnforced` is always `false`
+* `lifecycleTransitionExecuted` is always `false`
+* `controlPlaneApplied` is always `false`
+* `controlPlaneEnforced` is always `false`
+* `killSwitchActivated` is always `false`
+* `operatorOverrideApplied` is always `false`
+* `sandboxCreated` is always `false`
+* `sandboxExecuted` is always `false`
+* `observabilityApplied` is always `false`
+* `riskAccepted` is always `false`
+* `riskMitigationApplied` is always `false`
+* `scopeApproved` is always `false`
+* `scopeApplied` is always `false`
+* `humanApprovalGranted` is always `false`
+* `approvalApplied` is always `false`
+* `designReviewApproved` is always `false`
+* `runtimeActivationEnabled` is always `false`
+* `policyActivated` is always `false`
+* `guardedActivationEnabled` is always `false`
+* `activationEnforced` is always `false`
+* `autonomyEnabled` is always `false`
+* `autonomousActionsAllowed` is always `false`
+* `autonomyApplied` is always `false`
+* `autonomyEnforced` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+* rollback planning is planning-only: `rollbackAvailable` and `rollbackExecuted` are always `false`
+
+v7.9 deterministic checks:
+
+* governance-autonomy-lifecycle-preview-unit
+* governance-autonomy-lifecycle-preview-missing
+* governance-autonomy-lifecycle-preview-not-ready
+* governance-autonomy-lifecycle-preview-ready
+* governance-autonomy-lifecycle-preview-blocked
+* governance-autonomy-lifecycle-preview-forbidden-transitions
+* governance-autonomy-lifecycle-preview-rollback-plan
+* governance-autonomy-lifecycle-preview-json-output
+* governance-autonomy-lifecycle-preview-artifact
+* governance-autonomy-lifecycle-preview-no-lifecycle-application
+* governance-autonomy-lifecycle-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
