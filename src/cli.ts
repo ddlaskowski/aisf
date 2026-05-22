@@ -279,6 +279,11 @@ import {
   writeGovernanceRuntimeActivationGovernanceReviewPreviewArtifacts
 } from "./governance/runtimeActivationGovernanceReviewPreview.js";
 import {
+  buildGovernanceRuntimeActivationBoundaryPreview,
+  renderGovernanceRuntimeActivationBoundaryPreviewText,
+  writeGovernanceRuntimeActivationBoundaryPreviewArtifacts
+} from "./governance/runtimeActivationBoundaryPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -316,6 +321,7 @@ import {
   renderGovernanceRuntimeActivationReadinessPreviewHelp,
   renderGovernanceRuntimeSafetyCertificationPreviewHelp,
   renderGovernanceRuntimeActivationGovernanceReviewPreviewHelp,
+  renderGovernanceRuntimeActivationBoundaryPreviewHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
@@ -1539,6 +1545,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceRuntimeActivationGovernanceReviewPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "runtime" && args[2] === "activation-boundary-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance runtime activation-boundary-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceRuntimeActivationBoundaryPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceRuntimeActivationBoundaryPreview(process.cwd());
+    writeGovernanceRuntimeActivationBoundaryPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceRuntimeActivationBoundaryPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

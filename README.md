@@ -6704,6 +6704,225 @@ v8.7 deterministic checks:
 * governance-runtime-activation-governance-review-preview-no-approval
 * governance-runtime-activation-governance-review-preview-no-autonomy
 
+## Runtime Activation Boundary Preview (v8.8)
+
+v8.8 generates deterministic runtime activation boundary previews from the runtime activation governance review preview. It is preview-only: runtime boundaries are not applied, runtime activation is not approved, runtime activation is not executed, runtime governance is not enabled, runtime autonomy is not enabled, runtime policies are not enforced, and runtime behavior does not change.
+
+Commands:
+
+```bash
+node dist/cli.js governance runtime activation-boundary-preview
+node dist/cli.js governance runtime activation-boundary-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-activation-boundary-preview.json
+.factory/governance/runtime-activation-boundary-preview.md
+```
+
+The preview:
+
+* reuses runtime activation governance review preview logic
+* inspects the complete runtime governance review chain
+* documents deterministic runtime boundary domains
+* documents deterministic runtime boundary definitions
+* documents deterministic runtime boundary blockers
+* documents deterministic forbidden boundary crossings
+* documents deterministic boundary rollback planning
+* never approves runtime activation
+* never executes runtime activation
+* never applies or enforces runtime boundaries
+* never enables runtime governance
+* never enables runtime autonomy
+* never allows autonomous actions
+* never enforces runtime policies
+* never activates runtime config
+* never changes runtime behavior
+* never changes governance decisions
+* never changes repair orchestration
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Activation Boundary Preview
+
+Preview status:
+created
+
+Source governance review status:
+created
+
+Runtime boundary conclusion:
+future-boundary-review-ready
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Runtime boundary applied:
+false
+
+Runtime boundary enforced:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime autonomy actions allowed:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Runtime config activation enabled:
+false
+
+Policy runtime mode:
+preview-only
+
+Boundary score:
+80
+
+Boundary rating:
+future-boundary-review-ready
+
+Future boundary review ready:
+true
+
+Recommended next stage:
+prepare-runtime-activation-freeze-preview
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceGovernanceReviewStatus": "created",
+  "runtimeBoundaryConclusion": "future-boundary-review-ready",
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "runtimeBoundaryApplied": false,
+  "runtimeBoundaryEnforced": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeAutonomyActionsAllowed": false,
+  "runtimeCertificationApplied": false,
+  "runtimePolicyEnforcementEnabled": false,
+  "runtimeConfigActivationEnabled": false,
+  "runtimeControlPlaneApplied": false,
+  "runtimeControlPlaneActivated": false,
+  "governanceBypassAllowed": false,
+  "applied": false,
+  "enforced": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "governanceDecisionsChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "boundaryScore": {
+    "score": 80,
+    "rating": "future-boundary-review-ready"
+  },
+  "summary": {
+    "futureBoundaryReviewReady": true
+  },
+  "recommendedNextStage": "prepare-runtime-activation-freeze-preview"
+}
+```
+
+Example markdown runtime-activation-boundary-preview shape:
+
+```text
+# AI Software Factory - Runtime Activation Boundary Preview
+
+Preview status:
+created
+
+Runtime boundary conclusion:
+future-boundary-review-ready
+
+Runtime boundary applied:
+false
+
+Runtime boundary enforced:
+false
+
+## Boundary Domains
+- [activation-boundary/passed-preview/applied=false] gov-runtime-boundary-domain-001 ...
+
+## Boundary Definitions
+- [activation-boundary/future-review-only] gov-runtime-boundary-definition-001 ...
+
+## Boundary Blockers
+- [high] gov-runtime-boundary-blocker-001 ...
+
+## Forbidden Boundary Crossings
+- [runtime-autonomy] gov-runtime-boundary-forbidden-001 permanentlyForbidden=true ...
+
+## Boundary Rollback Planning
+Rollback execution allowed: false
+Rollback prepared: false
+```
+
+Safety guarantees:
+
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeBoundaryApplied` is always `false`
+* `runtimeBoundaryEnforced` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimeCertificationApplied` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.8 deterministic checks:
+
+* governance-runtime-activation-boundary-preview-unit
+* governance-runtime-activation-boundary-preview-missing
+* governance-runtime-activation-boundary-preview-not-ready
+* governance-runtime-activation-boundary-preview-ready
+* governance-runtime-activation-boundary-preview-blocked
+* governance-runtime-activation-boundary-preview-score
+* governance-runtime-activation-boundary-preview-forbidden-crossings
+* governance-runtime-activation-boundary-preview-json-output
+* governance-runtime-activation-boundary-preview-artifact
+* governance-runtime-activation-boundary-preview-no-boundary-application
+* governance-runtime-activation-boundary-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
