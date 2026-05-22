@@ -53,6 +53,7 @@
     "  node dist/cli.js governance runtime safety-observability-preview",
     "  node dist/cli.js governance runtime control-plane-preview",
     "  node dist/cli.js governance runtime lifecycle-preview",
+    "  node dist/cli.js governance runtime activation-readiness-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -118,6 +119,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime safety-observability-preview",
     "  node dist/cli.js governance runtime control-plane-preview",
     "  node dist/cli.js governance runtime lifecycle-preview",
+    "  node dist/cli.js governance runtime activation-readiness-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -585,6 +587,27 @@ export function renderGovernanceRuntimeLifecyclePreviewHelp(): string {
     "Runtime governance lifecycle preview-only guarantee:",
     "  This command models future runtime lifecycle stages, transitions, blockers, and rollback lifecycle planning only.",
     "  It does not apply runtime lifecycle behavior, execute transitions, activate runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeActivationReadinessPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime activation-readiness-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime activation-readiness-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime activation-readiness-preview",
+    "  node dist/cli.js governance runtime activation-readiness-preview --json",
+    "",
+    "Runtime activation readiness preview-only guarantee:",
+    "  This command models future runtime activation readiness scoring, prerequisites, blockers, freeze conditions, forbidden paths, and rollback planning only.",
+    "  It does not execute runtime activation, enable runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

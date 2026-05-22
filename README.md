@@ -6129,6 +6129,172 @@ v8.4 deterministic checks:
 * governance-runtime-lifecycle-preview-no-runtime-activation
 * governance-runtime-lifecycle-preview-no-autonomy
 
+## Runtime Activation Readiness Preview (v8.5)
+
+v8.5 generates deterministic runtime activation readiness previews from the runtime governance lifecycle preview. It is preview-only: runtime activation is not executed, runtime governance is not enabled, runtime autonomy is not enabled, runtime policies are not enforced, and runtime behavior does not change.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance runtime activation-readiness-preview
+node dist/cli.js governance runtime activation-readiness-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/runtime-activation-readiness-preview.json
+.factory/governance/runtime-activation-readiness-preview.md
+```
+
+The runtime activation readiness preview:
+
+* reuses deterministic runtime lifecycle preview logic
+* inspects the complete runtime governance lifecycle chain
+* documents deterministic runtime activation readiness scoring
+* documents deterministic activation prerequisites
+* documents deterministic activation blockers
+* documents deterministic activation freeze conditions
+* documents deterministic forbidden activation paths
+* documents deterministic rollback readiness planning
+* assigns deterministic IDs such as `gov-runtime-activation-forbidden-001`
+* never produces a v8.x readiness score of `100`
+* does not execute runtime activation
+* does not enable runtime governance
+* does not enable runtime autonomy
+* does not allow autonomous actions
+* does not enforce runtime policies
+* does not activate runtime config
+* does not execute runtime sandboxes
+* does not activate kill switches, emergency stops, rollback, or operator overrides
+* does not enable plugins, scripts, runtime learning, ML decisioning, or multi-agent coordination
+* does not change runtime behavior, governance decisions, repair orchestration, or Safe Patch Engine behavior
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Runtime activation readiness conclusion:
+ready-for-future-review
+
+Runtime activation readiness applied:
+false
+
+Runtime activation executed:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Readiness score:
+80
+
+Readiness rating:
+future-review-ready
+
+Forbidden path count:
+11
+
+Runtime ready for future review:
+true
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceRuntimeLifecycleStatus`
+* `runtimeActivationReadinessConclusion`
+* `runtimeActivationReadinessApplied`
+* `runtimeActivationReadinessEnforced`
+* `runtimeActivationExecuted`
+* `runtimeGovernanceEnabled`
+* `runtimeAutonomyEnabled`
+* `runtimePolicyEnforcementEnabled`
+* `readinessScore`
+* `activationPrerequisites`
+* `activationBlockers`
+* `activationFreezeConditions`
+* `forbiddenActivationPaths`
+* `rollbackReadinessPlanning`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown runtime-activation-readiness-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Activation Readiness Preview
+
+## Activation Prerequisites
+
+## Activation Blockers
+
+## Activation Freeze Conditions
+
+## Forbidden Activation Paths
+
+## Rollback Readiness Planning
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `runtimeActivationReadinessApplied` is always `false`
+* `runtimeActivationReadinessEnforced` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeObservabilityApplied` is always `false`
+* `runtimeObservabilityEnforced` is always `false`
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.5 deterministic checks:
+
+* governance-runtime-activation-readiness-preview-unit
+* governance-runtime-activation-readiness-preview-missing
+* governance-runtime-activation-readiness-preview-not-ready
+* governance-runtime-activation-readiness-preview-ready
+* governance-runtime-activation-readiness-preview-blocked
+* governance-runtime-activation-readiness-preview-score
+* governance-runtime-activation-readiness-preview-forbidden-paths
+* governance-runtime-activation-readiness-preview-json-output
+* governance-runtime-activation-readiness-preview-artifact
+* governance-runtime-activation-readiness-preview-no-runtime-activation
+* governance-runtime-activation-readiness-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

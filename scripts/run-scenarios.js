@@ -12823,6 +12823,7 @@ function runGovernanceConfigPreviewHelpUnit() {
 
 function runGovernanceConfigPreviewReadonlyUnit() {
   try {
+    fs.rmSync(path.join(projectRoot, ".factory", "governance.config.json"), { force: true });
     const repo = createControlPlaneRepo("governance-config-preview-readonly", repeatedDriftValues(7, { blockedRate: 10, humanReviewRate: 10, validationSuccessRate: 90, averageTrustScore: 80, readyRate: 75 }), passCiIndex(), sampleEvidenceIndex());
     const before = readGovernanceIndexSnapshots(repo);
     const result = runCliHelpCommand(["governance", "config", "--json"]);
@@ -12997,12 +12998,14 @@ function runGovernanceConfigExampleWriteUnit() {
     const examplePath = path.join(projectRoot, ".factory", "governance.config.example.json");
     const activePath = path.join(projectRoot, ".factory", "governance.config.json");
     fs.rmSync(examplePath, { force: true });
+    fs.rmSync(activePath, { force: true });
     const result = runCliHelpCommand(["governance", "config", "example", "--json", "--write"]);
     const parsed = JSON.parse(result.stdout);
     if (
       result.status !== 0 ||
       parsed.written !== true ||
       parsed.path !== ".factory/governance.config.example.json" ||
+      !Array.isArray(parsed.warnings) ||
       !fs.existsSync(examplePath) ||
       fs.existsSync(activePath)
     ) {
@@ -13079,10 +13082,13 @@ function runGovernanceConfigExampleNoActiveConfigWriteUnit() {
     const examplePath = path.join(projectRoot, ".factory", "governance.config.example.json");
     const activePath = path.join(projectRoot, ".factory", "governance.config.json");
     fs.rmSync(examplePath, { force: true });
+    fs.rmSync(activePath, { force: true });
     const textResult = runCliHelpCommand(["governance", "config", "example", "--write"]);
     if (
       textResult.status !== 0 ||
+      !textResult.stdout.includes("written:\ntrue") ||
       !textResult.stdout.includes(".factory/governance.config.example.json") ||
+      !textResult.stdout.includes("warnings:\n- none") ||
       fs.existsSync(activePath)
     ) {
       throw new Error(`config example active config write mismatch: status=${textResult.status} stdout=${textResult.stdout} stderr=${textResult.stderr}`);
@@ -23429,6 +23435,332 @@ function runGovernanceRuntimeLifecyclePreviewNoAutonomyUnit() {
     return false;
   }
 }
+
+function directGovernanceRuntimeActivationReadinessPreview(repo) {
+  const { buildGovernanceRuntimeActivationReadinessPreview } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationReadinessPreview.js"));
+  return buildGovernanceRuntimeActivationReadinessPreview(repo);
+}
+
+function directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(source) {
+  const { buildGovernanceRuntimeActivationReadinessPreviewFromLifecycle } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationReadinessPreview.js"));
+  return buildGovernanceRuntimeActivationReadinessPreviewFromLifecycle(source);
+}
+
+function cleanupProjectGovernanceRuntimeActivationReadinessPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-activation-readiness-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-activation-readiness-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceRuntimeActivationReadinessPreviewChainArtifacts() {
+  cleanupProjectGovernanceRuntimeActivationReadinessPreviewArtifacts();
+  cleanupProjectGovernanceRuntimeLifecyclePreviewChainArtifacts();
+}
+
+function createSyntheticRuntimeLifecyclePreview(overrides = {}) {
+  const preview = directGovernanceRuntimeLifecyclePreviewFromControlPlane(createSyntheticRuntimeControlPlanePreview());
+  return {
+    ...preview,
+    ...overrides,
+    summary: {
+      ...preview.summary,
+      ...(overrides.summary || {})
+    }
+  };
+}
+
+function assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, label) {
+  const runtimeFlags = [
+    "runtimeActivationReadinessApplied",
+    "runtimeActivationReadinessEnforced",
+    "runtimeActivationExecuted",
+    "runtimeGovernanceEnabled",
+    "runtimeAutonomyEnabled",
+    "runtimeAutonomyActionsAllowed",
+    "runtimePolicyEnforcementEnabled",
+    "runtimeConfigActivationEnabled",
+    "runtimeControlPlaneApplied",
+    "runtimeControlPlaneActivated",
+    "runtimeKillSwitchActivated",
+    "runtimeEmergencyStopExecuted",
+    "runtimeOperatorOverrideApplied",
+    "runtimeRollbackExecuted",
+    "runtimeObservabilityApplied",
+    "runtimeObservabilityEnforced",
+    "runtimeSafetyApplied",
+    "runtimeSafetyEnforced",
+    "runtimeSafetyActivated",
+    "runtimeSandboxExecutionAllowed",
+    "runtimeSandboxExecuted",
+    "runtimeMutationScopeExpanded",
+    "runtimeExternalExecutionAllowed",
+    "runtimePluginExecutionAllowed",
+    "runtimeScriptEvaluationAllowed",
+    "runtimeLearningEnabled",
+    "runtimeMlDecisioningEnabled",
+    "runtimeMultiAgentCoordinationEnabled",
+    "governanceBypassAllowed",
+    "applied",
+    "enforced",
+    "runtimeBehaviorChanged",
+    "governanceDecisionsChanged",
+    "repairOrchestrationChanged"
+  ];
+  for (const key of runtimeFlags) {
+    if (preview[key] !== false) {
+      throw new Error(`${label} expected ${key}=false: ${JSON.stringify(preview)}`);
+    }
+  }
+  if (
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.safePatchEngineOnly !== true ||
+    preview.readinessScore.score === 100 ||
+    !preview.activationFreezeConditions.every((item) => item.freezeRequired === true) ||
+    !preview.forbiddenActivationPaths.every((item) => item.permanentlyForbidden === true) ||
+    preview.rollbackReadinessPlanning.rollbackExecutionAllowed !== false ||
+    preview.rollbackReadinessPlanning.rollbackPrepared !== false ||
+    !preview.rollbackReadinessPlanning.rollbackPlanningSteps.every((item) => item.required === true)
+  ) {
+    throw new Error(`${label} relaxed runtime activation readiness invariants: ${JSON.stringify(preview)}`);
+  }
+}
+
+function assertGovernanceRuntimeActivationReadinessPreviewOrdering(preview) {
+  const lists = [
+    ["gov-runtime-activation-prerequisite", preview.activationPrerequisites, (item) => `${item.category}:${item.key}`],
+    ["gov-runtime-activation-blocker", preview.activationBlockers, (item) => `${item.severity}:${item.key}`],
+    ["gov-runtime-activation-freeze", preview.activationFreezeConditions, (item) => item.key],
+    ["gov-runtime-activation-forbidden", preview.forbiddenActivationPaths, (item) => item.key],
+    ["gov-runtime-activation-rollback", preview.rollbackReadinessPlanning.rollbackPlanningSteps, (item) => item.key]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) {
+        throw new Error(`runtime activation readiness id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`runtime activation readiness ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(createSyntheticRuntimeLifecyclePreview());
+    const { renderGovernanceRuntimeActivationReadinessPreviewText } = require(path.join(projectRoot, "dist", "governance", "runtimeActivationReadinessPreview.js"));
+    const rendered = renderGovernanceRuntimeActivationReadinessPreviewText(preview);
+    assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, "runtime activation readiness unit");
+    assertGovernanceRuntimeActivationReadinessPreviewOrdering(preview);
+    if (
+      preview.schemaVersion !== 1 ||
+      preview.previewStatus !== "created" ||
+      preview.runtimeActivationReadinessConclusion !== "ready-for-future-review" ||
+      preview.readinessScore.score !== 80 ||
+      !rendered.includes("Runtime Activation Readiness Preview")
+    ) {
+      throw new Error(`runtime activation readiness unit mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-readiness-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-runtime-activation-readiness-preview-missing");
+    const preview = directGovernanceRuntimeActivationReadinessPreview(repo);
+    assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, "runtime activation readiness missing");
+    if (preview.previewStatus !== "not-created" || preview.sourceRuntimeLifecycleStatus !== "not-created" || preview.runtimeActivationReadinessConclusion !== "source-missing" || preview.readinessScore.score !== 20) {
+      throw new Error(`runtime activation readiness missing mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-readiness-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(createSyntheticRuntimeLifecyclePreview({
+      previewStatus: "created",
+      runtimeLifecycleConclusion: "runtime-lifecycle-not-ready",
+      recommendedNextStage: "continue-runtime-safety-hardening",
+      summary: { runtimeLifecycleReadyForFutureReview: false }
+    }));
+    assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, "runtime activation readiness not ready");
+    if (preview.runtimeActivationReadinessConclusion !== "not-ready" || preview.readinessScore.score !== 40 || preview.recommendedNextStage !== "continue-runtime-safety-hardening") {
+      throw new Error(`runtime activation readiness not-ready mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-readiness-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(createSyntheticRuntimeLifecyclePreview());
+    assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, "runtime activation readiness ready");
+    assertGovernanceRuntimeActivationReadinessPreviewOrdering(preview);
+    if (preview.runtimeActivationReadinessConclusion !== "ready-for-future-review" || preview.recommendedNextStage !== "prepare-runtime-safety-certification-preview" || preview.summary.satisfiedPrerequisites !== preview.summary.totalPrerequisites) {
+      throw new Error(`runtime activation readiness ready mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-readiness-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(createSyntheticRuntimeLifecyclePreview({
+      previewStatus: "blocked",
+      runtimeLifecycleConclusion: "blocked-preview",
+      recommendedNextStage: "blocked",
+      summary: { runtimeLifecycleReadyForFutureReview: false }
+    }));
+    assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, "runtime activation readiness blocked");
+    if (preview.previewStatus !== "blocked" || preview.sourceRuntimeLifecycleStatus !== "blocked" || preview.runtimeActivationReadinessConclusion !== "blocked" || preview.readinessScore.score !== 0) {
+      throw new Error(`runtime activation readiness blocked mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-readiness-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewScoreUnit() {
+  try {
+    const cases = [
+      [createSyntheticRuntimeLifecyclePreview({ previewStatus: "not-created", runtimeLifecycleConclusion: "source-missing" }), 20, "not-ready"],
+      [createSyntheticRuntimeLifecyclePreview({ previewStatus: "created", runtimeLifecycleConclusion: "runtime-lifecycle-not-ready" }), 40, "partial-preview-readiness"],
+      [createSyntheticRuntimeLifecyclePreview(), 80, "future-review-ready"],
+      [createSyntheticRuntimeLifecyclePreview({ previewStatus: "blocked", runtimeLifecycleConclusion: "blocked-preview" }), 0, "blocked"]
+    ];
+    for (const [source, score, rating] of cases) {
+      const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(source);
+      if (preview.readinessScore.score !== score || preview.readinessScore.rating !== rating) {
+        throw new Error(`runtime activation readiness score mismatch: ${JSON.stringify(preview)}`);
+      }
+    }
+    console.log("PASS governance-runtime-activation-readiness-preview-score");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-score");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewForbiddenPathsUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(createSyntheticRuntimeLifecyclePreview());
+    assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, "runtime activation readiness forbidden paths");
+    assertGovernanceRuntimeActivationReadinessPreviewOrdering(preview);
+    if (preview.forbiddenActivationPaths.length < 11 || !preview.forbiddenActivationPaths.some((item) => item.key === "runtime-activation-bypassing-safe-patch-engine")) {
+      throw new Error(`runtime activation readiness forbidden path mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-activation-readiness-preview-forbidden-paths");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-forbidden-paths");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeActivationReadinessPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createRuntimeLifecycleReadyProjectChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "lifecycle-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-readiness-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.runtimeActivationExecuted !== false || parsed.readinessScore.score === 100 || !parsed.forbiddenActivationPaths.every((item) => item.id.startsWith("gov-runtime-activation-forbidden-"))) {
+      throw new Error(`runtime activation readiness JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    }
+    cleanupProjectGovernanceRuntimeActivationReadinessPreviewChainArtifacts();
+    console.log("PASS governance-runtime-activation-readiness-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeActivationReadinessPreviewChainArtifacts();
+    console.log("FAIL governance-runtime-activation-readiness-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeActivationReadinessPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createRuntimeLifecycleReadyProjectChain(content);
+    withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "lifecycle-preview", "--json"]));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "activation-readiness-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "runtime-activation-readiness-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "runtime-activation-readiness-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) {
+      throw new Error(`runtime activation readiness artifact missing: status=${result.status}`);
+    }
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Runtime Activation Readiness Preview") || artifact.runtimeActivationExecuted !== false) {
+      throw new Error(`runtime activation readiness artifact mismatch: ${JSON.stringify(artifact)}`);
+    }
+    cleanupProjectGovernanceRuntimeActivationReadinessPreviewChainArtifacts();
+    console.log("PASS governance-runtime-activation-readiness-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeActivationReadinessPreviewChainArtifacts();
+    console.log("FAIL governance-runtime-activation-readiness-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewNoRuntimeActivationUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(createSyntheticRuntimeLifecyclePreview());
+    assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, "runtime activation readiness no activation");
+    console.log("PASS governance-runtime-activation-readiness-preview-no-runtime-activation");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-no-runtime-activation");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeActivationReadinessPreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceRuntimeActivationReadinessPreviewFromLifecycle(createSyntheticRuntimeLifecyclePreview());
+    assertGovernanceRuntimeActivationReadinessPreviewSafety(preview, "runtime activation readiness no autonomy");
+    console.log("PASS governance-runtime-activation-readiness-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-activation-readiness-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -25538,6 +25870,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceRuntimeLifecyclePreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewScoreUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewForbiddenPathsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewNoRuntimeActivationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeActivationReadinessPreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
