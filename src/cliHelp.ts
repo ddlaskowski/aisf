@@ -59,6 +59,7 @@
     "  node dist/cli.js governance runtime activation-boundary-preview",
     "  node dist/cli.js governance runtime activation-freeze-preview",
     "  node dist/cli.js governance runtime final-review-preview",
+    "  node dist/cli.js governance runtime research-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -130,6 +131,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime activation-boundary-preview",
     "  node dist/cli.js governance runtime activation-freeze-preview",
     "  node dist/cli.js governance runtime final-review-preview",
+    "  node dist/cli.js governance runtime research-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -723,6 +725,27 @@ export function renderGovernanceRuntimeSafetyFinalReviewPreviewHelp(): string {
     "Runtime safety final review preview-only guarantee:",
     "  This command models future runtime safety final review domains, findings, blockers, forbidden runtime findings, and rollback/freeze governance planning only.",
     "  It does not approve runtime activation, execute runtime activation, apply runtime review enforcement, enable runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernancePostV9RuntimeResearchPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime research-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime research-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime research-preview",
+    "  node dist/cli.js governance runtime research-preview --json",
+    "",
+    "Post-v9 runtime research preview-only guarantee:",
+    "  This command models architecture completion, preview-only findings, forbidden capabilities, human research requirements, feasibility notes, and governance research recommendations only.",
+    "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
   ].join("\n") + "\n";
 }
 

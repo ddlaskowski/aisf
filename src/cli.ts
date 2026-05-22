@@ -294,6 +294,11 @@ import {
   writeGovernanceRuntimeSafetyFinalReviewPreviewArtifacts
 } from "./governance/runtimeSafetyFinalReviewPreview.js";
 import {
+  buildGovernancePostV9RuntimeResearchPreview,
+  renderGovernancePostV9RuntimeResearchPreviewText,
+  writeGovernancePostV9RuntimeResearchPreviewArtifacts
+} from "./governance/postV9RuntimeResearchPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -334,6 +339,7 @@ import {
   renderGovernanceRuntimeActivationBoundaryPreviewHelp,
   renderGovernanceRuntimeActivationFreezePreviewHelp,
   renderGovernanceRuntimeSafetyFinalReviewPreviewHelp,
+  renderGovernancePostV9RuntimeResearchPreviewHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
@@ -1629,6 +1635,30 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceRuntimeSafetyFinalReviewPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "runtime" && args[2] === "research-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance runtime research-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernancePostV9RuntimeResearchPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernancePostV9RuntimeResearchPreview(process.cwd());
+    writeGovernancePostV9RuntimeResearchPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernancePostV9RuntimeResearchPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

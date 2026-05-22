@@ -7380,6 +7380,249 @@ v9.0 deterministic checks:
 * governance-runtime-safety-final-review-preview-no-final-review-approval
 * governance-runtime-safety-final-review-preview-no-autonomy
 
+## Post-v9 Runtime Research Preview (v9.1)
+
+v9.1 generates deterministic post-v9 runtime research previews from the runtime safety final review preview. It is preview-only: runtime research is not applied or enforced; runtime final review is not approved, applied, or enforced; runtime activation is not approved or executed; runtime governance is not enabled; runtime autonomy is not enabled; runtime policies are not enforced; and runtime behavior does not change.
+
+Commands:
+
+```bash
+node dist/cli.js governance runtime research-preview
+node dist/cli.js governance runtime research-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/post-v9-runtime-research-preview.json
+.factory/governance/post-v9-runtime-research-preview.md
+```
+
+The preview:
+
+* reuses runtime safety final review preview logic
+* inspects the complete runtime governance research chain
+* documents deterministic architecture completion areas
+* documents deterministic preview-only architecture findings
+* documents deterministic permanently forbidden capability findings
+* documents deterministic human research requirements
+* documents deterministic future-runtime feasibility notes
+* documents deterministic governance research recommendations
+* never applies or enforces runtime research
+* never approves runtime final review
+* never approves runtime activation
+* never executes runtime activation
+* never enables runtime governance
+* never enables runtime autonomy
+* never allows autonomous actions
+* never enforces runtime policies
+* never activates runtime config
+* never changes runtime behavior
+* never changes governance decisions
+* never changes repair orchestration
+
+Example human output:
+
+```text
+# AI Software Factory - Post-v9 Runtime Research Preview
+
+Preview status:
+created
+
+Source runtime final review status:
+created
+
+Runtime research conclusion:
+future-research-ready
+
+Runtime research applied:
+false
+
+Runtime research enforced:
+false
+
+Runtime final review approved:
+false
+
+Runtime final review applied:
+false
+
+Runtime final review enforced:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime autonomy actions allowed:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Policy runtime mode:
+preview-only
+
+Architecture research score:
+80
+
+Architecture research rating:
+future-research-ready
+
+Future research ready:
+true
+
+Recommended next stage:
+maintain-runtime-disabled-posture
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeFinalReviewStatus": "created",
+  "runtimeResearchConclusion": "future-research-ready",
+  "runtimeResearchApplied": false,
+  "runtimeResearchEnforced": false,
+  "runtimeFinalReviewApproved": false,
+  "runtimeFinalReviewApplied": false,
+  "runtimeFinalReviewEnforced": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "runtimeFreezeApplied": false,
+  "runtimeFreezeEnforced": false,
+  "runtimeFreezeExecuted": false,
+  "runtimeBoundaryApplied": false,
+  "runtimeBoundaryEnforced": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeAutonomyActionsAllowed": false,
+  "runtimeCertificationApplied": false,
+  "runtimePolicyEnforcementEnabled": false,
+  "runtimeConfigActivationEnabled": false,
+  "governanceBypassAllowed": false,
+  "applied": false,
+  "enforced": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "governanceDecisionsChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "architectureResearchScore": {
+    "score": 80,
+    "rating": "future-research-ready"
+  },
+  "summary": {
+    "futureResearchReady": true
+  },
+  "recommendedNextStage": "maintain-runtime-disabled-posture"
+}
+```
+
+Example markdown post-v9-runtime-research-preview shape:
+
+```text
+# AI Software Factory - Post-v9 Runtime Research Preview
+
+Preview status:
+created
+
+Runtime research conclusion:
+future-research-ready
+
+Runtime research applied:
+false
+
+Runtime research enforced:
+false
+
+## Architecture Completion Areas
+- [runtime-safety/architecturally-complete] gov-runtime-research-area-001 ...
+
+## Preview-only Architecture Findings
+- [info] gov-runtime-research-finding-001 ...
+
+## Permanently Forbidden Capabilities
+- [runtime-autonomy] gov-runtime-research-forbidden-001 permanentlyForbidden=true ...
+
+## Human Research Requirements
+- [human-governance-review/required=true] gov-runtime-research-human-001 ...
+
+## Future Runtime Feasibility Notes
+- [preview-only-architecture] gov-runtime-research-feasibility-001 ...
+
+## Governance Research Recommendations
+- [high] gov-runtime-research-recommendation-001 ...
+```
+
+Safety guarantees:
+
+* `runtimeResearchApplied` is always `false`
+* `runtimeResearchEnforced` is always `false`
+* `runtimeFinalReviewApproved` is always `false`
+* `runtimeFinalReviewApplied` is always `false`
+* `runtimeFinalReviewEnforced` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeFreezeApplied` is always `false`
+* `runtimeFreezeEnforced` is always `false`
+* `runtimeFreezeExecuted` is always `false`
+* `runtimeBoundaryApplied` is always `false`
+* `runtimeBoundaryEnforced` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimeCertificationApplied` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v9.1 deterministic checks:
+
+* governance-post-v9-runtime-research-preview-unit
+* governance-post-v9-runtime-research-preview-missing
+* governance-post-v9-runtime-research-preview-not-ready
+* governance-post-v9-runtime-research-preview-ready
+* governance-post-v9-runtime-research-preview-blocked
+* governance-post-v9-runtime-research-preview-score
+* governance-post-v9-runtime-research-preview-forbidden-capabilities
+* governance-post-v9-runtime-research-preview-json-output
+* governance-post-v9-runtime-research-preview-artifact
+* governance-post-v9-runtime-research-preview-no-research-application
+* governance-post-v9-runtime-research-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
