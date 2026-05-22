@@ -5343,6 +5343,158 @@ v7.9 deterministic checks:
 * governance-autonomy-lifecycle-preview-no-lifecycle-application
 * governance-autonomy-lifecycle-preview-no-autonomy
 
+## Runtime Safety Design Preview (v8.0)
+
+v8.0 begins the runtime safety architecture phase by generating a deterministic runtime safety design preview from the controlled-autonomy lifecycle preview. It is preview-only: runtime governance is not enabled, runtime autonomy is not enabled, runtime policies are not enforced, and runtime behavior does not change.
+
+CLI usage:
+
+```bash
+node dist/cli.js governance runtime safety-design-preview
+node dist/cli.js governance runtime safety-design-preview --json
+```
+
+Generated artifacts:
+
+```text
+.factory/governance/runtime-safety-design-preview.json
+.factory/governance/runtime-safety-design-preview.md
+```
+
+The runtime safety design preview:
+
+* reuses deterministic autonomy lifecycle preview logic
+* inspects the complete governance and autonomy preview chain
+* documents runtime safety architecture sections
+* documents runtime safety boundaries
+* documents preserved runtime safety invariants
+* documents required runtime safety gates
+* documents permanently forbidden runtime capabilities
+* documents rollback-preparation concepts
+* assigns deterministic IDs such as `gov-runtime-safety-gate-001`
+* does not activate runtime governance
+* does not enable runtime autonomy
+* does not apply runtime controls
+* does not enforce runtime policies
+* does not activate runtime config
+* does not execute runtime sandboxes
+* does not enable plugins, scripts, runtime learning, ML decisioning, or multi-agent coordination
+* does not change runtime behavior, governance decisions, repair orchestration, or Safe Patch Engine behavior
+
+Example human output fields:
+
+```text
+Preview status:
+created
+
+Runtime safety conclusion:
+runtime-safety-ready-preview
+
+Runtime safety activated:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Runtime sandbox executed:
+false
+
+Runtime safety ready for future review:
+true
+```
+
+Example JSON fields:
+
+* `previewStatus`
+* `sourceLifecycleStatus`
+* `runtimeSafetyConclusion`
+* `runtimeSafetyApplied`
+* `runtimeSafetyActivated`
+* `runtimeGovernanceEnabled`
+* `runtimeAutonomyEnabled`
+* `runtimePolicyEnforcementEnabled`
+* `runtimeConfigActivationEnabled`
+* `runtimeSafetyArchitecture`
+* `runtimeSafetyBoundaries`
+* `runtimeSafetyInvariants`
+* `runtimeSafetyGates`
+* `forbiddenRuntimeCapabilities`
+* `rollbackPreparationConcepts`
+* `summary`
+* `recommendedNextStage`
+
+Example markdown runtime-safety-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Safety Design Preview
+
+## Runtime Safety Architecture
+
+## Runtime Safety Boundaries
+
+## Runtime Safety Invariants
+
+## Runtime Safety Gates
+
+## Forbidden Runtime Capabilities
+
+## Rollback Preparation Concepts
+
+## Warnings
+```
+
+Safety guarantees:
+
+* `runtimeSafetyApplied` is always `false`
+* `runtimeSafetyEnforced` is always `false`
+* `runtimeSafetyActivated` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeOverrideApplied` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v8.0 deterministic checks:
+
+* governance-runtime-safety-design-preview-unit
+* governance-runtime-safety-design-preview-missing
+* governance-runtime-safety-design-preview-not-ready
+* governance-runtime-safety-design-preview-ready
+* governance-runtime-safety-design-preview-blocked
+* governance-runtime-safety-design-preview-boundaries
+* governance-runtime-safety-design-preview-invariants
+* governance-runtime-safety-design-preview-forbidden-capabilities
+* governance-runtime-safety-design-preview-json-output
+* governance-runtime-safety-design-preview-artifact
+* governance-runtime-safety-design-preview-no-runtime-activation
+* governance-runtime-safety-design-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

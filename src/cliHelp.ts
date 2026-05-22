@@ -48,6 +48,7 @@
     "  node dist/cli.js governance autonomy observability-preview",
     "  node dist/cli.js governance autonomy control-plane-preview",
     "  node dist/cli.js governance autonomy lifecycle-preview",
+    "  node dist/cli.js governance runtime safety-design-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -108,6 +109,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance autonomy observability-preview",
     "  node dist/cli.js governance autonomy control-plane-preview",
     "  node dist/cli.js governance autonomy lifecycle-preview",
+    "  node dist/cli.js governance runtime safety-design-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -470,6 +472,27 @@ export function renderGovernanceAutonomyLifecyclePreviewHelp(): string {
     "Lifecycle preview-only guarantee:",
     "  This command models future controlled-autonomy lifecycle stages, transitions, blockers, and rollback planning only.",
     "  It does not apply lifecycle behavior, execute transitions, execute rollback, enable autonomy, allow autonomous actions, enforce governance, activate config, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeSafetyDesignPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime safety-design-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime safety-design-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime safety-design-preview",
+    "  node dist/cli.js governance runtime safety-design-preview --json",
+    "",
+    "Runtime safety design preview-only guarantee:",
+    "  This command models future runtime safety architecture, boundaries, invariants, gates, forbidden capabilities, and rollback preparation only.",
+    "  It does not activate runtime governance, enable runtime autonomy, enforce runtime policies, apply runtime controls, activate config, execute sandboxes, or change repair orchestration."
   ].join("\n") + "\n";
 }
 
