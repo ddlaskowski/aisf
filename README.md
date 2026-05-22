@@ -7149,6 +7149,237 @@ v8.9 deterministic checks:
 * governance-runtime-activation-freeze-preview-no-freeze-application
 * governance-runtime-activation-freeze-preview-no-autonomy
 
+## Runtime Safety Final Review Preview (v9.0)
+
+v9.0 generates deterministic runtime safety final review previews from the runtime activation freeze preview. It is preview-only: runtime final review is not approved, applied, or enforced; runtime activation is not approved or executed; runtime governance is not enabled; runtime autonomy is not enabled; runtime policies are not enforced; and runtime behavior does not change.
+
+Commands:
+
+```bash
+node dist/cli.js governance runtime final-review-preview
+node dist/cli.js governance runtime final-review-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-safety-final-review-preview.json
+.factory/governance/runtime-safety-final-review-preview.md
+```
+
+The preview:
+
+* reuses runtime activation freeze preview logic
+* inspects the complete runtime safety architecture chain
+* documents deterministic final review domains
+* documents deterministic final review findings
+* documents deterministic final review blockers
+* documents deterministic forbidden runtime findings
+* documents deterministic rollback/freeze governance planning
+* documents deterministic architecture completeness scoring
+* never approves runtime final review
+* never applies or enforces runtime final review
+* never approves runtime activation
+* never executes runtime activation
+* never enables runtime governance
+* never enables runtime autonomy
+* never allows autonomous actions
+* never enforces runtime policies
+* never activates runtime config
+* never changes runtime behavior
+* never changes governance decisions
+* never changes repair orchestration
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Safety Final Review Preview
+
+Preview status:
+created
+
+Source runtime freeze status:
+created
+
+Runtime final review conclusion:
+future-final-review-ready
+
+Runtime final review approved:
+false
+
+Runtime final review applied:
+false
+
+Runtime final review enforced:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime autonomy actions allowed:
+false
+
+Runtime policy enforcement enabled:
+false
+
+Policy runtime mode:
+preview-only
+
+Architecture completeness score:
+80
+
+Architecture completeness rating:
+future-final-review-ready
+
+Future final review ready:
+true
+
+Recommended next stage:
+prepare-post-v9-runtime-research-preview
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeFreezeStatus": "created",
+  "runtimeFinalReviewConclusion": "future-final-review-ready",
+  "runtimeFinalReviewApproved": false,
+  "runtimeFinalReviewApplied": false,
+  "runtimeFinalReviewEnforced": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "runtimeFreezeApplied": false,
+  "runtimeFreezeEnforced": false,
+  "runtimeFreezeExecuted": false,
+  "runtimeBoundaryApplied": false,
+  "runtimeBoundaryEnforced": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeAutonomyActionsAllowed": false,
+  "runtimeCertificationApplied": false,
+  "runtimePolicyEnforcementEnabled": false,
+  "runtimeConfigActivationEnabled": false,
+  "governanceBypassAllowed": false,
+  "applied": false,
+  "enforced": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "governanceDecisionsChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "architectureCompletenessScore": {
+    "score": 80,
+    "rating": "future-final-review-ready"
+  },
+  "summary": {
+    "futureFinalReviewReady": true
+  },
+  "recommendedNextStage": "prepare-post-v9-runtime-research-preview"
+}
+```
+
+Example markdown runtime-safety-final-review-preview shape:
+
+```text
+# AI Software Factory - Runtime Safety Final Review Preview
+
+Preview status:
+created
+
+Runtime final review conclusion:
+future-final-review-ready
+
+Runtime final review approved:
+false
+
+Runtime final review applied:
+false
+
+## Final Review Domains
+- [runtime-safety-design/passed-preview/approved=false] gov-runtime-final-domain-001 ...
+
+## Final Review Findings
+- [info] gov-runtime-final-finding-001 ...
+
+## Final Review Blockers
+- [high] gov-runtime-final-blocker-001 ...
+
+## Forbidden Runtime Findings
+- [runtime-autonomy] gov-runtime-final-forbidden-001 permanentlyForbidden=true ...
+
+## Rollback/Freeze Governance Planning
+Rollback execution allowed: false
+Rollback prepared: false
+```
+
+Safety guarantees:
+
+* `runtimeFinalReviewApproved` is always `false`
+* `runtimeFinalReviewApplied` is always `false`
+* `runtimeFinalReviewEnforced` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeFreezeApplied` is always `false`
+* `runtimeFreezeEnforced` is always `false`
+* `runtimeFreezeExecuted` is always `false`
+* `runtimeBoundaryApplied` is always `false`
+* `runtimeBoundaryEnforced` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimeCertificationApplied` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeControlPlaneApplied` is always `false`
+* `runtimeControlPlaneActivated` is always `false`
+* `runtimeKillSwitchActivated` is always `false`
+* `runtimeEmergencyStopExecuted` is always `false`
+* `runtimeOperatorOverrideApplied` is always `false`
+* `runtimeRollbackExecuted` is always `false`
+* `runtimeSandboxExecutionAllowed` is always `false`
+* `runtimeSandboxExecuted` is always `false`
+* `runtimeMutationScopeExpanded` is always `false`
+* `runtimeExternalExecutionAllowed` is always `false`
+* `runtimePluginExecutionAllowed` is always `false`
+* `runtimeScriptEvaluationAllowed` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v9.0 deterministic checks:
+
+* governance-runtime-safety-final-review-preview-unit
+* governance-runtime-safety-final-review-preview-missing
+* governance-runtime-safety-final-review-preview-not-ready
+* governance-runtime-safety-final-review-preview-ready
+* governance-runtime-safety-final-review-preview-blocked
+* governance-runtime-safety-final-review-preview-score
+* governance-runtime-safety-final-review-preview-forbidden-findings
+* governance-runtime-safety-final-review-preview-json-output
+* governance-runtime-safety-final-review-preview-artifact
+* governance-runtime-safety-final-review-preview-no-final-review-approval
+* governance-runtime-safety-final-review-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

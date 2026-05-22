@@ -58,6 +58,7 @@
     "  node dist/cli.js governance runtime activation-governance-review-preview",
     "  node dist/cli.js governance runtime activation-boundary-preview",
     "  node dist/cli.js governance runtime activation-freeze-preview",
+    "  node dist/cli.js governance runtime final-review-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -128,6 +129,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime activation-governance-review-preview",
     "  node dist/cli.js governance runtime activation-boundary-preview",
     "  node dist/cli.js governance runtime activation-freeze-preview",
+    "  node dist/cli.js governance runtime final-review-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -700,6 +702,27 @@ export function renderGovernanceRuntimeActivationFreezePreviewHelp(): string {
     "Runtime activation freeze preview-only guarantee:",
     "  This command models future runtime activation freeze domains, conditions, blockers, freeze trigger findings, and rollback planning only.",
     "  It does not execute runtime freeze behavior, approve runtime activation, execute runtime activation, apply runtime boundaries, enable runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeSafetyFinalReviewPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime final-review-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime final-review-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime final-review-preview",
+    "  node dist/cli.js governance runtime final-review-preview --json",
+    "",
+    "Runtime safety final review preview-only guarantee:",
+    "  This command models future runtime safety final review domains, findings, blockers, forbidden runtime findings, and rollback/freeze governance planning only.",
+    "  It does not approve runtime activation, execute runtime activation, apply runtime review enforcement, enable runtime governance, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
   ].join("\n") + "\n";
 }
 
