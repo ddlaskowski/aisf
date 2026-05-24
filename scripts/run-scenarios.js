@@ -30493,6 +30493,147 @@ function runProjectGenerationValidationPlanHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationApprovalPlanConsistencyUnit() {
+  try {
+    const approvalPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationApprovalPlanPreview.js"));
+    const metadata = { version: "v11.6", source: "approval-plan-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = approvalPlanModule.createProjectGenerationApprovalPlanPreview({ title: "Unit Approval Plan", metadata });
+    const second = approvalPlanModule.createProjectGenerationApprovalPlanPreview({ title: "Unit Approval Plan", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("approval plan output is not deterministic");
+    if (first.summary.totalGates !== 8 || first.summary.humanRequiredCount !== 7 || first.summary.blockedCount !== 0 || first.summary.completeness.score !== 63 || first.summary.completeness.level !== "partial") throw new Error(`approval plan summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.approvalPlanPreviewOnly !== true || first.approvalExecutionAllowed !== false || first.approvalDecisionApplied !== false || first.projectGenerationApproved !== false || first.validationExecutionAllowed !== false || first.generatedProjectValidationAllowed !== false || first.commandExecutionAllowed !== false || first.dependencyInstallationAllowed !== false || first.packageMutationAllowed !== false || first.fileWriteAllowed !== false || first.fileCreationAllowed !== false || first.scaffoldGenerationEnabled !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`approval plan invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`approval plan introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-approval-plan-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-approval-plan-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationApprovalGateSortingUnit() {
+  try {
+    const approvalPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationApprovalPlanPreview.js"));
+    const gates = approvalPlanModule.createDefaultProjectGenerationApprovalGates().reverse();
+    const sorted = approvalPlanModule.sortApprovalGates(gates);
+    const order = sorted.map((gate) => gate.gateId).join(",");
+    if (order !== "blueprint-review-preview,dependency-plan-review-preview,file-plan-review-preview,final-release-review-preview,governance-review-preview,manual-approval-preview,risk-review-preview,validation-plan-review-preview") throw new Error(`approval gate ordering mismatch: ${order}`);
+    console.log("PASS project-generation-approval-gate-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-approval-gate-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationApprovalGateFilteringUnit() {
+  try {
+    const approvalPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationApprovalPlanPreview.js"));
+    const gates = approvalPlanModule.createDefaultProjectGenerationApprovalGates();
+    const blueprint = approvalPlanModule.findApprovalGatesByType(gates, "blueprint-review");
+    const critical = approvalPlanModule.findApprovalGatesByRiskLevel(gates, "critical");
+    const humanRequired = approvalPlanModule.findHumanRequiredApprovalGates(gates);
+    const blocked = approvalPlanModule.findBlockedApprovalGates(gates);
+    if (blueprint.length !== 1 || blueprint[0].gateId !== "blueprint-review-preview") throw new Error(`type filtering mismatch: ${JSON.stringify(blueprint)}`);
+    if (critical.length !== 3 || critical[0].gateId !== "final-release-review-preview") throw new Error(`risk filtering mismatch: ${JSON.stringify(critical.map((gate) => gate.gateId))}`);
+    if (humanRequired.length !== 7 || humanRequired[0].gateId !== "dependency-plan-review-preview") throw new Error(`human-required filtering mismatch: ${JSON.stringify(humanRequired.map((gate) => gate.gateId))}`);
+    if (blocked.length !== 0) throw new Error(`blocked filtering mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-approval-gate-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-approval-gate-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationApprovalPlanCompletenessUnit() {
+  try {
+    const approvalPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationApprovalPlanPreview.js"));
+    const gates = [
+      approvalPlanModule.createApprovalGate({ gateId: "a", gateType: "blueprint-review", title: "A", purpose: "A.", requiredFor: ["blueprintPlan"], approvalPolicy: "preview-only", decisionStatus: "pending-preview", riskLevel: "low", requiresHumanApproval: false }),
+      approvalPlanModule.createApprovalGate({ gateId: "b", gateType: "file-plan-review", title: "B", purpose: "B.", requiredFor: ["filePlan"], approvalPolicy: "not-applicable", decisionStatus: "not-reviewed", riskLevel: "medium", requiresHumanApproval: false }),
+      approvalPlanModule.createApprovalGate({ gateId: "c", gateType: "manual-approval", title: "C", purpose: "C.", requiredFor: ["humanApprovalPlan"], approvalPolicy: "manual-approval-required", decisionStatus: "requires-approval", riskLevel: "high", requiresHumanApproval: true })
+    ];
+    const score = approvalPlanModule.calculateProjectGenerationApprovalPlanCompleteness(gates);
+    if (score.score !== 73 || score.level !== "partial") throw new Error(`approval plan completeness mismatch: ${JSON.stringify(score)}`);
+    const empty = approvalPlanModule.calculateProjectGenerationApprovalPlanCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty approval plan completeness mismatch: ${JSON.stringify(empty)}`);
+    const blocked = approvalPlanModule.calculateProjectGenerationApprovalPlanCompleteness([approvalPlanModule.createApprovalGate({ gateId: "blocked", gateType: "risk-review", title: "Blocked", purpose: "Blocked.", requiredFor: ["riskPlan"], approvalPolicy: "blocked", decisionStatus: "blocked", riskLevel: "critical", requiresHumanApproval: true, blockedReason: "Blocked for test." })]);
+    if (blocked.score !== 0 || blocked.level !== "incomplete") throw new Error(`blocked approval plan completeness mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-approval-plan-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-approval-plan-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationApprovalPlanRenderingUnit() {
+  try {
+    const approvalPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationApprovalPlanPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = approvalPlanModule.createProjectGenerationApprovalPlanPreview({ title: "Render Approval Plan", metadata: { version: "v11.6", source: "approval-plan-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationApprovalPlanPreview(preview);
+    if (!rendered.includes("Project generation approval plan preview: Render Approval Plan") || !rendered.includes("gate count: 8") || !rendered.includes("approvalExecutionAllowed: false") || !rendered.includes("approvalDecisionApplied: false") || !rendered.includes("projectGenerationApproved: false") || !rendered.includes("no approval execution")) throw new Error(`approval plan render mismatch: ${rendered}`);
+    console.log("PASS project-generation-approval-plan-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-approval-plan-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationApprovalPlanCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-approval-plan"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation approval plan preview:") || !human.stdout.includes("approvalExecutionAllowed: false") || !human.stdout.includes("approvalDecisionApplied: false") || !human.stdout.includes("projectGenerationApproved: false")) throw new Error(`approval plan human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-approval-plan", "--json"]);
+    if (json.status !== 0) throw new Error(`approval plan json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.approvalPlanPreviewOnly !== true || parsed.approvalExecutionAllowed !== false || parsed.approvalDecisionApplied !== false || parsed.projectGenerationApproved !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalGates !== 8 || parsed.summary.completeness.score !== 63) throw new Error(`approval plan json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-approval-plan-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-approval-plan-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationApprovalPlanHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-approval-plan", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-approval-plan",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not execute approvals",
+      "approve project generation",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "modify packages",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-approval-plan-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-approval-plan-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -30630,7 +30771,9 @@ const scenarioSuites = {
     runProjectGenerationDependencyPlanCliOutputUnit,
     runProjectGenerationDependencyPlanHelpOutputUnit,
     runProjectGenerationValidationPlanCliOutputUnit,
-    runProjectGenerationValidationPlanHelpOutputUnit
+    runProjectGenerationValidationPlanHelpOutputUnit,
+    runProjectGenerationApprovalPlanCliOutputUnit,
+    runProjectGenerationApprovalPlanHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -30665,6 +30808,7 @@ const scenarioSuites = {
     runProjectGenerationFilePlanRenderingUnit,
     runProjectGenerationDependencyPlanRenderingUnit,
     runProjectGenerationValidationPlanRenderingUnit,
+    runProjectGenerationApprovalPlanRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -30707,7 +30851,14 @@ const scenarioSuites = {
     runProjectGenerationValidationPlanCompletenessUnit,
     runProjectGenerationValidationPlanRenderingUnit,
     runProjectGenerationValidationPlanCliOutputUnit,
-    runProjectGenerationValidationPlanHelpOutputUnit
+    runProjectGenerationValidationPlanHelpOutputUnit,
+    runProjectGenerationApprovalPlanConsistencyUnit,
+    runProjectGenerationApprovalGateSortingUnit,
+    runProjectGenerationApprovalGateFilteringUnit,
+    runProjectGenerationApprovalPlanCompletenessUnit,
+    runProjectGenerationApprovalPlanRenderingUnit,
+    runProjectGenerationApprovalPlanCliOutputUnit,
+    runProjectGenerationApprovalPlanHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -33678,6 +33829,27 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationValidationPlanHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationApprovalPlanConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationApprovalGateSortingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationApprovalGateFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationApprovalPlanCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationApprovalPlanRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationApprovalPlanCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationApprovalPlanHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

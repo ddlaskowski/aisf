@@ -11,6 +11,7 @@ import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
 import type { GovernanceSeverity, GovernanceStatus } from "../governanceStatus.js";
+import type { ProjectGenerationApprovalGate, ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSection, ProjectGenerationBlueprintSummary } from "../projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../projectGenerationCapabilityMap.js";
 import type { ProjectGenerationDependencyPlanEntry, ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../projectGenerationDependencyPlanPreview.js";
@@ -753,6 +754,81 @@ export function renderProjectGenerationValidationPlanPreview(preview: ProjectGen
   ].join("\n");
 }
 
+export function renderProjectGenerationApprovalPlanSummary(summary: ProjectGenerationApprovalPlanSummary): string {
+  return [
+    "Project generation approval plan preview summary:",
+    `- gate count: ${summary.totalGates}`,
+    `- human-required count: ${summary.humanRequiredCount}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+    `- not-applicable count: ${summary.notApplicableCount}`,
+    `- risk distribution: ${renderApprovalRiskGroups(summary.riskDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationApprovalGate(gate: ProjectGenerationApprovalGate): string {
+  return [
+    `Project generation approval gate: ${gate.gateId}`,
+    `- gateType: ${gate.gateType}`,
+    `- title: ${gate.title}`,
+    `- purpose: ${gate.purpose}`,
+    `- requiredFor: ${gate.requiredFor.length === 0 ? "none" : gate.requiredFor.join(", ")}`,
+    `- approvalPolicy: ${gate.approvalPolicy}`,
+    `- decisionStatus: ${gate.decisionStatus}`,
+    `- riskLevel: ${gate.riskLevel}`,
+    `- requiresHumanApproval: ${String(gate.requiresHumanApproval)}`,
+    `- blockedReason: ${gate.blockedReason ?? "none"}`,
+    `- read-only: ${String(gate.readonly)}`,
+    `- preview-only: ${String(gate.previewOnly)}`,
+    renderWarnings(gate.warnings),
+    "Recommendations:",
+    ...(gate.recommendations.length === 0 ? ["- none"] : gate.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationApprovalPlanPreview(preview: ProjectGenerationApprovalPlanPreview): string {
+  const gates = preview.gates.length === 0
+    ? ["Project generation approval gates:", "- none"]
+    : ["Project generation approval gates:", ...preview.gates.map(renderProjectGenerationApprovalGate)];
+  return [
+    `Project generation approval plan preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- approvalPlanPreviewOnly: ${String(preview.approvalPlanPreviewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+    `- approvalDecisionApplied: ${String(preview.approvalDecisionApplied)}`,
+    `- projectGenerationApproved: ${String(preview.projectGenerationApproved)}`,
+    `- validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+    `- generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+    `- commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    "Notice: no approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(preview.metadata),
+    renderProjectGenerationApprovalPlanSummary(preview.summary),
+    ...gates
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -771,4 +847,9 @@ function renderDependencyRiskGroups(groups: readonly { key: string; totalDepende
 function renderValidationRiskGroups(groups: readonly { key: string; totalChecks: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalChecks}`).join(", ");
+}
+
+function renderApprovalRiskGroups(groups: readonly { key: string; totalGates: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalGates}`).join(", ");
 }

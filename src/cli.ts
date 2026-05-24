@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -65,6 +65,10 @@ import {
   createGovernanceConsolidationAudit,
   type GovernanceConsolidationAudit
 } from "./governance/governanceConsolidationAudit.js";
+import {
+  createProjectGenerationApprovalPlanPreview,
+  type ProjectGenerationApprovalPlanPreview
+} from "./governance/projectGenerationApprovalPlanPreview.js";
 import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
@@ -460,6 +464,7 @@ import {
   renderGovernanceRuntimeResearchManifestPreviewHelp,
   renderGovernanceRuntimeResearchAttestationPreviewHelp,
   renderGovernanceConsolidationAuditHelp,
+  renderGovernanceProjectGenerationApprovalPlanHelp,
   renderGovernanceProjectGenerationBlueprintHelp,
   renderGovernanceProjectGenerationCapabilitiesHelp,
   renderGovernanceProjectGenerationDependencyPlanHelp,
@@ -1016,6 +1021,19 @@ function buildProjectGenerationValidationPlanPreview(): ProjectGenerationValidat
   });
 }
 
+function buildProjectGenerationApprovalPlanPreview(): ProjectGenerationApprovalPlanPreview {
+  return createProjectGenerationApprovalPlanPreview({
+    title: "Project Generation Approval Plan Preview",
+    metadata: {
+      version: "v11.6",
+      source: "project-generation-approval-plan-cli-preview",
+      command: "governance project-generation-approval-plan",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1187,6 +1205,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(validationPlan, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationValidationPlanPreview(validationPlan), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-approval-plan") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-approval-plan", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationApprovalPlanHelp(), 0);
+    }
+
+    const approvalPlan = buildProjectGenerationApprovalPlanPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(approvalPlan, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationApprovalPlanPreview(approvalPlan), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

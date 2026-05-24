@@ -7,6 +7,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSummary 
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
+import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
 import type { ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../../governance/projectGenerationDependencyPlanPreview.js";
@@ -567,6 +568,64 @@ export function renderCliProjectGenerationValidationPlanPreview(preview: Project
   ].join("\n");
 }
 
+export function renderCliProjectGenerationApprovalPlanSummary(summary: ProjectGenerationApprovalPlanSummary): string {
+  return [
+    renderCliSection("Project generation approval plan preview summary", [
+      `gate count: ${summary.totalGates}`,
+      `human-required count: ${summary.humanRequiredCount}`,
+      `blocked count: ${summary.blockedCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+      `not-applicable count: ${summary.notApplicableCount}`,
+      `risk distribution: ${renderCliApprovalRiskGroups(summary.riskDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationApprovalPlanPreview(preview: ProjectGenerationApprovalPlanPreview): string {
+  const gateLines = preview.gates.length === 0
+    ? ["none"]
+    : preview.gates.map((gate) => `${gate.gateId} | type=${gate.gateType} | approvalPolicy=${gate.approvalPolicy} | decisionStatus=${gate.decisionStatus} | risk=${gate.riskLevel} | requiresHumanApproval=${String(gate.requiresHumanApproval)}`);
+  return [
+    renderCliSection("Project generation approval plan preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `approvalPlanPreviewOnly: ${String(preview.approvalPlanPreviewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+      `approvalDecisionApplied: ${String(preview.approvalDecisionApplied)}`,
+      `projectGenerationApproved: ${String(preview.projectGenerationApproved)}`,
+      `validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+      `commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      "notice: no approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliProjectGenerationApprovalPlanSummary(preview.summary),
+    renderCliSection("Approval gates", gateLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -585,4 +644,9 @@ function renderCliDependencyRiskGroups(groups: readonly { key: string; totalDepe
 function renderCliValidationRiskGroups(groups: readonly { key: string; totalChecks: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalChecks}`).join(", ");
+}
+
+function renderCliApprovalRiskGroups(groups: readonly { key: string; totalGates: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalGates}`).join(", ");
 }

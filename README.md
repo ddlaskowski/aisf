@@ -10621,6 +10621,97 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v11.6 - Project Generation Approval Plan Preview Layer
+
+v11.6 continues the Project Generation Readiness Era by adding a deterministic, read-only approval plan preview model for future controlled project generation systems. The approval plan preview is descriptive planning data only. It does not execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, install dependencies, mutate package files, create files, scaffold files, write files, implement builder agents, generate projects, route runtime behavior, activate governance, enforce policy, expand mutation scope, or change repair orchestration.
+
+Approval plan preview model:
+
+* `src/governance/projectGenerationApprovalPlanPreview.ts` adds `ProjectGenerationApprovalPlanPreview`, `ProjectGenerationApprovalGate`, `ProjectGenerationApprovalPlanSummary`, `ProjectGenerationApprovalPlanCompleteness`, `createProjectGenerationApprovalPlanPreview`, and `summarizeProjectGenerationApprovalPlanPreview`.
+* Approval plan previews explicitly preserve read-only, preview-only, approval-plan-preview-only, stdout-only, no-approval-execution, no-approval-decision-application, no-project-generation-approval, no-validation-execution, no-generated-project-validation, no-command-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Approval plan helpers require explicit metadata input and do not generate hidden timestamps.
+
+Approval gate helpers:
+
+* `createApprovalGate`
+* `sortApprovalGates`
+* `findApprovalGatesByType`
+* `findApprovalGatesByRiskLevel`
+* `findHumanRequiredApprovalGates`
+* `findBlockedApprovalGates`
+
+Each gate records gate ID, gate type, title, purpose, required-for references, approval policy, decision status, risk level, human approval requirement, blocked reason, warnings, recommendations, read-only state, and preview-only state.
+
+Advisory completeness scoring:
+
+* `calculateProjectGenerationApprovalPlanCompleteness` deterministically computes a 0-100 advisory score.
+* Completeness levels are `incomplete`, `partial`, `review-ready`, and `ready-for-design`.
+* Scoring is descriptive only and does not approve anything, activate governance, route runtime behavior, execute approvals, execute validation commands, run generated-project validation, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Approval plan rendering:
+
+* `renderProjectGenerationApprovalPlanSummary` renders deterministic gate count, human-required count, blocked count, approval-policy counts, risk distribution, completeness score, warnings, and recommendations.
+* `renderProjectGenerationApprovalGate` renders stable approval gate details.
+* `renderProjectGenerationApprovalPlanPreview` renders approval plan title, guarantees, metadata, summary, gate details, and an explicit no-approval-execution notice.
+* `renderCliProjectGenerationApprovalPlanSummary` and `renderCliProjectGenerationApprovalPlanPreview` provide equivalent CLI-safe deterministic output.
+
+CLI approval plan preview:
+
+```powershell
+node dist\cli.js governance project-generation-approval-plan
+node dist\cli.js governance project-generation-approval-plan --json
+```
+
+Approval plan previews print to stdout only. They do not write files, create files, scaffold files, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v11.6 deterministic checks:
+
+* project-generation-approval-plan-consistency
+* project-generation-approval-gate-sorting
+* project-generation-approval-gate-filtering
+* project-generation-approval-plan-completeness
+* project-generation-approval-plan-rendering
+* project-generation-approval-plan-cli-output
+* project-generation-approval-plan-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite project-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no approval execution is introduced
+* no approval decision application is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no builder agents are introduced
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
