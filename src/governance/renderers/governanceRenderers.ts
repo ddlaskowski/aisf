@@ -1,5 +1,6 @@
 import type { GovernanceRecommendation } from "../governanceArtifact.js";
 import type { GovernanceArtifact } from "../governanceArtifact.js";
+import type { GovernanceArtifactRegistry, GovernanceArtifactRegistrySummary } from "../governanceArtifactRegistry.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -74,4 +75,34 @@ export function renderGovernanceArtifact(artifact: GovernanceArtifact & { readon
   lines.push(renderMetadata(artifact.metadata));
   if (artifact.readonlyContract !== undefined) lines.push(renderReadonlyContract(artifact.readonlyContract));
   return lines.join("\n");
+}
+
+export function renderGovernanceArtifactRegistrySummary(summary: GovernanceArtifactRegistrySummary): string {
+  return [
+    "Governance artifact registry summary:",
+    `- artifact count: ${summary.totalArtifacts}`,
+    `- artifact types: ${summary.artifactTypes.length === 0 ? "none" : summary.artifactTypes.join(", ")}`,
+    `- statuses: ${summary.statuses.length === 0 ? "none" : summary.statuses.join(", ")}`,
+    `- all preview-only: ${String(summary.allPreviewOnly)}`,
+    `- all read-only: ${String(summary.allReadonly)}`,
+    renderWarnings(summary.warnings)
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactRegistry(registry: GovernanceArtifactRegistry): string {
+  const entries = registry.entries.length === 0
+    ? ["- none"]
+    : registry.entries.map((entry) => [
+        `- ${entry.version} ${entry.source}`,
+        `artifactType=${entry.artifactType}`,
+        `status=${entry.status}`,
+        `readonly=${String(entry.readonly)}`,
+        `previewOnly=${String(entry.previewOnly)}`
+      ].join(" | "));
+  return [
+    `Governance artifact registry: ${registry.title}`,
+    renderGovernanceArtifactRegistrySummary(registry.summary),
+    "Registry entries:",
+    ...entries
+  ].join("\n");
 }

@@ -28768,6 +28768,137 @@ function runGovernancePreviewArtifactShapeUnit() {
   }
 }
 
+function runGovernanceArtifactRegistryConsistencyUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const registryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactRegistry.js"));
+    const artifact = factory.createReadonlyGovernanceArtifact({
+      artifactType: "manifest",
+      status: "preview",
+      summary: "Registry consistency check.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.4", source: "registry-unit", readonly: true, previewOnly: true }
+    });
+    const first = registryModule.registerGovernanceArtifact(registryModule.createGovernanceArtifactRegistry("Unit Registry"), artifact);
+    const second = registryModule.registerGovernanceArtifact(registryModule.createGovernanceArtifactRegistry("Unit Registry"), artifact);
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("registry output is not deterministic");
+    if (first.summary.totalArtifacts !== 1 || first.summary.allPreviewOnly !== true || first.summary.allReadonly !== true) throw new Error(`registry summary mismatch: ${JSON.stringify(first.summary)}`);
+    if ("runtimeActivationExecuted" in first.entries[0] || "runtimeGovernanceEnabled" in first.entries[0]) throw new Error(`registry entry introduced runtime flags: ${JSON.stringify(first.entries[0])}`);
+    console.log("PASS governance-artifact-registry-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-registry-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactRegistrySortingUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const registryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactRegistry.js"));
+    const artifactB = factory.createReadonlyGovernanceArtifact({
+      artifactType: "manifest",
+      status: "preview",
+      summary: "B artifact.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.4", source: "z-source", readonly: true, previewOnly: true }
+    });
+    const artifactA = factory.createReadonlyGovernanceArtifact({
+      artifactType: "attestation",
+      status: "ready",
+      summary: "A artifact.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.3", source: "a-source", readonly: true, previewOnly: true }
+    });
+    const registry = registryModule.registerGovernanceArtifact(
+      registryModule.registerGovernanceArtifact(registryModule.createGovernanceArtifactRegistry("Sorting Registry"), artifactB),
+      artifactA
+    );
+    if (registry.entries[0].source !== "a-source" || registry.entries[1].source !== "z-source") throw new Error(`registry sorting mismatch: ${JSON.stringify(registry.entries)}`);
+    if (registry.summary.artifactTypes.join(",") !== "attestation,manifest") throw new Error(`artifact type summary sorting mismatch: ${registry.summary.artifactTypes.join(",")}`);
+    console.log("PASS governance-artifact-registry-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-registry-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactRegistryRenderingUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const registryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactRegistry.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const artifact = factory.createReadonlyGovernanceArtifact({
+      artifactType: "registry",
+      status: "preview",
+      summary: "Registry rendering check.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.4", source: "registry-render", readonly: true, previewOnly: true }
+    });
+    const registry = registryModule.registerGovernanceArtifact(registryModule.createGovernanceArtifactRegistry("Render Registry"), artifact);
+    const rendered = renderers.renderGovernanceArtifactRegistry(registry);
+    if (!rendered.includes("Governance artifact registry: Render Registry") || !rendered.includes("artifact count: 1") || !rendered.includes("all preview-only: true") || !rendered.includes("Warnings: none")) throw new Error(`registry render mismatch: ${rendered}`);
+    console.log("PASS governance-artifact-registry-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-registry-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliArtifactRegistryRenderingUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const registryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactRegistry.js"));
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const artifact = factory.createReadonlyGovernanceArtifact({
+      artifactType: "catalog",
+      status: "preview",
+      summary: "CLI registry rendering check.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.4", source: "cli-registry-render", readonly: true, previewOnly: true }
+    });
+    const registry = registryModule.registerGovernanceArtifact(registryModule.createGovernanceArtifactRegistry("CLI Registry"), artifact);
+    const rendered = cliArtifact.renderCliGovernanceArtifactRegistry(registry);
+    if (!rendered.includes("Governance artifact registry:") || !rendered.includes("artifact count: 1") || !rendered.includes("Read-only preview") || !rendered.includes("previewOnly=true")) throw new Error(`CLI registry render mismatch: ${rendered}`);
+    console.log("PASS cli-artifact-registry-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-artifact-registry-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePreviewRegistrySummaryUnit() {
+  try {
+    const manifest = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchManifestPreview.js"));
+    const attestation = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchAttestationPreview.js"));
+    const manifestPreview = manifest.buildGovernanceRuntimeResearchManifestPreviewFromRegistry({ previewStatus: "created", runtimeResearchRegistryConclusion: "research-registry-ready" });
+    const attestationPreview = attestation.buildGovernanceRuntimeResearchAttestationPreviewFromManifest(manifestPreview);
+    for (const preview of [manifestPreview, attestationPreview]) {
+      const registry = preview.normalizedGovernanceArtifactRegistry;
+      if (!registry || registry.summary.totalArtifacts !== 1 || registry.summary.allPreviewOnly !== true || registry.summary.allReadonly !== true) throw new Error(`preview registry summary mismatch: ${JSON.stringify(registry)}`);
+      if ("runtimeActivationExecuted" in registry.entries[0] || "runtimeGovernanceEnabled" in registry.entries[0]) throw new Error(`preview registry entry introduced runtime flags: ${JSON.stringify(registry.entries[0])}`);
+    }
+    console.log("PASS governance-preview-registry-summary");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-preview-registry-summary");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -28863,7 +28994,9 @@ const scenarioSuites = {
     runGovernanceReadonlyContractConsistencyUnit,
     runGovernanceArtifactRenderingUnit,
     runCliArtifactRenderingUnit,
-    runGovernancePreviewArtifactShapeUnit
+    runGovernancePreviewArtifactShapeUnit,
+    runGovernanceArtifactRegistryConsistencyUnit,
+    runGovernancePreviewRegistrySummaryUnit
   ],
   governance: [
     runGovernanceArchitectureConsolidationInvariantsUnit,
@@ -28882,10 +29015,19 @@ const scenarioSuites = {
     runGovernanceRenderConsistencyUnit,
     runGovernanceRenderNormalizationUnit,
     runGovernanceArtifactRenderingUnit,
+    runGovernanceArtifactRegistryRenderingUnit,
     runCliRenderConsistencyUnit,
     runCliRenderNormalizationUnit,
     runCliArtifactRenderingUnit,
+    runCliArtifactRegistryRenderingUnit,
     runReadonlyRenderConsistencyUnit
+  ],
+  registry: [
+    runGovernanceArtifactRegistryConsistencyUnit,
+    runGovernanceArtifactRegistrySortingUnit,
+    runGovernanceArtifactRegistryRenderingUnit,
+    runCliArtifactRegistryRenderingUnit,
+    runGovernancePreviewRegistrySummaryUnit
   ]
 };
 
@@ -31585,6 +31727,21 @@ async function main() {
     failed += 1;
   }
   if (!runGovernancePreviewArtifactShapeUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactRegistryConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactRegistrySortingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactRegistryRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runCliArtifactRegistryRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePreviewRegistrySummaryUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

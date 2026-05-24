@@ -9,7 +9,8 @@ import {
   GOVERNANCE_RUNTIME_DISABLED_FLAGS
 } from "./governanceInvariants.js";
 import { createReadonlyGovernanceArtifact, type GovernanceArtifactWithReadonlyContract } from "./governanceArtifactFactory.js";
-import { renderGovernanceArtifact, renderMetadata, renderReadonlyStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
+import { createGovernanceArtifactRegistry, registerGovernanceArtifact, type GovernanceArtifactRegistry } from "./governanceArtifactRegistry.js";
+import { renderGovernanceArtifact, renderGovernanceArtifactRegistrySummary, renderMetadata, renderReadonlyStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
 
 import {
   buildGovernanceRuntimeResearchManifestPreview,
@@ -179,6 +180,7 @@ export type GovernanceRuntimeResearchAttestationPreview = {
   forbiddenCapabilityAttestationFindings: GovernanceRuntimeForbiddenCapabilityAttestationFinding[];
   futureOnlyAttestationNotes: GovernanceRuntimeFutureAttestationNote[];
   normalizedGovernanceArtifact: GovernanceArtifactWithReadonlyContract;
+  normalizedGovernanceArtifactRegistry: GovernanceArtifactRegistry;
   summary: {
     researchAttestationScoreValue: number;
     totalAttestationGroups: number;
@@ -368,6 +370,10 @@ export function buildGovernanceRuntimeResearchAttestationPreviewFromManifest(sou
     },
     readonlyReason: "Runtime governance research attestation is descriptive only; no activation or enforcement is applied."
   });
+  const normalizedGovernanceArtifactRegistry = registerGovernanceArtifact(
+    createGovernanceArtifactRegistry("Runtime Governance Research Attestation Artifact Registry"),
+    normalizedGovernanceArtifact
+  );
   return {
     schemaVersion: 1,
     previewStatus: conclusion.previewStatus,
@@ -438,6 +444,7 @@ export function buildGovernanceRuntimeResearchAttestationPreviewFromManifest(sou
     forbiddenCapabilityAttestationFindings,
     futureOnlyAttestationNotes,
     normalizedGovernanceArtifact,
+    normalizedGovernanceArtifactRegistry,
     summary: {
       researchAttestationScoreValue: researchAttestationScore.score,
       totalAttestationGroups: attestationGroups.length,
@@ -527,6 +534,10 @@ export function renderGovernanceRuntimeResearchAttestationPreviewMarkdown(previe
     "## Normalized Governance Artifact",
     "",
     renderGovernanceArtifact(preview.normalizedGovernanceArtifact),
+    "",
+    "## Normalized Governance Artifact Registry",
+    "",
+    renderGovernanceArtifactRegistrySummary(preview.normalizedGovernanceArtifactRegistry.summary),
     "", "## Attestation Groups", ""
   ];
   for (const item of preview.attestationGroups) lines.push(`- [${item.category}] ${item.id} ${item.key} totalRecords=${item.totalRecords} previewOnly=${String(item.previewOnly)} - ${item.reason}`);

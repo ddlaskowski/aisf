@@ -9565,6 +9565,69 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v10.4 - Governance Artifact Registry Consolidation Layer
+
+v10.4 continues the Governance Consolidation Era by adding a lightweight deterministic registry layer for normalized governance artifacts. The registry is descriptive only and does not activate, enforce, schedule, execute, mutate, or route runtime behavior.
+
+Governance artifact registry model:
+
+* `src/governance/governanceArtifactRegistry.ts` adds `GovernanceArtifactRegistryEntry`, `GovernanceArtifactRegistry`, `createGovernanceArtifactRegistry`, `registerGovernanceArtifact`, `sortGovernanceArtifactRegistry`, and `summarizeGovernanceArtifactRegistry`.
+* Registry entries record stable artifact metadata: `artifactType`, `status`, `severity`, `summary`, `source`, `version`, `previewOnly`, and `readonly`.
+* Registry helpers return deterministic data, do not write files, do not generate hidden timestamps, and do not introduce runtime activation or policy enforcement.
+
+Registry sorting and summaries:
+
+* Entries sort deterministically by version, artifact type, status, source, and summary.
+* Registry summaries include artifact count, artifact types, statuses, all-preview-only state, all-read-only state, and warnings for unexpected preview-only/read-only shape violations.
+* Registry warnings are sorted deterministically.
+
+Registry rendering:
+
+* `renderGovernanceArtifactRegistrySummary` renders stable artifact counts, artifact types, statuses, read-only state, preview-only state, and warnings.
+* `renderGovernanceArtifactRegistry` renders deterministic registry title, summary, and entries.
+* `renderCliGovernanceArtifactRegistry` renders the same registry information with shared CLI renderer helpers and read-only preview notice text.
+
+Selected preview integration:
+
+* `runtimeGovernanceResearchManifestPreview` includes `normalizedGovernanceArtifactRegistry` derived from its normalized read-only governance artifact.
+* `runtimeGovernanceResearchAttestationPreview` includes `normalizedGovernanceArtifactRegistry` derived from its normalized read-only governance artifact.
+* Existing preview fields, JSON meaning, CLI semantics, governance decisions, runtime behavior, and repair orchestration remain unchanged.
+
+v10.4 deterministic checks:
+
+* governance-artifact-registry-consistency
+* governance-artifact-registry-sorting
+* governance-artifact-registry-rendering
+* cli-artifact-registry-rendering
+* governance-preview-registry-summary
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite registry
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no builder agents are introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
