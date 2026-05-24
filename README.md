@@ -10445,6 +10445,93 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v11.4 - Project Generation Dependency Plan Preview Layer
+
+v11.4 continues the Project Generation Readiness Era by adding a deterministic, read-only dependency plan preview model for future controlled project generation systems. The dependency plan preview is descriptive planning data only. It does not install dependencies, mutate package files, create files, scaffold files, write files, implement builder agents, generate projects, route runtime behavior, activate governance, enforce policy, expand mutation scope, or change repair orchestration.
+
+Dependency plan preview model:
+
+* `src/governance/projectGenerationDependencyPlanPreview.ts` adds `ProjectGenerationDependencyPlanPreview`, `ProjectGenerationDependencyPlanEntry`, `ProjectGenerationDependencyPlanSummary`, `ProjectGenerationDependencyPlanCompleteness`, `createProjectGenerationDependencyPlanPreview`, and `summarizeProjectGenerationDependencyPlanPreview`.
+* Dependency plan previews explicitly preserve read-only, preview-only, dependency-plan-preview-only, stdout-only, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Dependency plan helpers require explicit metadata input and do not generate hidden timestamps.
+
+Dependency plan entry helpers:
+
+* `createDependencyPlanEntry`
+* `sortDependencyPlanEntries`
+* `findDependencyPlanEntriesByType`
+* `findDependencyPlanEntriesByRiskLevel`
+* `findApprovalRequiredDependencyPlanEntries`
+* `findBlockedDependencyPlanEntries`
+
+Each entry records package name, dependency type, purpose, required-by references, installation policy, version policy, risk level, approval requirement, blocked reason, warnings, recommendations, read-only state, and preview-only state.
+
+Advisory completeness scoring:
+
+* `calculateProjectGenerationDependencyPlanCompleteness` deterministically computes a 0-100 advisory score.
+* Completeness levels are `incomplete`, `partial`, `review-ready`, and `ready-for-design`.
+* Scoring is descriptive only and does not activate governance, route runtime behavior, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Dependency plan rendering:
+
+* `renderProjectGenerationDependencyPlanSummary` renders deterministic dependency count, approval-required count, blocked count, installation-policy counts, risk distribution, completeness score, warnings, and recommendations.
+* `renderProjectGenerationDependencyPlanEntry` renders stable dependency plan entry details.
+* `renderProjectGenerationDependencyPlanPreview` renders dependency plan title, guarantees, metadata, summary, entry details, and an explicit no-install/no-package-mutation notice.
+* `renderCliProjectGenerationDependencyPlanSummary` and `renderCliProjectGenerationDependencyPlanPreview` provide equivalent CLI-safe deterministic output.
+
+CLI dependency plan preview:
+
+```powershell
+node dist\cli.js governance project-generation-dependency-plan
+node dist\cli.js governance project-generation-dependency-plan --json
+```
+
+Dependency plan previews print to stdout only. They do not write files, create files, scaffold files, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v11.4 deterministic checks:
+
+* project-generation-dependency-plan-consistency
+* project-generation-dependency-plan-entry-sorting
+* project-generation-dependency-plan-filtering
+* project-generation-dependency-plan-completeness
+* project-generation-dependency-plan-rendering
+* project-generation-dependency-plan-cli-output
+* project-generation-dependency-plan-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite project-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no builder agents are introduced
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

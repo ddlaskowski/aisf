@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -73,6 +73,10 @@ import {
   createProjectGenerationCapabilityMap,
   type ProjectGenerationCapabilityMap
 } from "./governance/projectGenerationCapabilityMap.js";
+import {
+  createProjectGenerationDependencyPlanPreview,
+  type ProjectGenerationDependencyPlanPreview
+} from "./governance/projectGenerationDependencyPlanPreview.js";
 import {
   createProjectGenerationFilePlanPreview,
   type ProjectGenerationFilePlanPreview
@@ -454,6 +458,7 @@ import {
   renderGovernanceConsolidationAuditHelp,
   renderGovernanceProjectGenerationBlueprintHelp,
   renderGovernanceProjectGenerationCapabilitiesHelp,
+  renderGovernanceProjectGenerationDependencyPlanHelp,
   renderGovernanceProjectGenerationFilePlanHelp,
   renderGovernanceProjectGenerationReadinessHelp,
   renderGovernanceArtifactIndexHelp,
@@ -980,6 +985,19 @@ function buildProjectGenerationFilePlanPreview(): ProjectGenerationFilePlanPrevi
   });
 }
 
+function buildProjectGenerationDependencyPlanPreview(): ProjectGenerationDependencyPlanPreview {
+  return createProjectGenerationDependencyPlanPreview({
+    title: "Project Generation Dependency Plan Preview",
+    metadata: {
+      version: "v11.4",
+      source: "project-generation-dependency-plan-cli-preview",
+      command: "governance project-generation-dependency-plan",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1105,6 +1123,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(filePlan, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationFilePlanPreview(filePlan), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-dependency-plan") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-dependency-plan", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationDependencyPlanHelp(), 0);
+    }
+
+    const dependencyPlan = buildProjectGenerationDependencyPlanPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(dependencyPlan, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationDependencyPlanPreview(dependencyPlan), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

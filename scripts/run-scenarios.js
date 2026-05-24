@@ -30215,6 +30215,144 @@ function runProjectGenerationFilePlanHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationDependencyPlanConsistencyUnit() {
+  try {
+    const dependencyPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationDependencyPlanPreview.js"));
+    const metadata = { version: "v11.4", source: "dependency-plan-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = dependencyPlanModule.createProjectGenerationDependencyPlanPreview({ title: "Unit Dependency Plan", metadata });
+    const second = dependencyPlanModule.createProjectGenerationDependencyPlanPreview({ title: "Unit Dependency Plan", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("dependency plan output is not deterministic");
+    if (first.summary.totalDependencies !== 7 || first.summary.approvalRequiredCount !== 5 || first.summary.blockedCount !== 0 || first.summary.completeness.score !== 69 || first.summary.completeness.level !== "partial") throw new Error(`dependency plan summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.dependencyPlanPreviewOnly !== true || first.dependencyInstallationAllowed !== false || first.packageMutationAllowed !== false || first.fileWriteAllowed !== false || first.fileCreationAllowed !== false || first.scaffoldGenerationEnabled !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`dependency plan invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`dependency plan introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-dependency-plan-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-dependency-plan-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationDependencyPlanEntrySortingUnit() {
+  try {
+    const dependencyPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationDependencyPlanPreview.js"));
+    const entries = dependencyPlanModule.createDefaultProjectGenerationDependencyPlanEntries().reverse();
+    const sorted = dependencyPlanModule.sortDependencyPlanEntries(entries);
+    const order = sorted.map((entry) => entry.packageName).join(",");
+    if (order !== "eslint,prettier,typedoc,typescript,vite,vitest,zod") throw new Error(`dependency plan entry ordering mismatch: ${order}`);
+    console.log("PASS project-generation-dependency-plan-entry-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-dependency-plan-entry-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationDependencyPlanFilteringUnit() {
+  try {
+    const dependencyPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationDependencyPlanPreview.js"));
+    const entries = dependencyPlanModule.createDefaultProjectGenerationDependencyPlanEntries();
+    const build = dependencyPlanModule.findDependencyPlanEntriesByType(entries, "build");
+    const high = dependencyPlanModule.findDependencyPlanEntriesByRiskLevel(entries, "high");
+    const approval = dependencyPlanModule.findApprovalRequiredDependencyPlanEntries(entries);
+    const blocked = dependencyPlanModule.findBlockedDependencyPlanEntries(entries);
+    if (build.length !== 1 || build[0].packageName !== "typescript") throw new Error(`type filtering mismatch: ${JSON.stringify(build)}`);
+    if (high.length !== 2 || high[0].packageName !== "typedoc") throw new Error(`risk filtering mismatch: ${JSON.stringify(high.map((entry) => entry.packageName))}`);
+    if (approval.length !== 5 || approval[0].packageName !== "typedoc") throw new Error(`approval filtering mismatch: ${JSON.stringify(approval.map((entry) => entry.packageName))}`);
+    if (blocked.length !== 0) throw new Error(`blocked filtering mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-dependency-plan-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-dependency-plan-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationDependencyPlanCompletenessUnit() {
+  try {
+    const dependencyPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationDependencyPlanPreview.js"));
+    const entries = [
+      dependencyPlanModule.createDependencyPlanEntry({ packageName: "a", dependencyType: "runtime", purpose: "A.", requiredBy: ["requirements"], installationPolicy: "preview-only", versionPolicy: "manual-review-required", riskLevel: "low", requiresApproval: false }),
+      dependencyPlanModule.createDependencyPlanEntry({ packageName: "b", dependencyType: "build", purpose: "B.", requiredBy: ["validationPlan"], installationPolicy: "no-install", versionPolicy: "exact", riskLevel: "medium", requiresApproval: false }),
+      dependencyPlanModule.createDependencyPlanEntry({ packageName: "c", dependencyType: "test", purpose: "C.", requiredBy: ["validationPlan"], installationPolicy: "manual-approval-required", versionPolicy: "range", riskLevel: "high", requiresApproval: true })
+    ];
+    const score = dependencyPlanModule.calculateProjectGenerationDependencyPlanCompleteness(entries);
+    if (score.score !== 73 || score.level !== "partial") throw new Error(`dependency plan completeness mismatch: ${JSON.stringify(score)}`);
+    const empty = dependencyPlanModule.calculateProjectGenerationDependencyPlanCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty dependency plan completeness mismatch: ${JSON.stringify(empty)}`);
+    const blocked = dependencyPlanModule.calculateProjectGenerationDependencyPlanCompleteness([dependencyPlanModule.createDependencyPlanEntry({ packageName: "blocked", dependencyType: "runtime", purpose: "Blocked.", requiredBy: ["requirements"], installationPolicy: "blocked", versionPolicy: "unspecified", riskLevel: "critical", requiresApproval: true, blockedReason: "Blocked for test." })]);
+    if (blocked.score !== 0 || blocked.level !== "incomplete") throw new Error(`blocked dependency plan completeness mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-dependency-plan-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-dependency-plan-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationDependencyPlanRenderingUnit() {
+  try {
+    const dependencyPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationDependencyPlanPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = dependencyPlanModule.createProjectGenerationDependencyPlanPreview({ title: "Render Dependency Plan", metadata: { version: "v11.4", source: "dependency-plan-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationDependencyPlanPreview(preview);
+    if (!rendered.includes("Project generation dependency plan preview: Render Dependency Plan") || !rendered.includes("dependency count: 7") || !rendered.includes("dependencyInstallationAllowed: false") || !rendered.includes("packageMutationAllowed: false") || !rendered.includes("projectGenerationEnabled: false") || !rendered.includes("no dependency installation")) throw new Error(`dependency plan render mismatch: ${rendered}`);
+    console.log("PASS project-generation-dependency-plan-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-dependency-plan-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationDependencyPlanCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-dependency-plan"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation dependency plan preview:") || !human.stdout.includes("dependencyInstallationAllowed: false") || !human.stdout.includes("packageMutationAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false")) throw new Error(`dependency plan human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-dependency-plan", "--json"]);
+    if (json.status !== 0) throw new Error(`dependency plan json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.dependencyPlanPreviewOnly !== true || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalDependencies !== 7 || parsed.summary.completeness.score !== 69) throw new Error(`dependency plan json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-dependency-plan-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-dependency-plan-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationDependencyPlanHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-dependency-plan", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-dependency-plan",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not install dependencies",
+      "mutate package.json",
+      "modify packages",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-dependency-plan-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-dependency-plan-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -30348,7 +30486,9 @@ const scenarioSuites = {
     runProjectGenerationBlueprintCliOutputUnit,
     runProjectGenerationBlueprintHelpOutputUnit,
     runProjectGenerationFilePlanCliOutputUnit,
-    runProjectGenerationFilePlanHelpOutputUnit
+    runProjectGenerationFilePlanHelpOutputUnit,
+    runProjectGenerationDependencyPlanCliOutputUnit,
+    runProjectGenerationDependencyPlanHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -30381,6 +30521,7 @@ const scenarioSuites = {
     runProjectGenerationCapabilityRenderingUnit,
     runProjectGenerationBlueprintRenderingUnit,
     runProjectGenerationFilePlanRenderingUnit,
+    runProjectGenerationDependencyPlanRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -30409,7 +30550,14 @@ const scenarioSuites = {
     runProjectGenerationFilePlanCompletenessUnit,
     runProjectGenerationFilePlanRenderingUnit,
     runProjectGenerationFilePlanCliOutputUnit,
-    runProjectGenerationFilePlanHelpOutputUnit
+    runProjectGenerationFilePlanHelpOutputUnit,
+    runProjectGenerationDependencyPlanConsistencyUnit,
+    runProjectGenerationDependencyPlanEntrySortingUnit,
+    runProjectGenerationDependencyPlanFilteringUnit,
+    runProjectGenerationDependencyPlanCompletenessUnit,
+    runProjectGenerationDependencyPlanRenderingUnit,
+    runProjectGenerationDependencyPlanCliOutputUnit,
+    runProjectGenerationDependencyPlanHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -33338,6 +33486,27 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationFilePlanHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationDependencyPlanConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationDependencyPlanEntrySortingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationDependencyPlanFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationDependencyPlanCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationDependencyPlanRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationDependencyPlanCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationDependencyPlanHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

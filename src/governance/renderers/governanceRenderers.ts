@@ -13,6 +13,7 @@ import { renderReadonlyContract } from "../governanceReadonlyContract.js";
 import type { GovernanceSeverity, GovernanceStatus } from "../governanceStatus.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSection, ProjectGenerationBlueprintSummary } from "../projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../projectGenerationCapabilityMap.js";
+import type { ProjectGenerationDependencyPlanEntry, ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanEntry, ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
@@ -611,6 +612,74 @@ export function renderProjectGenerationFilePlanPreview(preview: ProjectGeneratio
   ].join("\n");
 }
 
+export function renderProjectGenerationDependencyPlanSummary(summary: ProjectGenerationDependencyPlanSummary): string {
+  return [
+    "Project generation dependency plan preview summary:",
+    `- dependency count: ${summary.totalDependencies}`,
+    `- approval-required count: ${summary.approvalRequiredCount}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- no-install count: ${summary.noInstallCount}`,
+    `- manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- risk distribution: ${renderDependencyRiskGroups(summary.riskDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationDependencyPlanEntry(entry: ProjectGenerationDependencyPlanEntry): string {
+  return [
+    `Project generation dependency plan entry: ${entry.packageName}`,
+    `- dependencyType: ${entry.dependencyType}`,
+    `- purpose: ${entry.purpose}`,
+    `- requiredBy: ${entry.requiredBy.length === 0 ? "none" : entry.requiredBy.join(", ")}`,
+    `- installationPolicy: ${entry.installationPolicy}`,
+    `- versionPolicy: ${entry.versionPolicy}`,
+    `- riskLevel: ${entry.riskLevel}`,
+    `- requiresApproval: ${String(entry.requiresApproval)}`,
+    `- blockedReason: ${entry.blockedReason ?? "none"}`,
+    `- read-only: ${String(entry.readonly)}`,
+    `- preview-only: ${String(entry.previewOnly)}`,
+    renderWarnings(entry.warnings),
+    "Recommendations:",
+    ...(entry.recommendations.length === 0 ? ["- none"] : entry.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationDependencyPlanPreview(preview: ProjectGenerationDependencyPlanPreview): string {
+  const entries = preview.entries.length === 0
+    ? ["Project generation dependency plan entries:", "- none"]
+    : ["Project generation dependency plan entries:", ...preview.entries.map(renderProjectGenerationDependencyPlanEntry)];
+  return [
+    `Project generation dependency plan preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- dependencyPlanPreviewOnly: ${String(preview.dependencyPlanPreviewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    "Notice: no dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(preview.metadata),
+    renderProjectGenerationDependencyPlanSummary(preview.summary),
+    ...entries
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -619,4 +688,9 @@ function renderIndexGroups(groups: readonly { key: string; totalEntries: number 
 function renderCapabilityGroups(groups: readonly { key: string; totalCapabilities: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalCapabilities}`).join(", ");
+}
+
+function renderDependencyRiskGroups(groups: readonly { key: string; totalDependencies: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalDependencies}`).join(", ");
 }
