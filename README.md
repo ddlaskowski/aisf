@@ -9356,6 +9356,93 @@ v10.0 deterministic checks:
 
 * governance-architecture-consolidation-invariants-unit
 
+## v10.1 - Governance Artifact Schema & Renderer Foundation
+
+v10.1 continues the Governance Consolidation Era by adding shared schema and rendering foundations without adding runtime capability, activation, enforcement, builder agents, planner loops, or mutation expansion.
+
+New foundation files:
+
+```text
+src/governance/governanceStatus.ts
+src/governance/governanceMetadata.ts
+src/governance/governanceArtifact.ts
+src/governance/utils/governanceUtils.ts
+src/governance/renderers/governanceRenderers.ts
+src/cli/render/cliRenderers.ts
+```
+
+Governance status normalization:
+
+* `GovernanceStatus` defines stable values such as `preview`, `ready`, `blocked`, `warning`, `manual-review`, `disabled`, and `readonly`.
+* `GovernanceSeverity` defines stable severity values.
+* `GovernanceReadiness`, `GovernanceRecommendationType`, and `GovernanceArtifactType` provide explicit small unions for future governance artifacts.
+
+Shared governance metadata schema:
+
+* `GovernanceMetadata` supports explicit `version`, `generatedAt`, `source`, `command`, `readonly`, and `previewOnly` fields.
+* No timestamps are generated implicitly.
+* Deterministic output remains stable unless callers explicitly pass metadata values.
+
+Shared governance artifact schema:
+
+* `GovernanceRecommendation` records recommendation type, message, and optional severity.
+* `GovernanceArtifact` records artifact type, status, severity, summary, reason, warnings, recommendations, and metadata.
+* Existing governance modules are not forced to migrate fully.
+
+Shared governance renderers:
+
+* `renderSection`
+* `renderWarnings`
+* `renderRecommendations`
+* `renderMetadata`
+* `renderStatusBlock`
+* `renderInvariantBlock`
+* `renderSummary`
+* `renderTimestamp`
+* `renderDivider`
+
+CLI renderer foundation:
+
+* `renderCliSection`
+* `renderCliStatus`
+* `renderCliWarnings`
+* `renderCliMetadata`
+* `renderReadonlyNotice`
+
+Conservative integration:
+
+* `runtimeGovernanceResearchManifestPreview` includes a small shared-rendered governance artifact foundation section.
+* JSON artifact meaning remains unchanged.
+* Runtime behavior, governance decisions, and repair orchestration remain unchanged.
+
+Safety guarantees:
+
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* outputs remain deterministic
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no autonomous runtime loops are introduced
+* no runtime self-modification is introduced
+* no mutation capability expansion is introduced
+* no multi-file mutation is introduced
+* no project-generation agents are introduced
+* no planner-agent runtime loops are introduced
+* no governance activation or policy enforcement path is introduced
+
+v10.1 deterministic checks:
+
+* governance-artifact-schema-consistency
+* governance-render-consistency
+* governance-status-normalization
+* cli-render-consistency
+* governance-readonly-rendering
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

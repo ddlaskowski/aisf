@@ -8,6 +8,7 @@ import {
   GOVERNANCE_RUNTIME_RESEARCH_CHAIN_PREVIEW_FLAGS,
   GOVERNANCE_RUNTIME_DISABLED_FLAGS
 } from "./governanceInvariants.js";
+import { renderDivider, renderMetadata, renderRecommendations, renderStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
 
 import {
   buildGovernanceRuntimeResearchRegistryPreview,
@@ -421,6 +422,11 @@ export function buildGovernanceRuntimeResearchManifestPreview(projectRoot: strin
 }
 
 export function renderGovernanceRuntimeResearchManifestPreviewMarkdown(preview: GovernanceRuntimeResearchManifestPreview): string {
+  const sharedStatus = preview.runtimeResearchManifestConclusion === "research-manifest-ready"
+    ? "ready"
+    : preview.runtimeResearchManifestConclusion === "blocked"
+      ? "blocked"
+      : "preview";
   const lines = [
     "# AI Software Factory - Runtime Governance Research Manifest Preview",
     "",
@@ -469,6 +475,32 @@ export function renderGovernanceRuntimeResearchManifestPreviewMarkdown(preview: 
     "", "Future-only manifest note count:", String(preview.summary.totalFutureOnlyManifestNotes),
     "", "Research manifest ready:", String(preview.summary.researchManifestReady),
     "", "Recommended next stage:", preview.recommendedNextStage,
+    "",
+    "## Shared Governance Artifact Foundation",
+    "",
+    renderSummary("Runtime governance research manifest remains a deterministic preview-only governance artifact."),
+    "",
+    renderStatusBlock(sharedStatus, preview.runtimeResearchManifestConclusion === "blocked" ? "critical" : "info", preview.runtimeResearchManifestConclusion),
+    "",
+    renderMetadata({
+      version: "v10.1",
+      source: "runtime-governance-research-manifest-preview",
+      command: "governance runtime research-manifest-preview",
+      readonly: true,
+      previewOnly: true
+    }),
+    "",
+    renderWarnings([]),
+    "",
+    renderRecommendations([
+      {
+        type: preview.summary.researchManifestReady ? "maintain-preview-only" : "continue",
+        severity: "info",
+        message: preview.summary.researchManifestReady ? "Maintain preview-only posture for runtime governance research manifest artifacts." : "Continue preview-only governance research hardening."
+      }
+    ]),
+    "",
+    renderDivider(),
     "", "## Manifest Groups", ""
   ];
   for (const item of preview.manifestGroups) lines.push(`- [${item.category}] ${item.id} ${item.key} totalRecords=${item.totalRecords} previewOnly=${String(item.previewOnly)} - ${item.reason}`);

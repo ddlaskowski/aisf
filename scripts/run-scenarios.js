@@ -28552,6 +28552,109 @@ function runGovernanceArchitectureConsolidationInvariantsUnit() {
   }
 }
 
+function runGovernanceArtifactSchemaConsistencyUnit() {
+  try {
+    const status = require(path.join(projectRoot, "dist", "governance", "governanceStatus.js"));
+    const artifact = {
+      artifactType: "manifest",
+      status: "preview",
+      severity: "info",
+      summary: "Schema consistency check.",
+      reason: "v10.1 foundation only.",
+      warnings: [],
+      recommendations: [{ type: "maintain-preview-only", message: "Keep governance preview-only.", severity: "info" }],
+      metadata: { version: "v10.1", command: "governance runtime research-manifest-preview", readonly: true, previewOnly: true }
+    };
+    if (!status.GOVERNANCE_ARTIFACT_TYPES.includes(artifact.artifactType)) throw new Error("artifact type missing from stable values");
+    if (!status.GOVERNANCE_STATUSES.includes(artifact.status)) throw new Error("artifact status missing from stable values");
+    if (!status.GOVERNANCE_SEVERITIES.includes(artifact.severity)) throw new Error("artifact severity missing from stable values");
+    if (!status.GOVERNANCE_RECOMMENDATION_TYPES.includes(artifact.recommendations[0].type)) throw new Error("recommendation type missing from stable values");
+    if ("runtimeActivationExecuted" in artifact || "runtimeGovernanceEnabled" in artifact || "runtimeAutonomyEnabled" in artifact) throw new Error("schema introduced runtime activation flags");
+    console.log("PASS governance-artifact-schema-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-schema-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRenderConsistencyUnit() {
+  try {
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const metadata = renderers.renderMetadata({ version: "v10.1", command: "b", source: "a", readonly: true, previewOnly: true });
+    if (renderers.renderWarnings([]) !== "Warnings: none") throw new Error("empty warning rendering changed");
+    if (renderers.renderRecommendations([]) !== "Recommendations: none") throw new Error("empty recommendation rendering changed");
+    if (!metadata.includes("command: b") || metadata.includes("generatedAt")) throw new Error(`metadata rendering mismatch: ${metadata}`);
+    const recommendations = renderers.renderRecommendations([
+      { type: "review", severity: "warning", message: "B" },
+      { type: "continue", severity: "info", message: "A" }
+    ]);
+    if (recommendations.indexOf("continue/info") > recommendations.indexOf("review/warning")) throw new Error(`recommendation ordering mismatch: ${recommendations}`);
+    console.log("PASS governance-render-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-render-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceStatusNormalizationUnit() {
+  try {
+    const status = require(path.join(projectRoot, "dist", "governance", "governanceStatus.js"));
+    const utils = require(path.join(projectRoot, "dist", "governance", "utils", "governanceUtils.js"));
+    const expectedStatuses = ["preview", "ready", "blocked", "warning", "manual-review", "disabled", "readonly"];
+    const expectedSeverities = ["info", "warning", "high", "critical"];
+    if (JSON.stringify(status.GOVERNANCE_STATUSES) !== JSON.stringify(expectedStatuses)) throw new Error("stable statuses changed");
+    if (JSON.stringify(status.GOVERNANCE_SEVERITIES) !== JSON.stringify(expectedSeverities)) throw new Error("stable severities changed");
+    if (utils.normalizeGovernanceStatus("ready") !== "ready" || utils.normalizeGovernanceStatus("unknown") !== "preview") throw new Error("status normalization mismatch");
+    if (utils.normalizeGovernanceSeverity("critical") !== "critical" || utils.normalizeGovernanceSeverity("unknown") !== "info") throw new Error("severity normalization mismatch");
+    console.log("PASS governance-status-normalization");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-status-normalization");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliRenderConsistencyUnit() {
+  try {
+    const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
+    const section = cliRenderers.renderCliSection("Governance", ["preview-only"]);
+    const metadata = cliRenderers.renderCliMetadata({ version: "v10.1", source: "schema", readonly: true, previewOnly: true });
+    if (!section.includes("Governance:") || !section.includes("  preview-only")) throw new Error(`CLI section mismatch: ${section}`);
+    if (cliRenderers.renderCliStatus("Status", "preview") !== "Status: preview") throw new Error("CLI status mismatch");
+    if (cliRenderers.renderCliWarnings([]) !== "Warnings: none") throw new Error("CLI empty warnings mismatch");
+    if (!metadata.includes("previewOnly: true") || metadata.includes("generatedAt")) throw new Error(`CLI metadata mismatch: ${metadata}`);
+    console.log("PASS cli-render-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-render-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceReadonlyRenderingUnit() {
+  try {
+    const utils = require(path.join(projectRoot, "dist", "governance", "utils", "governanceUtils.js"));
+    const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
+    const notice = cliRenderers.renderReadonlyNotice(true);
+    if (utils.createReadonlyGuaranteeLabel(true) !== notice) throw new Error("readonly notice source mismatch");
+    if (!notice.includes("Read-only preview") || !notice.includes("no governance activation") || !notice.includes("policy enforcement") || !notice.includes("runtime autonomy") || !notice.includes("mutation behavior")) {
+      throw new Error(`readonly notice missing preview-only guarantee: ${notice}`);
+    }
+    console.log("PASS governance-readonly-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-readonly-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -31159,6 +31262,21 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceArchitectureConsolidationInvariantsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactSchemaConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRenderConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceStatusNormalizationUnit()) {
+    failed += 1;
+  }
+  if (!runCliRenderConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceReadonlyRenderingUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
