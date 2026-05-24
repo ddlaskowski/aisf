@@ -1,5 +1,8 @@
 import type { GovernanceRecommendation } from "../governanceArtifact.js";
+import type { GovernanceArtifact } from "../governanceArtifact.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
+import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
+import { renderReadonlyContract } from "../governanceReadonlyContract.js";
 import type { GovernanceSeverity, GovernanceStatus } from "../governanceStatus.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
 
@@ -55,4 +58,20 @@ export function renderTimestamp(timestamp?: string): string {
 
 export function renderDivider(): string {
   return "---";
+}
+
+export function renderGovernanceArtifact(artifact: GovernanceArtifact & { readonlyContract?: GovernanceReadonlyContract }): string {
+  const lines = [
+    "Governance artifact:",
+    `- artifactType: ${artifact.artifactType}`,
+    `- status: ${artifact.status}`
+  ];
+  if (artifact.severity !== undefined) lines.push(`- severity: ${artifact.severity}`);
+  lines.push(`- summary: ${artifact.summary}`);
+  if (artifact.reason !== undefined && artifact.reason.trim().length > 0) lines.push(`- reason: ${artifact.reason.trim()}`);
+  lines.push(renderWarnings(artifact.warnings));
+  lines.push(renderRecommendations(artifact.recommendations));
+  lines.push(renderMetadata(artifact.metadata));
+  if (artifact.readonlyContract !== undefined) lines.push(renderReadonlyContract(artifact.readonlyContract));
+  return lines.join("\n");
 }

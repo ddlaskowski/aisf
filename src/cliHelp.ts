@@ -1,4 +1,5 @@
 import { renderCliSection, renderReadonlyNotice } from "./cli/render/cliRenderers.js";
+import { renderCliGovernanceArtifact } from "./cli/render/cliArtifactRenderer.js";
 
 export function renderMainHelp(): string {
   return [
@@ -912,7 +913,23 @@ export function renderGovernanceRuntimeResearchManifestPreviewHelp(): string {
     "  This command models runtime governance manifest groups, manifest records, manifest ownership entries, manifest version entries, preview-only manifest summaries, forbidden capability manifest records, and future-only manifest notes only.",
     "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration.",
     "",
-    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)]),
+    "",
+    renderCliGovernanceArtifact({
+      artifactType: "manifest",
+      status: "preview",
+      severity: "info",
+      summary: "Runtime governance research manifest help is rendered as read-only CLI artifact guidance.",
+      warnings: [],
+      recommendations: [],
+      metadata: {
+        version: "v10.3",
+        source: "cli-help",
+        command: "governance runtime research-manifest-preview --help",
+        readonly: true,
+        previewOnly: true
+      }
+    })
   ].join("\n") + "\n";
 }
 

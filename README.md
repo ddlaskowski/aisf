@@ -9502,6 +9502,69 @@ Safety guarantees:
 * no builder agents are introduced
 * no repair orchestration behavior changes are introduced
 
+## v10.3 - Governance Artifact Migration & Read-Only Contract Layer
+
+v10.3 continues the Governance Consolidation Era by adding deterministic artifact factory helpers, read-only contract data, and a conservative migration bridge for selected governance previews. This is not a capability expansion release.
+
+Governance artifact factory helpers:
+
+* `src/governance/governanceArtifactFactory.ts` adds `createGovernanceMetadata`, `createPreviewGovernanceArtifact`, and `createReadonlyGovernanceArtifact`.
+* Factory output is deterministic and does not generate timestamps implicitly.
+* Factory helpers do not write files, activate governance, enforce policy, or mutate runtime behavior.
+
+Read-only contract helpers:
+
+* `src/governance/governanceReadonlyContract.ts` adds `createReadonlyContract`, `assertReadonlyContractShape`, and `renderReadonlyContract`.
+* The contract represents `runtimeGovernanceEnabled: false`, `runtimeAutonomyEnabled: false`, `runtimeActivationExecuted: false`, `policyEnforcementEnabled: false`, `governancePreviewOnly: true`, and `safePatchEngineOnly: true`.
+* The contract is descriptive only and does not enforce runtime behavior.
+
+Selected preview migration:
+
+* `runtimeGovernanceResearchManifestPreview` now includes a `normalizedGovernanceArtifact` object built with the shared read-only artifact factory.
+* `runtimeGovernanceResearchAttestationPreview` now includes a `normalizedGovernanceArtifact` object built with the shared read-only artifact factory.
+* Existing preview fields, JSON meaning, CLI semantics, runtime invariants, governance decisions, and repair orchestration behavior remain unchanged.
+
+Artifact rendering bridges:
+
+* `renderGovernanceArtifact` renders shared governance artifacts with stable artifact type, status, severity, summary, warnings, recommendations, metadata, and optional read-only contract output.
+* `renderCliGovernanceArtifact` renders shared governance artifacts for CLI/help contexts with deterministic formatting and read-only preview notices.
+* Runtime governance research manifest help includes the CLI artifact rendering bridge as a conservative proof of integration.
+
+v10.3 deterministic checks:
+
+* governance-artifact-factory-consistency
+* governance-readonly-contract-consistency
+* governance-artifact-rendering
+* cli-artifact-rendering
+* governance-preview-artifact-shape
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite artifacts
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no builder agents are introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

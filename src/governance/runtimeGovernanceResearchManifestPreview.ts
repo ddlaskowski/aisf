@@ -8,7 +8,8 @@ import {
   GOVERNANCE_RUNTIME_RESEARCH_CHAIN_PREVIEW_FLAGS,
   GOVERNANCE_RUNTIME_DISABLED_FLAGS
 } from "./governanceInvariants.js";
-import { renderDivider, renderMetadata, renderRecommendations, renderStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
+import { createReadonlyGovernanceArtifact, type GovernanceArtifactWithReadonlyContract } from "./governanceArtifactFactory.js";
+import { renderDivider, renderGovernanceArtifact, renderMetadata, renderRecommendations, renderStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
 
 import {
   buildGovernanceRuntimeResearchRegistryPreview,
@@ -174,6 +175,7 @@ export type GovernanceRuntimeResearchManifestPreview = {
   previewOnlyManifestSummaries: GovernanceRuntimePreviewOnlyManifestSummary[];
   forbiddenCapabilityManifestRecords: GovernanceRuntimeForbiddenCapabilityManifestRecord[];
   futureOnlyManifestNotes: GovernanceRuntimeFutureManifestNote[];
+  normalizedGovernanceArtifact: GovernanceArtifactWithReadonlyContract;
   summary: {
     researchManifestScoreValue: number;
     totalManifestGroups: number;
@@ -334,6 +336,30 @@ export function buildGovernanceRuntimeResearchManifestPreviewFromRegistry(source
   const previewOnlyManifestSummaries = buildPreviewSummaries();
   const forbiddenCapabilityManifestRecords = buildForbiddenRecords();
   const futureOnlyManifestNotes = buildFutureNotes();
+  const warnings = warningsFor(conclusion.runtimeResearchManifestConclusion);
+  const normalizedGovernanceArtifact = createReadonlyGovernanceArtifact({
+    artifactType: "manifest",
+    status: conclusion.runtimeResearchManifestConclusion === "research-manifest-ready" ? "ready" : conclusion.runtimeResearchManifestConclusion === "blocked" ? "blocked" : "preview",
+    severity: conclusion.runtimeResearchManifestConclusion === "blocked" ? "critical" : "info",
+    summary: "Runtime governance research manifest preview normalized as a read-only governance artifact.",
+    reason: conclusion.runtimeResearchManifestConclusion,
+    warnings,
+    recommendations: [
+      {
+        type: conclusion.runtimeResearchManifestConclusion === "research-manifest-ready" ? "maintain-preview-only" : "continue",
+        severity: "info",
+        message: conclusion.runtimeResearchManifestConclusion === "research-manifest-ready" ? "Maintain preview-only runtime governance research manifest posture." : "Continue preview-only runtime governance research hardening."
+      }
+    ],
+    metadata: {
+      version: "v10.3",
+      source: "runtime-governance-research-manifest-preview",
+      command: "governance runtime research-manifest-preview",
+      readonly: true,
+      previewOnly: true
+    },
+    readonlyReason: "Runtime governance research manifest is descriptive only; no activation or enforcement is applied."
+  });
   return {
     schemaVersion: 1,
     previewStatus: conclusion.previewStatus,
@@ -401,6 +427,7 @@ export function buildGovernanceRuntimeResearchManifestPreviewFromRegistry(source
     previewOnlyManifestSummaries,
     forbiddenCapabilityManifestRecords,
     futureOnlyManifestNotes,
+    normalizedGovernanceArtifact,
     summary: {
       researchManifestScoreValue: researchManifestScore.score,
       totalManifestGroups: manifestGroups.length,
@@ -412,7 +439,7 @@ export function buildGovernanceRuntimeResearchManifestPreviewFromRegistry(source
       totalFutureOnlyManifestNotes: futureOnlyManifestNotes.length,
       researchManifestReady: conclusion.runtimeResearchManifestConclusion === "research-manifest-ready"
     },
-    warnings: warningsFor(conclusion.runtimeResearchManifestConclusion),
+    warnings,
     recommendedNextStage: conclusion.recommendedNextStage
   };
 }
@@ -501,6 +528,10 @@ export function renderGovernanceRuntimeResearchManifestPreviewMarkdown(preview: 
     ]),
     "",
     renderDivider(),
+    "",
+    "## Normalized Governance Artifact",
+    "",
+    renderGovernanceArtifact(preview.normalizedGovernanceArtifact),
     "", "## Manifest Groups", ""
   ];
   for (const item of preview.manifestGroups) lines.push(`- [${item.category}] ${item.id} ${item.key} totalRecords=${item.totalRecords} previewOnly=${String(item.previewOnly)} - ${item.reason}`);

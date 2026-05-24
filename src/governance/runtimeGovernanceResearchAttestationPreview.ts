@@ -8,7 +8,8 @@ import {
   GOVERNANCE_RUNTIME_RESEARCH_CHAIN_PREVIEW_FLAGS,
   GOVERNANCE_RUNTIME_DISABLED_FLAGS
 } from "./governanceInvariants.js";
-import { renderMetadata, renderReadonlyStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
+import { createReadonlyGovernanceArtifact, type GovernanceArtifactWithReadonlyContract } from "./governanceArtifactFactory.js";
+import { renderGovernanceArtifact, renderMetadata, renderReadonlyStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
 
 import {
   buildGovernanceRuntimeResearchManifestPreview,
@@ -177,6 +178,7 @@ export type GovernanceRuntimeResearchAttestationPreview = {
   previewOnlyAttestationSummaries: GovernanceRuntimePreviewOnlyAttestationSummary[];
   forbiddenCapabilityAttestationFindings: GovernanceRuntimeForbiddenCapabilityAttestationFinding[];
   futureOnlyAttestationNotes: GovernanceRuntimeFutureAttestationNote[];
+  normalizedGovernanceArtifact: GovernanceArtifactWithReadonlyContract;
   summary: {
     researchAttestationScoreValue: number;
     totalAttestationGroups: number;
@@ -342,6 +344,30 @@ export function buildGovernanceRuntimeResearchAttestationPreviewFromManifest(sou
   const previewOnlyAttestationSummaries = buildPreviewSummaries();
   const forbiddenCapabilityAttestationFindings = buildForbiddenFindings();
   const futureOnlyAttestationNotes = buildFutureNotes();
+  const warnings = warningsFor(conclusion.runtimeResearchAttestationConclusion);
+  const normalizedGovernanceArtifact = createReadonlyGovernanceArtifact({
+    artifactType: "attestation",
+    status: conclusion.runtimeResearchAttestationConclusion === "research-attestation-ready" ? "ready" : conclusion.runtimeResearchAttestationConclusion === "blocked" ? "blocked" : "preview",
+    severity: conclusion.runtimeResearchAttestationConclusion === "blocked" ? "critical" : "info",
+    summary: "Runtime governance research attestation preview normalized as a read-only governance artifact.",
+    reason: conclusion.runtimeResearchAttestationConclusion,
+    warnings,
+    recommendations: [
+      {
+        type: conclusion.runtimeResearchAttestationConclusion === "research-attestation-ready" ? "maintain-preview-only" : "continue",
+        severity: "info",
+        message: conclusion.runtimeResearchAttestationConclusion === "research-attestation-ready" ? "Maintain preview-only runtime governance attestation posture." : "Continue preview-only runtime governance attestation hardening."
+      }
+    ],
+    metadata: {
+      version: "v10.3",
+      source: "runtime-governance-research-attestation-preview",
+      command: "governance runtime research-attestation-preview",
+      readonly: true,
+      previewOnly: true
+    },
+    readonlyReason: "Runtime governance research attestation is descriptive only; no activation or enforcement is applied."
+  });
   return {
     schemaVersion: 1,
     previewStatus: conclusion.previewStatus,
@@ -411,6 +437,7 @@ export function buildGovernanceRuntimeResearchAttestationPreviewFromManifest(sou
     previewOnlyAttestationSummaries,
     forbiddenCapabilityAttestationFindings,
     futureOnlyAttestationNotes,
+    normalizedGovernanceArtifact,
     summary: {
       researchAttestationScoreValue: researchAttestationScore.score,
       totalAttestationGroups: attestationGroups.length,
@@ -422,7 +449,7 @@ export function buildGovernanceRuntimeResearchAttestationPreviewFromManifest(sou
       totalFutureOnlyAttestationNotes: futureOnlyAttestationNotes.length,
       researchAttestationReady: conclusion.runtimeResearchAttestationConclusion === "research-attestation-ready"
     },
-    warnings: warningsFor(conclusion.runtimeResearchAttestationConclusion),
+    warnings,
     recommendedNextStage: conclusion.recommendedNextStage
   };
 }
@@ -496,6 +523,10 @@ export function renderGovernanceRuntimeResearchAttestationPreviewMarkdown(previe
     }),
     "",
     renderWarnings([]),
+    "",
+    "## Normalized Governance Artifact",
+    "",
+    renderGovernanceArtifact(preview.normalizedGovernanceArtifact),
     "", "## Attestation Groups", ""
   ];
   for (const item of preview.attestationGroups) lines.push(`- [${item.category}] ${item.id} ${item.key} totalRecords=${item.totalRecords} previewOnly=${String(item.previewOnly)} - ${item.reason}`);

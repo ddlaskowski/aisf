@@ -28655,6 +28655,119 @@ function runGovernanceReadonlyRenderingUnit() {
   }
 }
 
+function runGovernanceArtifactFactoryConsistencyUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const input = {
+      artifactType: "manifest",
+      summary: "Factory check.",
+      warnings: ["b-warning", "a-warning"],
+      recommendations: [
+        { type: "review", severity: "warning", message: "Review later." },
+        { type: "continue", severity: "info", message: "Continue preview." }
+      ],
+      metadata: { version: "v10.3", source: "unit", command: "test", readonly: true, previewOnly: true }
+    };
+    const first = factory.createReadonlyGovernanceArtifact(input);
+    const second = factory.createReadonlyGovernanceArtifact(input);
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("artifact factory output is not stable");
+    if (first.metadata.generatedAt !== undefined) throw new Error("artifact factory generated hidden timestamp");
+    if (first.readonlyContract.runtimeActivationExecuted !== false || first.readonlyContract.safePatchEngineOnly !== true) throw new Error(`readonly contract invariant mismatch: ${JSON.stringify(first.readonlyContract)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error("artifact factory introduced runtime activation flags on artifact root");
+    console.log("PASS governance-artifact-factory-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-factory-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceReadonlyContractConsistencyUnit() {
+  try {
+    const readonly = require(path.join(projectRoot, "dist", "governance", "governanceReadonlyContract.js"));
+    const contract = readonly.createReadonlyContract("Unit contract.");
+    if (!readonly.assertReadonlyContractShape(contract)) throw new Error(`readonly contract shape mismatch: ${JSON.stringify(contract)}`);
+    if (contract.runtimeGovernanceEnabled !== false || contract.runtimeAutonomyEnabled !== false || contract.runtimeActivationExecuted !== false || contract.policyEnforcementEnabled !== false || contract.governancePreviewOnly !== true || contract.safePatchEngineOnly !== true) throw new Error(`readonly contract invariant mismatch: ${JSON.stringify(contract)}`);
+    const rendered = readonly.renderReadonlyContract(contract);
+    if (!rendered.includes("runtimeGovernanceEnabled: false") || !rendered.includes("safePatchEngineOnly: true")) throw new Error(`readonly contract render mismatch: ${rendered}`);
+    console.log("PASS governance-readonly-contract-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-readonly-contract-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactRenderingUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const artifact = factory.createReadonlyGovernanceArtifact({
+      artifactType: "attestation",
+      status: "preview",
+      severity: "info",
+      summary: "Rendering check.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.3", source: "unit", readonly: true, previewOnly: true }
+    });
+    const rendered = renderers.renderGovernanceArtifact(artifact);
+    if (!rendered.includes("Governance artifact:") || !rendered.includes("Warnings: none") || !rendered.includes("Recommendations: none") || !rendered.includes("Read-only contract:")) throw new Error(`governance artifact render mismatch: ${rendered}`);
+    if (rendered.includes("generatedAt")) throw new Error(`governance artifact rendered hidden timestamp: ${rendered}`);
+    console.log("PASS governance-artifact-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliArtifactRenderingUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const artifact = factory.createReadonlyGovernanceArtifact({
+      artifactType: "manifest",
+      status: "preview",
+      summary: "CLI artifact rendering check.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.3", command: "unit", readonly: true, previewOnly: true }
+    });
+    const rendered = cliArtifact.renderCliGovernanceArtifact(artifact);
+    if (!rendered.includes("Governance artifact:") || !rendered.includes("Warnings: none") || !rendered.includes("Read-only preview") || !rendered.includes("runtimeActivationExecuted: false")) throw new Error(`CLI artifact render mismatch: ${rendered}`);
+    console.log("PASS cli-artifact-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-artifact-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePreviewArtifactShapeUnit() {
+  try {
+    const manifest = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchManifestPreview.js"));
+    const attestation = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchAttestationPreview.js"));
+    const manifestPreview = manifest.buildGovernanceRuntimeResearchManifestPreviewFromRegistry({ previewStatus: "created", runtimeResearchRegistryConclusion: "research-registry-ready" });
+    const attestationPreview = attestation.buildGovernanceRuntimeResearchAttestationPreviewFromManifest(manifestPreview);
+    for (const preview of [manifestPreview, attestationPreview]) {
+      const artifact = preview.normalizedGovernanceArtifact;
+      if (!artifact || artifact.metadata.previewOnly !== true || artifact.metadata.readonly !== true || artifact.readonlyContract.safePatchEngineOnly !== true) throw new Error(`normalized artifact missing readonly shape: ${JSON.stringify(preview)}`);
+      if ("runtimeActivationExecuted" in artifact || "runtimeGovernanceEnabled" in artifact || "runtimeAutonomyEnabled" in artifact) throw new Error(`normalized artifact root introduced runtime flags: ${JSON.stringify(artifact)}`);
+    }
+    console.log("PASS governance-preview-artifact-shape");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-preview-artifact-shape");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -28745,6 +28858,13 @@ function runReadonlyRenderConsistencyUnit() {
 }
 
 const scenarioSuites = {
+  artifacts: [
+    runGovernanceArtifactFactoryConsistencyUnit,
+    runGovernanceReadonlyContractConsistencyUnit,
+    runGovernanceArtifactRenderingUnit,
+    runCliArtifactRenderingUnit,
+    runGovernancePreviewArtifactShapeUnit
+  ],
   governance: [
     runGovernanceArchitectureConsolidationInvariantsUnit,
     runGovernanceArtifactSchemaConsistencyUnit,
@@ -28761,8 +28881,10 @@ const scenarioSuites = {
   renderers: [
     runGovernanceRenderConsistencyUnit,
     runGovernanceRenderNormalizationUnit,
+    runGovernanceArtifactRenderingUnit,
     runCliRenderConsistencyUnit,
     runCliRenderNormalizationUnit,
+    runCliArtifactRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ]
 };
@@ -31448,6 +31570,21 @@ async function main() {
     failed += 1;
   }
   if (!runReadonlyRenderConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactFactoryConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceReadonlyContractConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runCliArtifactRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePreviewArtifactShapeUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
