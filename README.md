@@ -9317,6 +9317,45 @@ v9.9 deterministic checks:
 * governance-runtime-research-attestation-preview-no-attestation-application
 * governance-runtime-research-attestation-preview-no-autonomy
 
+## Governance Architecture Consolidation Layer (v10.0)
+
+v10.0 is a governance architecture consolidation release. It centralizes shared preview-only runtime invariants in:
+
+```text
+src/governance/governanceInvariants.ts
+```
+
+This release does not add a runtime capability, command, policy enforcement path, autonomy path, or mutation path. It reduces duplication by allowing governance preview modules to reference a single invariant source for runtime-disabled, preview-only, and Safe Patch Engine-only posture.
+
+Centralized invariant groups:
+
+* `GOVERNANCE_RUNTIME_DISABLED_FLAGS` keeps runtime governance, runtime autonomy, runtime activation, policy enforcement, runtime learning, ML decisioning, multi-agent coordination, plugin execution, script evaluation, sandbox execution, rollback, and bypass flags disabled.
+* `GOVERNANCE_PREVIEW_ONLY_EXECUTION_FLAGS` keeps `applied`, `enforced`, runtime behavior changes, governance decision changes, and repair orchestration changes disabled while preserving `policyRuntimeMode: "preview-only"` and `safePatchEngineOnly: true`.
+* `GOVERNANCE_RUNTIME_RESEARCH_CHAIN_PREVIEW_FLAGS` keeps post-v9 research chain preview records unapplied and unenforced.
+* `GOVERNANCE_RUNTIME_RESEARCH_BASE_INVARIANTS` composes the shared research-chain, final-review, runtime-disabled, and preview-only invariants for future preview modules.
+
+Safety guarantees:
+
+* Safe Patch Engine remains the only mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* outputs remain deterministic
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no autonomous runtime loops are introduced
+* no runtime self-modification is introduced
+* no mutation capability expansion is introduced
+* no multi-file mutation is introduced
+* repair orchestration does not change
+
+v10.0 deterministic checks:
+
+* governance-architecture-consolidation-invariants-unit
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

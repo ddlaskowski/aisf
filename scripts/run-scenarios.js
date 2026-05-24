@@ -28507,6 +28507,51 @@ function runGovernanceRuntimeResearchAttestationPreviewNoAutonomyUnit() {
     return false;
   }
 }
+
+function runGovernanceArchitectureConsolidationInvariantsUnit() {
+  try {
+    const invariants = require(path.join(projectRoot, "dist", "governance", "governanceInvariants.js"));
+    if (invariants.GOVERNANCE_PREVIEW_ONLY_RUNTIME_MODE !== "preview-only") throw new Error("preview-only runtime mode invariant mismatch");
+    const expectedFalseFlags = [
+      "runtimeGovernanceEnabled",
+      "runtimeAutonomyEnabled",
+      "runtimeAutonomyActionsAllowed",
+      "runtimeActivationApproved",
+      "runtimeActivationExecuted",
+      "runtimePolicyEnforcementEnabled",
+      "runtimeConfigActivationEnabled",
+      "runtimeLearningEnabled",
+      "runtimeMlDecisioningEnabled",
+      "runtimeMultiAgentCoordinationEnabled",
+      "governanceBypassAllowed"
+    ];
+    for (const key of expectedFalseFlags) {
+      if (invariants.GOVERNANCE_RUNTIME_DISABLED_FLAGS[key] !== false) throw new Error(`runtime disabled invariant mismatch for ${key}`);
+      if (invariants.GOVERNANCE_RUNTIME_BASE_INVARIANTS[key] !== false) throw new Error(`runtime base invariant mismatch for ${key}`);
+    }
+    if (
+      invariants.GOVERNANCE_PREVIEW_ONLY_EXECUTION_FLAGS.applied !== false ||
+      invariants.GOVERNANCE_PREVIEW_ONLY_EXECUTION_FLAGS.enforced !== false ||
+      invariants.GOVERNANCE_PREVIEW_ONLY_EXECUTION_FLAGS.runtimeBehaviorChanged !== false ||
+      invariants.GOVERNANCE_PREVIEW_ONLY_EXECUTION_FLAGS.governanceDecisionsChanged !== false ||
+      invariants.GOVERNANCE_PREVIEW_ONLY_EXECUTION_FLAGS.repairOrchestrationChanged !== false ||
+      invariants.GOVERNANCE_PREVIEW_ONLY_EXECUTION_FLAGS.safePatchEngineOnly !== true ||
+      invariants.GOVERNANCE_RUNTIME_BASE_INVARIANTS.safePatchEngineOnly !== true ||
+      invariants.GOVERNANCE_RUNTIME_RESEARCH_BASE_INVARIANTS.runtimeResearchApplied !== false ||
+      invariants.GOVERNANCE_RUNTIME_RESEARCH_BASE_INVARIANTS.runtimeResearchManifestApplied !== false ||
+      invariants.GOVERNANCE_RUNTIME_RESEARCH_BASE_INVARIANTS.runtimeFinalReviewApproved !== false
+    ) {
+      throw new Error(`governance architecture consolidation invariant mismatch: ${JSON.stringify(invariants.GOVERNANCE_RUNTIME_RESEARCH_BASE_INVARIANTS)}`);
+    }
+    console.log("PASS governance-architecture-consolidation-invariants-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-architecture-consolidation-invariants-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -31111,6 +31156,9 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceRuntimeResearchAttestationPreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArchitectureConsolidationInvariantsUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
