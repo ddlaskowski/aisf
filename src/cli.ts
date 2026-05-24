@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -73,6 +73,10 @@ import {
   createProjectGenerationCapabilityMap,
   type ProjectGenerationCapabilityMap
 } from "./governance/projectGenerationCapabilityMap.js";
+import {
+  createProjectGenerationFilePlanPreview,
+  type ProjectGenerationFilePlanPreview
+} from "./governance/projectGenerationFilePlanPreview.js";
 import {
   createArtifactPipelineReadinessSection,
   createBuilderAgentReadinessSection,
@@ -450,6 +454,7 @@ import {
   renderGovernanceConsolidationAuditHelp,
   renderGovernanceProjectGenerationBlueprintHelp,
   renderGovernanceProjectGenerationCapabilitiesHelp,
+  renderGovernanceProjectGenerationFilePlanHelp,
   renderGovernanceProjectGenerationReadinessHelp,
   renderGovernanceArtifactIndexHelp,
   renderGovernanceAutonomyScopePreviewHelp,
@@ -962,6 +967,19 @@ function buildProjectGenerationBlueprintPreview(): ProjectGenerationBlueprintPre
   });
 }
 
+function buildProjectGenerationFilePlanPreview(): ProjectGenerationFilePlanPreview {
+  return createProjectGenerationFilePlanPreview({
+    title: "Project Generation File Plan Preview",
+    metadata: {
+      version: "v11.3",
+      source: "project-generation-file-plan-cli-preview",
+      command: "governance project-generation-file-plan",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1064,6 +1082,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(blueprint, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationBlueprintPreview(blueprint), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-file-plan") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-file-plan", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationFilePlanHelp(), 0);
+    }
+
+    const filePlan = buildProjectGenerationFilePlanPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(filePlan, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationFilePlanPreview(filePlan), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

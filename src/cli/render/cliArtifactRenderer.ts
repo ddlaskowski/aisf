@@ -9,6 +9,7 @@ import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } fr
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
+import type { ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../../governance/projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSummary } from "../../governance/projectGenerationReadiness.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
 
@@ -403,6 +404,56 @@ export function renderCliProjectGenerationBlueprintPreview(preview: ProjectGener
     renderCliMetadata(preview.metadata),
     renderCliProjectGenerationBlueprintSummary(preview.summary),
     renderCliSection("Blueprint sections", sectionLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationFilePlanSummary(summary: ProjectGenerationFilePlanSummary): string {
+  return [
+    renderCliSection("Project generation file plan preview summary", [
+      `planned file count: ${summary.totalPlannedFiles}`,
+      `approval-required count: ${summary.approvalRequiredCount}`,
+      `blocked count: ${summary.blockedCount}`,
+      `no-write count: ${summary.noWriteCount}`,
+      `safe-patch-only count: ${summary.safePatchOnlyCount}`,
+      `manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliSection("Risks", summary.risks.length === 0 ? ["none"] : summary.risks),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationFilePlanPreview(preview: ProjectGenerationFilePlanPreview): string {
+  const entryLines = preview.entries.length === 0
+    ? ["none"]
+    : preview.entries.map((entry) => `${entry.plannedPath} | role=${entry.fileRole} | type=${entry.fileType} | status=${entry.generationStatus} | mutationPolicy=${entry.mutationPolicy} | requiresApproval=${String(entry.requiresApproval)}`);
+  return [
+    renderCliSection("Project generation file plan preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `filePlanPreviewOnly: ${String(preview.filePlanPreviewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      "notice: no file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliProjectGenerationFilePlanSummary(preview.summary),
+    renderCliSection("File plan entries", entryLines),
     renderReadonlyNotice(preview.previewOnly)
   ].join("\n");
 }

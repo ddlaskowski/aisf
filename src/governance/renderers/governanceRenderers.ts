@@ -13,6 +13,7 @@ import { renderReadonlyContract } from "../governanceReadonlyContract.js";
 import type { GovernanceSeverity, GovernanceStatus } from "../governanceStatus.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSection, ProjectGenerationBlueprintSummary } from "../projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../projectGenerationCapabilityMap.js";
+import type { ProjectGenerationFilePlanEntry, ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
 
@@ -540,6 +541,73 @@ export function renderProjectGenerationBlueprintPreview(preview: ProjectGenerati
     renderMetadata(preview.metadata),
     renderProjectGenerationBlueprintSummary(preview.summary),
     ...sections
+  ].join("\n");
+}
+
+export function renderProjectGenerationFilePlanSummary(summary: ProjectGenerationFilePlanSummary): string {
+  return [
+    "Project generation file plan preview summary:",
+    `- planned file count: ${summary.totalPlannedFiles}`,
+    `- approval-required count: ${summary.approvalRequiredCount}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- no-write count: ${summary.noWriteCount}`,
+    `- safe-patch-only count: ${summary.safePatchOnlyCount}`,
+    `- manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    "Risks:",
+    ...(summary.risks.length === 0 ? ["- none"] : summary.risks.map((risk) => `- ${risk}`)),
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationFilePlanEntry(entry: ProjectGenerationFilePlanEntry): string {
+  return [
+    `Project generation file plan entry: ${entry.plannedPath}`,
+    `- fileRole: ${entry.fileRole}`,
+    `- fileType: ${entry.fileType}`,
+    `- generationStatus: ${entry.generationStatus}`,
+    `- mutationPolicy: ${entry.mutationPolicy}`,
+    `- requiresApproval: ${String(entry.requiresApproval)}`,
+    `- dependsOn: ${entry.dependsOn.length === 0 ? "none" : entry.dependsOn.join(", ")}`,
+    `- read-only: ${String(entry.readonly)}`,
+    `- preview-only: ${String(entry.previewOnly)}`,
+    "Risks:",
+    ...(entry.risks.length === 0 ? ["- none"] : entry.risks.map((risk) => `- ${risk}`)),
+    renderWarnings(entry.warnings),
+    "Recommendations:",
+    ...(entry.recommendations.length === 0 ? ["- none"] : entry.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationFilePlanPreview(preview: ProjectGenerationFilePlanPreview): string {
+  const entries = preview.entries.length === 0
+    ? ["Project generation file plan entries:", "- none"]
+    : ["Project generation file plan entries:", ...preview.entries.map(renderProjectGenerationFilePlanEntry)];
+  return [
+    `Project generation file plan preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- filePlanPreviewOnly: ${String(preview.filePlanPreviewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    "Notice: no file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(preview.metadata),
+    renderProjectGenerationFilePlanSummary(preview.summary),
+    ...entries
   ].join("\n");
 }
 

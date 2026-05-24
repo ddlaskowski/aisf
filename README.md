@@ -10360,6 +10360,91 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v11.3 - Project Generation File Plan Preview Layer
+
+v11.3 continues the Project Generation Readiness Era by adding a deterministic, read-only file plan preview model for future controlled project generation systems. The file plan preview is descriptive planning data only. It does not create files, scaffold files, write files, implement builder agents, generate projects, route runtime behavior, activate governance, enforce policy, expand mutation scope, or change repair orchestration.
+
+File plan preview model:
+
+* `src/governance/projectGenerationFilePlanPreview.ts` adds `ProjectGenerationFilePlanPreview`, `ProjectGenerationFilePlanEntry`, `ProjectGenerationFilePlanSummary`, `ProjectGenerationFilePlanCompleteness`, `createProjectGenerationFilePlanPreview`, and `summarizeProjectGenerationFilePlanPreview`.
+* File plan previews explicitly preserve read-only, preview-only, file-plan-preview-only, stdout-only, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* File plan helpers require explicit metadata input and do not generate hidden timestamps.
+
+File plan entry helpers:
+
+* `createFilePlanEntry`
+* `sortFilePlanEntries`
+* `findFilePlanEntriesByRole`
+* `findFilePlanEntriesByType`
+* `findApprovalRequiredFilePlanEntries`
+* `findBlockedFilePlanEntries`
+
+Each entry records planned path, file role, file type, generation status, mutation policy, approval requirement, dependencies, risks, warnings, recommendations, read-only state, and preview-only state.
+
+Advisory completeness scoring:
+
+* `calculateProjectGenerationFilePlanCompleteness` deterministically computes a 0-100 advisory score.
+* Completeness levels are `incomplete`, `partial`, `review-ready`, and `ready-for-design`.
+* Scoring is descriptive only and does not activate governance, route runtime behavior, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+File plan rendering:
+
+* `renderProjectGenerationFilePlanSummary` renders deterministic planned file count, approval-required count, blocked count, mutation-policy counts, completeness score, risks, warnings, and recommendations.
+* `renderProjectGenerationFilePlanEntry` renders stable planned file entry details.
+* `renderProjectGenerationFilePlanPreview` renders file plan title, guarantees, metadata, summary, entry details, and an explicit no-file-creation notice.
+* `renderCliProjectGenerationFilePlanSummary` and `renderCliProjectGenerationFilePlanPreview` provide equivalent CLI-safe deterministic output.
+
+CLI file plan preview:
+
+```powershell
+node dist\cli.js governance project-generation-file-plan
+node dist\cli.js governance project-generation-file-plan --json
+```
+
+File plan previews print to stdout only. They do not write files, create files, scaffold files, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v11.3 deterministic checks:
+
+* project-generation-file-plan-consistency
+* project-generation-file-plan-entry-sorting
+* project-generation-file-plan-filtering
+* project-generation-file-plan-completeness
+* project-generation-file-plan-rendering
+* project-generation-file-plan-cli-output
+* project-generation-file-plan-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite project-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no builder agents are introduced
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

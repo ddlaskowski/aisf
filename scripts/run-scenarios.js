@@ -30077,6 +30077,144 @@ function runProjectGenerationBlueprintHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationFilePlanConsistencyUnit() {
+  try {
+    const filePlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationFilePlanPreview.js"));
+    const metadata = { version: "v11.3", source: "file-plan-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = filePlanModule.createProjectGenerationFilePlanPreview({ title: "Unit File Plan", metadata });
+    const second = filePlanModule.createProjectGenerationFilePlanPreview({ title: "Unit File Plan", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("file plan output is not deterministic");
+    if (first.summary.totalPlannedFiles !== 7 || first.summary.approvalRequiredCount !== 6 || first.summary.blockedCount !== 0 || first.summary.completeness.score !== 73 || first.summary.completeness.level !== "partial") throw new Error(`file plan summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.filePlanPreviewOnly !== true || first.fileWriteAllowed !== false || first.fileCreationAllowed !== false || first.scaffoldGenerationEnabled !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`file plan invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`file plan introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-file-plan-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-file-plan-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationFilePlanEntrySortingUnit() {
+  try {
+    const filePlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationFilePlanPreview.js"));
+    const entries = filePlanModule.createDefaultProjectGenerationFilePlanEntries().reverse();
+    const sorted = filePlanModule.sortFilePlanEntries(entries);
+    const order = sorted.map((entry) => entry.plannedPath).join(",");
+    if (order !== "package.json,README.md,scripts/validate.js,src/app.test.ts,src/app.ts,src/index.ts,tsconfig.json") throw new Error(`file plan entry ordering mismatch: ${order}`);
+    console.log("PASS project-generation-file-plan-entry-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-file-plan-entry-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationFilePlanFilteringUnit() {
+  try {
+    const filePlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationFilePlanPreview.js"));
+    const entries = filePlanModule.createDefaultProjectGenerationFilePlanEntries();
+    const source = filePlanModule.findFilePlanEntriesByRole(entries, "source");
+    const json = filePlanModule.findFilePlanEntriesByType(entries, "json");
+    const approval = filePlanModule.findApprovalRequiredFilePlanEntries(entries);
+    const blocked = filePlanModule.findBlockedFilePlanEntries(entries);
+    if (source.length !== 1 || source[0].plannedPath !== "src/app.ts") throw new Error(`role filtering mismatch: ${JSON.stringify(source)}`);
+    if (json.length !== 2 || json[0].plannedPath !== "package.json") throw new Error(`type filtering mismatch: ${JSON.stringify(json.map((entry) => entry.plannedPath))}`);
+    if (approval.length !== 6 || approval[0].plannedPath !== "package.json") throw new Error(`approval filtering mismatch: ${JSON.stringify(approval.map((entry) => entry.plannedPath))}`);
+    if (blocked.length !== 0) throw new Error(`blocked filtering mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-file-plan-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-file-plan-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationFilePlanCompletenessUnit() {
+  try {
+    const filePlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationFilePlanPreview.js"));
+    const entries = [
+      filePlanModule.createFilePlanEntry({ plannedPath: "a.ts", fileRole: "source", fileType: "typescript", generationStatus: "planned", mutationPolicy: "safe-patch-only", requiresApproval: true }),
+      filePlanModule.createFilePlanEntry({ plannedPath: "b.md", fileRole: "documentation", fileType: "markdown", generationStatus: "preview-only", mutationPolicy: "no-write", requiresApproval: false }),
+      filePlanModule.createFilePlanEntry({ plannedPath: "c.json", fileRole: "config", fileType: "json", generationStatus: "requires-approval", mutationPolicy: "manual-approval-required", requiresApproval: true })
+    ];
+    const score = filePlanModule.calculateProjectGenerationFilePlanCompleteness(entries);
+    if (score.score !== 77 || score.level !== "review-ready") throw new Error(`file plan completeness mismatch: ${JSON.stringify(score)}`);
+    const empty = filePlanModule.calculateProjectGenerationFilePlanCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty file plan completeness mismatch: ${JSON.stringify(empty)}`);
+    const blocked = filePlanModule.calculateProjectGenerationFilePlanCompleteness([filePlanModule.createFilePlanEntry({ plannedPath: "blocked.ts", fileRole: "source", fileType: "typescript", generationStatus: "blocked", mutationPolicy: "blocked", requiresApproval: true })]);
+    if (blocked.score !== 0 || blocked.level !== "incomplete") throw new Error(`blocked file plan completeness mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-file-plan-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-file-plan-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationFilePlanRenderingUnit() {
+  try {
+    const filePlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationFilePlanPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = filePlanModule.createProjectGenerationFilePlanPreview({ title: "Render File Plan", metadata: { version: "v11.3", source: "file-plan-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationFilePlanPreview(preview);
+    if (!rendered.includes("Project generation file plan preview: Render File Plan") || !rendered.includes("planned file count: 7") || !rendered.includes("fileCreationAllowed: false") || !rendered.includes("scaffoldGenerationEnabled: false") || !rendered.includes("projectGenerationEnabled: false") || !rendered.includes("no file creation")) throw new Error(`file plan render mismatch: ${rendered}`);
+    console.log("PASS project-generation-file-plan-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-file-plan-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationFilePlanCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-file-plan"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation file plan preview:") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("scaffoldGenerationEnabled: false") || !human.stdout.includes("fileCreationAllowed: false")) throw new Error(`file plan human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-file-plan", "--json"]);
+    if (json.status !== 0) throw new Error(`file plan json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.filePlanPreviewOnly !== true || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.scaffoldGenerationEnabled !== false || parsed.fileCreationAllowed !== false || parsed.summary.totalPlannedFiles !== 7 || parsed.summary.completeness.score !== 73) throw new Error(`file plan json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-file-plan-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-file-plan-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationFilePlanHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-file-plan", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-file-plan",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not generate projects",
+      "scaffold files",
+      "create files",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-file-plan-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-file-plan-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -30208,7 +30346,9 @@ const scenarioSuites = {
     runProjectGenerationCapabilityCliOutputUnit,
     runProjectGenerationCapabilityHelpOutputUnit,
     runProjectGenerationBlueprintCliOutputUnit,
-    runProjectGenerationBlueprintHelpOutputUnit
+    runProjectGenerationBlueprintHelpOutputUnit,
+    runProjectGenerationFilePlanCliOutputUnit,
+    runProjectGenerationFilePlanHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -30240,6 +30380,7 @@ const scenarioSuites = {
     runProjectGenerationReadinessRenderingUnit,
     runProjectGenerationCapabilityRenderingUnit,
     runProjectGenerationBlueprintRenderingUnit,
+    runProjectGenerationFilePlanRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -30261,7 +30402,14 @@ const scenarioSuites = {
     runProjectGenerationBlueprintCompletenessUnit,
     runProjectGenerationBlueprintRenderingUnit,
     runProjectGenerationBlueprintCliOutputUnit,
-    runProjectGenerationBlueprintHelpOutputUnit
+    runProjectGenerationBlueprintHelpOutputUnit,
+    runProjectGenerationFilePlanConsistencyUnit,
+    runProjectGenerationFilePlanEntrySortingUnit,
+    runProjectGenerationFilePlanFilteringUnit,
+    runProjectGenerationFilePlanCompletenessUnit,
+    runProjectGenerationFilePlanRenderingUnit,
+    runProjectGenerationFilePlanCliOutputUnit,
+    runProjectGenerationFilePlanHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -33169,6 +33317,27 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationBlueprintHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationFilePlanConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationFilePlanEntrySortingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationFilePlanFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationFilePlanCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationFilePlanRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationFilePlanCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationFilePlanHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
