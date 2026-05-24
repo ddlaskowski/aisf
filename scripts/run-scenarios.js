@@ -29274,6 +29274,137 @@ function runGovernanceArtifactExportHelpOutputUnit() {
   }
 }
 
+function runGovernanceArtifactSnapshotConsistencyUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const snapshotModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactSnapshot.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "Snapshot Index",
+      entries: [{ artifactType: "manifest", status: "preview", severity: "info", source: "snapshot-source", version: "v10.8", previewOnly: true, readonly: true, summary: "Snapshot source." }],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    const result = queryModule.queryPreviewOnlyGovernanceArtifacts(index);
+    const section = snapshotModule.createQuerySnapshotSection(result, "Snapshot Query");
+    const metadata = { version: "v10.8", source: "snapshot-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = snapshotModule.createGovernanceArtifactSnapshot({ title: "Unit Snapshot", metadata, sections: [section] });
+    const second = snapshotModule.createGovernanceArtifactSnapshot({ title: "Unit Snapshot", metadata, sections: [section] });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("snapshot output is not deterministic");
+    if (first.summary.totalSections !== 1 || first.summary.totalEntries !== 1 || first.summary.readonly !== true || first.summary.previewOnly !== true) throw new Error(`snapshot summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.fileWriteAllowed !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false) throw new Error(`snapshot invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`snapshot introduced runtime flags: ${JSON.stringify(first)}`);
+    console.log("PASS governance-artifact-snapshot-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-snapshot-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactSnapshotSectionConsistencyUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const registryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactRegistry.js"));
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactExport.js"));
+    const snapshotModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactSnapshot.js"));
+    const artifact = factory.createReadonlyGovernanceArtifact({
+      artifactType: "manifest",
+      status: "preview",
+      summary: "Snapshot artifact.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.8", source: "snapshot-artifact", readonly: true, previewOnly: true }
+    });
+    const registry = registryModule.registerGovernanceArtifact(registryModule.createGovernanceArtifactRegistry("Snapshot Registry"), artifact);
+    const index = indexModule.indexGovernanceArtifactRegistry(registry, "Snapshot Index");
+    const query = queryModule.queryPreviewOnlyGovernanceArtifacts(index);
+    const payload = exportModule.createGovernanceArtifactExportPayload(
+      exportModule.createGovernanceArtifactExportContract({ format: "json", dataType: "query-result", metadata: { version: "v10.8", source: "snapshot-export", readonly: true, previewOnly: true } }),
+      query
+    );
+    const sections = [
+      snapshotModule.createExportSnapshotSection(payload, "E"),
+      snapshotModule.createQuerySnapshotSection(query, "Q"),
+      snapshotModule.createIndexSnapshotSection(index, "I"),
+      snapshotModule.createRegistrySnapshotSection(registry, "R"),
+      snapshotModule.createArtifactSnapshotSection(artifact, "A")
+    ];
+    const snapshot = snapshotModule.createGovernanceArtifactSnapshot({ title: "Section Snapshot", metadata: { version: "v10.8", source: "snapshot-section", readonly: true, previewOnly: true }, sections });
+    const order = snapshot.sections.map((section) => section.sectionType).join(",");
+    if (order !== "artifact,export-payload,index,query-result,registry") throw new Error(`snapshot section ordering mismatch: ${order}`);
+    if (snapshot.summary.totalSections !== 5 || snapshot.summary.totalEntries !== 5) throw new Error(`snapshot section summary mismatch: ${JSON.stringify(snapshot.summary)}`);
+    console.log("PASS governance-artifact-snapshot-section-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-snapshot-section-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactSnapshotRenderingUnit() {
+  try {
+    const snapshotModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactSnapshot.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const snapshot = snapshotModule.createGovernanceArtifactSnapshot({ title: "Empty Snapshot", metadata: { version: "v10.8", source: "snapshot-render", readonly: true, previewOnly: true }, sections: [] });
+    const rendered = renderers.renderGovernanceArtifactSnapshot(snapshot);
+    if (!rendered.includes("Governance artifact snapshot: Empty Snapshot") || !rendered.includes("total sections: 0") || !rendered.includes("fileWriteAllowed: false") || !rendered.includes("- none")) throw new Error(`snapshot render mismatch: ${rendered}`);
+    console.log("PASS governance-artifact-snapshot-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-snapshot-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliArtifactSnapshotRenderingUnit() {
+  try {
+    const snapshotModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactSnapshot.js"));
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const snapshot = snapshotModule.createGovernanceArtifactSnapshot({ title: "CLI Snapshot", metadata: { version: "v10.8", source: "cli-snapshot-render", readonly: true, previewOnly: true }, sections: [] });
+    const rendered = cliArtifact.renderCliGovernanceArtifactSnapshot(snapshot);
+    if (!rendered.includes("Governance artifact snapshot:") || !rendered.includes("fileWriteAllowed: false") || !rendered.includes("Snapshot sections:") || !rendered.includes("Read-only preview")) throw new Error(`CLI snapshot render mismatch: ${rendered}`);
+    console.log("PASS cli-artifact-snapshot-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-artifact-snapshot-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactSnapshotHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "artifact-index", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "--snapshot",
+      "Snapshot previews are stdout-only",
+      "do not write files by default",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    const human = runCliHelpCommand(["governance", "artifact-index", "--snapshot"]);
+    if (human.status !== 0 || !human.stdout.includes("Governance artifact snapshot:") || !human.stdout.includes("fileWriteAllowed: false")) throw new Error(`snapshot human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "artifact-index", "--snapshot", "--json"]);
+    if (json.status !== 0) throw new Error(`snapshot json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.fileWriteAllowed !== false || parsed.runtimeRoutingEnabled !== false || parsed.summary.totalSections !== 2) throw new Error(`snapshot json output mismatch: ${json.stdout}`);
+    console.log("PASS governance-artifact-snapshot-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-snapshot-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -29375,7 +29506,8 @@ const scenarioSuites = {
     runGovernanceArtifactIndexConsistencyUnit,
     runGovernancePreviewIndexSummaryUnit,
     runGovernanceArtifactQueryConsistencyUnit,
-    runGovernanceArtifactExportContractConsistencyUnit
+    runGovernanceArtifactExportContractConsistencyUnit,
+    runGovernanceArtifactSnapshotConsistencyUnit
   ],
   governance: [
     runGovernanceArchitectureConsolidationInvariantsUnit,
@@ -29390,7 +29522,8 @@ const scenarioSuites = {
     runGovernanceReadonlyRenderingUnit,
     runScenarioSummaryRenderingUnit,
     runGovernanceArtifactQueryHelpOutputUnit,
-    runGovernanceArtifactExportHelpOutputUnit
+    runGovernanceArtifactExportHelpOutputUnit,
+    runGovernanceArtifactSnapshotHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -29413,7 +29546,16 @@ const scenarioSuites = {
     runGovernanceArtifactQueryRenderingUnit,
     runCliArtifactQueryRenderingUnit,
     runCliArtifactExportRenderingUnit,
+    runGovernanceArtifactSnapshotRenderingUnit,
+    runCliArtifactSnapshotRenderingUnit,
     runReadonlyRenderConsistencyUnit
+  ],
+  snapshot: [
+    runGovernanceArtifactSnapshotConsistencyUnit,
+    runGovernanceArtifactSnapshotSectionConsistencyUnit,
+    runGovernanceArtifactSnapshotRenderingUnit,
+    runCliArtifactSnapshotRenderingUnit,
+    runGovernanceArtifactSnapshotHelpOutputUnit
   ],
   index: [
     runGovernanceArtifactIndexConsistencyUnit,
@@ -32198,6 +32340,21 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceArtifactExportHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactSnapshotConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactSnapshotSectionConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactSnapshotRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runCliArtifactSnapshotRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactSnapshotHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

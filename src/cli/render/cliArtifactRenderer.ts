@@ -4,6 +4,7 @@ import type { GovernanceArtifactExportContract, GovernanceArtifactExportPayload 
 import type { GovernanceArtifactQueryResult, GovernanceArtifactQuerySummary } from "../../governance/governanceArtifactQuery.js";
 import type { GovernanceArtifactRegistry } from "../../governance/governanceArtifactRegistry.js";
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
+import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
 
 export function renderCliGovernanceArtifact(artifact: GovernanceArtifact & { readonlyContract?: GovernanceReadonlyContract }): string {
@@ -141,6 +142,41 @@ export function renderCliGovernanceArtifactExportPayload(payload: GovernanceArti
     ]),
     renderCliGovernanceArtifactExportContract(payload.contract),
     renderCliSection("Export data", [JSON.stringify(payload.data, null, 2)])
+  ].join("\n");
+}
+
+export function renderCliGovernanceArtifactSnapshotSummary(summary: GovernanceArtifactSnapshotSummary): string {
+  return [
+    renderCliSection("Governance artifact snapshot summary", [
+      `total sections: ${summary.totalSections}`,
+      `total entries: ${summary.totalEntries}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings)
+  ].join("\n");
+}
+
+export function renderCliGovernanceArtifactSnapshot(snapshot: GovernanceArtifactSnapshot): string {
+  const sectionLines = snapshot.sections.length === 0
+    ? ["none"]
+    : snapshot.sections.map((section) => `${section.sectionType} | ${section.title} | entryCount=${section.entryCount} | readonly=${String(section.readonly)} | previewOnly=${String(section.previewOnly)}`);
+  return [
+    renderCliSection("Governance artifact snapshot", [
+      `title: ${snapshot.title}`,
+      `schemaVersion: ${snapshot.schemaVersion}`,
+      `readonly: ${String(snapshot.readonly)}`,
+      `previewOnly: ${String(snapshot.previewOnly)}`,
+      `stdoutOnly: ${String(snapshot.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(snapshot.fileWriteAllowed)}`,
+      `runtimeRoutingEnabled: ${String(snapshot.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(snapshot.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(snapshot.policyEnforcementEnabled)}`
+    ]),
+    renderCliMetadata(snapshot.metadata),
+    renderCliGovernanceArtifactSnapshotSummary(snapshot.summary),
+    renderCliSection("Snapshot sections", sectionLines),
+    renderReadonlyNotice(snapshot.previewOnly)
   ].join("\n");
 }
 

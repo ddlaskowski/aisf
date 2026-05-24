@@ -30,14 +30,22 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactSnapshot } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
+  createGovernanceArtifactExportContract,
+  createGovernanceArtifactExportPayload,
   exportGovernanceArtifactQueryResultAsJson,
   exportGovernanceArtifactQueryResultAsMarkdown,
   type GovernanceArtifactExportFormat
 } from "./governance/governanceArtifactExport.js";
 import { queryPreviewOnlyGovernanceArtifacts, type GovernanceArtifactQueryResult } from "./governance/governanceArtifactQuery.js";
+import {
+  createExportSnapshotSection,
+  createGovernanceArtifactSnapshot,
+  createQuerySnapshotSection,
+  type GovernanceArtifactSnapshot
+} from "./governance/governanceArtifactSnapshot.js";
 import { archiveGovernanceFiles, type GovernanceArchiveInputFile, type GovernanceArchiveKind, type GovernanceArchiveResult } from "./repair/governanceArchive.js";
 import {
   buildGovernanceArchiveIndexEntry,
@@ -777,6 +785,32 @@ function buildGovernanceArtifactIndexExportMetadata(format: GovernanceArtifactEx
   };
 }
 
+function buildGovernanceArtifactIndexSnapshotPreview(result: GovernanceArtifactQueryResult): GovernanceArtifactSnapshot {
+  const metadata = {
+    version: "v10.8",
+    source: "governance-artifact-index-cli-snapshot-preview",
+    command: "governance artifact-index --snapshot",
+    readonly: true,
+    previewOnly: true
+  };
+  const exportPayload = createGovernanceArtifactExportPayload(
+    createGovernanceArtifactExportContract({
+      format: "json",
+      dataType: "query-result",
+      metadata
+    }),
+    result
+  );
+  return createGovernanceArtifactSnapshot({
+    title: "Governance Artifact Index Snapshot Preview",
+    metadata,
+    sections: [
+      createQuerySnapshotSection(result, "CLI Query Result"),
+      createExportSnapshotSection(exportPayload, "CLI Export Payload")
+    ]
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -790,7 +824,7 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "artifact-index") {
-    const allowed = new Set(["--json", "--export", "--help", "-h"]);
+    const allowed = new Set(["--json", "--export", "--snapshot", "--help", "-h"]);
     for (const arg of args.slice(2)) {
       if (!arg.startsWith("-")) {
         continue;
@@ -806,6 +840,13 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
     }
 
     const result = buildGovernanceArtifactIndexSampleQuery();
+    if (args.includes("--snapshot")) {
+      const snapshot = buildGovernanceArtifactIndexSnapshotPreview(result);
+      if (args.includes("--json")) {
+        printAndExit(JSON.stringify(snapshot, null, 2), 0);
+      }
+      printAndExit(renderCliGovernanceArtifactSnapshot(snapshot), 0);
+    }
     const exportEquals = args.find((arg) => arg.startsWith("--export="));
     const exportIndex = args.indexOf("--export");
     const exportFormat = exportEquals ? exportEquals.slice("--export=".length) : exportIndex === -1 ? null : args[exportIndex + 1];

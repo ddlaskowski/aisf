@@ -9848,6 +9848,79 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v10.8 - Governance Artifact Snapshot Preview Layer
+
+v10.8 continues the Governance Consolidation Era by adding deterministic snapshot preview contracts for normalized governance artifacts, registries, indexes, query results, and export payloads. The snapshot layer is descriptive only and does not activate, enforce, schedule, execute, mutate, route, write files by default, or change runtime behavior.
+
+Governance artifact snapshot model:
+
+* `src/governance/governanceArtifactSnapshot.ts` adds `GovernanceArtifactSnapshot`, `GovernanceArtifactSnapshotSection`, `GovernanceArtifactSnapshotSummary`, `createGovernanceArtifactSnapshot`, and `summarizeGovernanceArtifactSnapshot`.
+* Snapshots record explicit read-only, preview-only, stdout-only, no-file-write, no-runtime-routing, no-runtime-activation, and no-policy-enforcement guarantees.
+* Snapshot helpers require explicit metadata input and do not generate hidden timestamps.
+
+Snapshot section helpers:
+
+* `createArtifactSnapshotSection`
+* `createRegistrySnapshotSection`
+* `createIndexSnapshotSection`
+* `createQuerySnapshotSection`
+* `createExportSnapshotSection`
+
+Each section records section type, title, summary, entry count, read-only state, preview-only state, and warnings. Section ordering is deterministic.
+
+Snapshot rendering:
+
+* `renderGovernanceArtifactSnapshotSummary` renders deterministic snapshot totals and read-only/preview-only state.
+* `renderGovernanceArtifactSnapshotSection` renders stable section details.
+* `renderGovernanceArtifactSnapshot` renders snapshot title, guarantees, metadata, summary, and section summaries.
+* `renderCliGovernanceArtifactSnapshotSummary` and `renderCliGovernanceArtifactSnapshot` provide equivalent CLI-safe deterministic output.
+
+CLI snapshot preview:
+
+```powershell
+node dist\cli.js governance artifact-index --snapshot
+node dist\cli.js governance artifact-index --snapshot --json
+```
+
+Snapshot previews print to stdout only. They do not write files, mutate state, activate governance, enforce policy, route runtime behavior, or change repair orchestration. Existing `--json` and `--export` behavior remains stable.
+
+v10.8 deterministic checks:
+
+* governance-artifact-snapshot-consistency
+* governance-artifact-snapshot-section-consistency
+* governance-artifact-snapshot-rendering
+* cli-artifact-snapshot-rendering
+* governance-artifact-snapshot-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite snapshot
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no builder agents are introduced
+* no runtime routing is introduced
+* no snapshot file writing is introduced by default
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

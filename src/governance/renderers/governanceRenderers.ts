@@ -4,6 +4,7 @@ import type { GovernanceArtifactDiscoveryResults, GovernanceArtifactIndex, Gover
 import type { GovernanceArtifactExportContract, GovernanceArtifactExportPayload } from "../governanceArtifactExport.js";
 import type { GovernanceArtifactQueryResult, GovernanceArtifactQuerySummary } from "../governanceArtifactQuery.js";
 import type { GovernanceArtifactRegistry, GovernanceArtifactRegistrySummary } from "../governanceArtifactRegistry.js";
+import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSection, GovernanceArtifactSnapshotSummary } from "../governanceArtifactSnapshot.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -200,6 +201,49 @@ export function renderGovernanceArtifactExportPayload(payload: GovernanceArtifac
     renderGovernanceArtifactExportContract(payload.contract),
     "Export data:",
     JSON.stringify(payload.data, null, 2)
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactSnapshotSummary(summary: GovernanceArtifactSnapshotSummary): string {
+  return [
+    "Governance artifact snapshot summary:",
+    `- total sections: ${summary.totalSections}`,
+    `- total entries: ${summary.totalEntries}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings)
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactSnapshotSection(section: GovernanceArtifactSnapshotSection): string {
+  return [
+    `Snapshot section: ${section.title}`,
+    `- sectionType: ${section.sectionType}`,
+    `- summary: ${section.summary}`,
+    `- entryCount: ${section.entryCount}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    renderWarnings(section.warnings)
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactSnapshot(snapshot: GovernanceArtifactSnapshot): string {
+  const sections = snapshot.sections.length === 0
+    ? ["Snapshot sections:", "- none"]
+    : ["Snapshot sections:", ...snapshot.sections.map(renderGovernanceArtifactSnapshotSection)];
+  return [
+    `Governance artifact snapshot: ${snapshot.title}`,
+    `- schemaVersion: ${snapshot.schemaVersion}`,
+    `- readonly: ${String(snapshot.readonly)}`,
+    `- previewOnly: ${String(snapshot.previewOnly)}`,
+    `- stdoutOnly: ${String(snapshot.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(snapshot.fileWriteAllowed)}`,
+    `- runtimeRoutingEnabled: ${String(snapshot.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(snapshot.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(snapshot.policyEnforcementEnabled)}`,
+    renderMetadata(snapshot.metadata),
+    renderGovernanceArtifactSnapshotSummary(snapshot.summary),
+    ...sections
   ].join("\n");
 }
 
