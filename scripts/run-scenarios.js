@@ -29405,6 +29405,143 @@ function runGovernanceArtifactSnapshotHelpOutputUnit() {
   }
 }
 
+function runGovernanceArtifactReviewPackConsistencyUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const reviewPackModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactReviewPack.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "Review Pack Index",
+      entries: [{ artifactType: "manifest", status: "preview", severity: "info", source: "review-pack-source", version: "v10.9", previewOnly: true, readonly: true, summary: "Review pack source." }],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    const result = queryModule.queryPreviewOnlyGovernanceArtifacts(index);
+    const section = reviewPackModule.createReviewPackQuerySection(result, "Review Pack Query");
+    const metadata = { version: "v10.9", source: "review-pack-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = reviewPackModule.createGovernanceArtifactReviewPack({ title: "Unit Review Pack", metadata, sections: [section] });
+    const second = reviewPackModule.createGovernanceArtifactReviewPack({ title: "Unit Review Pack", metadata, sections: [section] });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("review pack output is not deterministic");
+    if (first.summary.totalSections !== 1 || first.summary.totalEntries !== 1 || first.summary.readonly !== true || first.summary.previewOnly !== true) throw new Error(`review pack summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.fileWriteAllowed !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false) throw new Error(`review pack invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`review pack introduced runtime flags: ${JSON.stringify(first)}`);
+    console.log("PASS governance-artifact-review-pack-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-review-pack-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactReviewPackSectionConsistencyUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const registryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactRegistry.js"));
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactExport.js"));
+    const snapshotModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactSnapshot.js"));
+    const readonlyModule = require(path.join(projectRoot, "dist", "governance", "governanceReadonlyContract.js"));
+    const reviewPackModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactReviewPack.js"));
+    const artifact = factory.createReadonlyGovernanceArtifact({
+      artifactType: "manifest",
+      status: "preview",
+      summary: "Review pack artifact.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.9", source: "review-pack-artifact", readonly: true, previewOnly: true }
+    });
+    const registry = registryModule.registerGovernanceArtifact(registryModule.createGovernanceArtifactRegistry("Review Pack Registry"), artifact);
+    const index = indexModule.indexGovernanceArtifactRegistry(registry, "Review Pack Index");
+    const query = queryModule.queryPreviewOnlyGovernanceArtifacts(index);
+    const payload = exportModule.createGovernanceArtifactExportPayload(
+      exportModule.createGovernanceArtifactExportContract({ format: "json", dataType: "query-result", metadata: { version: "v10.9", source: "review-pack-export", readonly: true, previewOnly: true } }),
+      query
+    );
+    const snapshot = snapshotModule.createGovernanceArtifactSnapshot({ title: "Review Pack Snapshot", metadata: { version: "v10.9", source: "review-pack-snapshot", readonly: true, previewOnly: true }, sections: [snapshotModule.createQuerySnapshotSection(query)] });
+    const sections = [
+      reviewPackModule.createReviewPackSnapshotSection(snapshot, "S"),
+      reviewPackModule.createReviewPackReadonlyContractSection(readonlyModule.createReadonlyContract("Review pack contract."), "C"),
+      reviewPackModule.createReviewPackExportSection(payload, "E"),
+      reviewPackModule.createReviewPackQuerySection(query, "Q"),
+      reviewPackModule.createReviewPackIndexSection(index, "I"),
+      reviewPackModule.createReviewPackRegistrySection(registry, "R"),
+      reviewPackModule.createReviewPackArtifactSection(artifact, "A"),
+      reviewPackModule.createReviewPackOverviewSection("Overview.")
+    ];
+    const reviewPack = reviewPackModule.createGovernanceArtifactReviewPack({ title: "Section Review Pack", metadata: { version: "v10.9", source: "review-pack-section", readonly: true, previewOnly: true }, sections });
+    const order = reviewPack.sections.map((section) => section.sectionType).join(",");
+    if (order !== "artifact,export-payload,index,overview,query-result,readonly-contract,registry,snapshot") throw new Error(`review pack section ordering mismatch: ${order}`);
+    if (reviewPack.summary.totalSections !== 8 || reviewPack.summary.totalEntries !== 7 || reviewPack.summary.recommendations.length === 0) throw new Error(`review pack section summary mismatch: ${JSON.stringify(reviewPack.summary)}`);
+    console.log("PASS governance-artifact-review-pack-section-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-review-pack-section-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactReviewPackRenderingUnit() {
+  try {
+    const reviewPackModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactReviewPack.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const reviewPack = reviewPackModule.createGovernanceArtifactReviewPack({ title: "Empty Review Pack", metadata: { version: "v10.9", source: "review-pack-render", readonly: true, previewOnly: true }, sections: [] });
+    const rendered = renderers.renderGovernanceArtifactReviewPack(reviewPack);
+    if (!rendered.includes("Governance artifact review pack: Empty Review Pack") || !rendered.includes("total sections: 0") || !rendered.includes("fileWriteAllowed: false") || !rendered.includes("- none")) throw new Error(`review pack render mismatch: ${rendered}`);
+    console.log("PASS governance-artifact-review-pack-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-review-pack-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliArtifactReviewPackRenderingUnit() {
+  try {
+    const reviewPackModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactReviewPack.js"));
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const reviewPack = reviewPackModule.createGovernanceArtifactReviewPack({ title: "CLI Review Pack", metadata: { version: "v10.9", source: "cli-review-pack-render", readonly: true, previewOnly: true }, sections: [] });
+    const rendered = cliArtifact.renderCliGovernanceArtifactReviewPack(reviewPack);
+    if (!rendered.includes("Governance artifact review pack:") || !rendered.includes("fileWriteAllowed: false") || !rendered.includes("Review pack sections:") || !rendered.includes("Read-only preview")) throw new Error(`CLI review pack render mismatch: ${rendered}`);
+    console.log("PASS cli-artifact-review-pack-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-artifact-review-pack-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactReviewPackHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "artifact-index", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "--review-pack",
+      "Review pack previews are stdout-only",
+      "do not write files by default",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    const human = runCliHelpCommand(["governance", "artifact-index", "--review-pack"]);
+    if (human.status !== 0 || !human.stdout.includes("Governance artifact review pack:") || !human.stdout.includes("fileWriteAllowed: false")) throw new Error(`review pack human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "artifact-index", "--review-pack", "--json"]);
+    if (json.status !== 0) throw new Error(`review pack json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.fileWriteAllowed !== false || parsed.runtimeRoutingEnabled !== false || parsed.summary.totalSections !== 4) throw new Error(`review pack json output mismatch: ${json.stdout}`);
+    console.log("PASS governance-artifact-review-pack-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-review-pack-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -29507,7 +29644,8 @@ const scenarioSuites = {
     runGovernancePreviewIndexSummaryUnit,
     runGovernanceArtifactQueryConsistencyUnit,
     runGovernanceArtifactExportContractConsistencyUnit,
-    runGovernanceArtifactSnapshotConsistencyUnit
+    runGovernanceArtifactSnapshotConsistencyUnit,
+    runGovernanceArtifactReviewPackConsistencyUnit
   ],
   governance: [
     runGovernanceArchitectureConsolidationInvariantsUnit,
@@ -29523,7 +29661,8 @@ const scenarioSuites = {
     runScenarioSummaryRenderingUnit,
     runGovernanceArtifactQueryHelpOutputUnit,
     runGovernanceArtifactExportHelpOutputUnit,
-    runGovernanceArtifactSnapshotHelpOutputUnit
+    runGovernanceArtifactSnapshotHelpOutputUnit,
+    runGovernanceArtifactReviewPackHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -29548,7 +29687,16 @@ const scenarioSuites = {
     runCliArtifactExportRenderingUnit,
     runGovernanceArtifactSnapshotRenderingUnit,
     runCliArtifactSnapshotRenderingUnit,
+    runGovernanceArtifactReviewPackRenderingUnit,
+    runCliArtifactReviewPackRenderingUnit,
     runReadonlyRenderConsistencyUnit
+  ],
+  "review-pack": [
+    runGovernanceArtifactReviewPackConsistencyUnit,
+    runGovernanceArtifactReviewPackSectionConsistencyUnit,
+    runGovernanceArtifactReviewPackRenderingUnit,
+    runCliArtifactReviewPackRenderingUnit,
+    runGovernanceArtifactReviewPackHelpOutputUnit
   ],
   snapshot: [
     runGovernanceArtifactSnapshotConsistencyUnit,
@@ -32355,6 +32503,21 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceArtifactSnapshotHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactReviewPackConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactReviewPackSectionConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactReviewPackRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runCliArtifactReviewPackRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactReviewPackHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

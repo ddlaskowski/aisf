@@ -3,6 +3,7 @@ import type { GovernanceArtifactDiscoveryResults, GovernanceArtifactIndex } from
 import type { GovernanceArtifactExportContract, GovernanceArtifactExportPayload } from "../../governance/governanceArtifactExport.js";
 import type { GovernanceArtifactQueryResult, GovernanceArtifactQuerySummary } from "../../governance/governanceArtifactQuery.js";
 import type { GovernanceArtifactRegistry } from "../../governance/governanceArtifactRegistry.js";
+import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSummary } from "../../governance/governanceArtifactReviewPack.js";
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
@@ -177,6 +178,42 @@ export function renderCliGovernanceArtifactSnapshot(snapshot: GovernanceArtifact
     renderCliGovernanceArtifactSnapshotSummary(snapshot.summary),
     renderCliSection("Snapshot sections", sectionLines),
     renderReadonlyNotice(snapshot.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliGovernanceArtifactReviewPackSummary(summary: GovernanceArtifactReviewPackSummary): string {
+  return [
+    renderCliSection("Governance artifact review pack summary", [
+      `total sections: ${summary.totalSections}`,
+      `total entries: ${summary.totalEntries}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliGovernanceArtifactReviewPack(reviewPack: GovernanceArtifactReviewPack): string {
+  const sectionLines = reviewPack.sections.length === 0
+    ? ["none"]
+    : reviewPack.sections.map((section) => `${section.sectionType} | ${section.title} | entryCount=${section.entryCount} | readonly=${String(section.readonly)} | previewOnly=${String(section.previewOnly)}`);
+  return [
+    renderCliSection("Governance artifact review pack", [
+      `title: ${reviewPack.title}`,
+      `schemaVersion: ${reviewPack.schemaVersion}`,
+      `readonly: ${String(reviewPack.readonly)}`,
+      `previewOnly: ${String(reviewPack.previewOnly)}`,
+      `stdoutOnly: ${String(reviewPack.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(reviewPack.fileWriteAllowed)}`,
+      `runtimeRoutingEnabled: ${String(reviewPack.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(reviewPack.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(reviewPack.policyEnforcementEnabled)}`
+    ]),
+    renderCliMetadata(reviewPack.metadata),
+    renderCliGovernanceArtifactReviewPackSummary(reviewPack.summary),
+    renderCliSection("Review pack sections", sectionLines),
+    renderReadonlyNotice(reviewPack.previewOnly)
   ].join("\n");
 }
 

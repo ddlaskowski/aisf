@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactSnapshot } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -46,6 +46,14 @@ import {
   createQuerySnapshotSection,
   type GovernanceArtifactSnapshot
 } from "./governance/governanceArtifactSnapshot.js";
+import {
+  createGovernanceArtifactReviewPack,
+  createReviewPackExportSection,
+  createReviewPackOverviewSection,
+  createReviewPackQuerySection,
+  createReviewPackSnapshotSection,
+  type GovernanceArtifactReviewPack
+} from "./governance/governanceArtifactReviewPack.js";
 import { archiveGovernanceFiles, type GovernanceArchiveInputFile, type GovernanceArchiveKind, type GovernanceArchiveResult } from "./repair/governanceArchive.js";
 import {
   buildGovernanceArchiveIndexEntry,
@@ -811,6 +819,35 @@ function buildGovernanceArtifactIndexSnapshotPreview(result: GovernanceArtifactQ
   });
 }
 
+function buildGovernanceArtifactIndexReviewPackPreview(result: GovernanceArtifactQueryResult): GovernanceArtifactReviewPack {
+  const snapshot = buildGovernanceArtifactIndexSnapshotPreview(result);
+  const metadata = {
+    version: "v10.9",
+    source: "governance-artifact-index-cli-review-pack-preview",
+    command: "governance artifact-index --review-pack",
+    readonly: true,
+    previewOnly: true
+  };
+  const exportPayload = createGovernanceArtifactExportPayload(
+    createGovernanceArtifactExportContract({
+      format: "json",
+      dataType: "query-result",
+      metadata
+    }),
+    result
+  );
+  return createGovernanceArtifactReviewPack({
+    title: "Governance Artifact Index Review Pack Preview",
+    metadata,
+    sections: [
+      createReviewPackOverviewSection("Deterministic governance artifact review pack preview for human inspection."),
+      createReviewPackQuerySection(result, "CLI Query Result"),
+      createReviewPackExportSection(exportPayload, "CLI Export Payload"),
+      createReviewPackSnapshotSection(snapshot, "CLI Snapshot Preview")
+    ]
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -824,7 +861,7 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "artifact-index") {
-    const allowed = new Set(["--json", "--export", "--snapshot", "--help", "-h"]);
+    const allowed = new Set(["--json", "--export", "--snapshot", "--review-pack", "--help", "-h"]);
     for (const arg of args.slice(2)) {
       if (!arg.startsWith("-")) {
         continue;
@@ -840,6 +877,13 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
     }
 
     const result = buildGovernanceArtifactIndexSampleQuery();
+    if (args.includes("--review-pack")) {
+      const reviewPack = buildGovernanceArtifactIndexReviewPackPreview(result);
+      if (args.includes("--json")) {
+        printAndExit(JSON.stringify(reviewPack, null, 2), 0);
+      }
+      printAndExit(renderCliGovernanceArtifactReviewPack(reviewPack), 0);
+    }
     if (args.includes("--snapshot")) {
       const snapshot = buildGovernanceArtifactIndexSnapshotPreview(result);
       if (args.includes("--json")) {

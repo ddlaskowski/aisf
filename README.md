@@ -9921,6 +9921,82 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v10.9 - Governance Artifact Review Pack Preview Layer
+
+v10.9 continues the Governance Consolidation Era by adding deterministic review pack preview contracts for normalized governance artifacts, registries, indexes, query results, export payloads, and snapshots. The review pack layer is descriptive only and does not activate, enforce, schedule, execute, mutate, route, write files by default, or change runtime behavior.
+
+Governance artifact review pack model:
+
+* `src/governance/governanceArtifactReviewPack.ts` adds `GovernanceArtifactReviewPack`, `GovernanceArtifactReviewPackSection`, `GovernanceArtifactReviewPackSummary`, `createGovernanceArtifactReviewPack`, and `summarizeGovernanceArtifactReviewPack`.
+* Review packs record explicit read-only, preview-only, stdout-only, no-file-write, no-runtime-routing, no-runtime-activation, and no-policy-enforcement guarantees.
+* Review pack helpers require explicit metadata input and do not generate hidden timestamps.
+
+Review pack section helpers:
+
+* `createReviewPackOverviewSection`
+* `createReviewPackArtifactSection`
+* `createReviewPackRegistrySection`
+* `createReviewPackIndexSection`
+* `createReviewPackQuerySection`
+* `createReviewPackExportSection`
+* `createReviewPackSnapshotSection`
+* `createReviewPackReadonlyContractSection`
+
+Each section records section type, title, summary, entry count, read-only state, preview-only state, warnings, and recommendations. Section ordering is deterministic.
+
+Review pack rendering:
+
+* `renderGovernanceArtifactReviewPackSummary` renders deterministic section totals, entry totals, read-only/preview-only state, warnings, and recommendations.
+* `renderGovernanceArtifactReviewPackSection` renders stable section details.
+* `renderGovernanceArtifactReviewPack` renders review pack title, guarantees, metadata, summary, and section summaries.
+* `renderCliGovernanceArtifactReviewPackSummary` and `renderCliGovernanceArtifactReviewPack` provide equivalent CLI-safe deterministic output.
+
+CLI review pack preview:
+
+```powershell
+node dist\cli.js governance artifact-index --review-pack
+node dist\cli.js governance artifact-index --review-pack --json
+```
+
+Review pack previews print to stdout only. They do not write files, mutate state, activate governance, enforce policy, route runtime behavior, or change repair orchestration. Existing `--json`, `--export`, and `--snapshot` behavior remains stable.
+
+v10.9 deterministic checks:
+
+* governance-artifact-review-pack-consistency
+* governance-artifact-review-pack-section-consistency
+* governance-artifact-review-pack-rendering
+* cli-artifact-review-pack-rendering
+* governance-artifact-review-pack-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite review-pack
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no builder agents are introduced
+* no runtime routing is introduced
+* no review pack file writing is introduced by default
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
