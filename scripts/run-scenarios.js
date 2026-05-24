@@ -28655,6 +28655,156 @@ function runGovernanceReadonlyRenderingUnit() {
   }
 }
 
+function runCliRenderNormalizationUnit() {
+  try {
+    const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
+    const section = cliRenderers.renderCliSection("Normalized", ["beta", "alpha"]);
+    const status = cliRenderers.renderCliStatusBlock({ zeta: false, alpha: true });
+    const warnings = cliRenderers.renderCliWarnings(["b-warning", "a-warning"]);
+    if (section !== "Normalized:\n  beta\n  alpha") throw new Error(`CLI section normalization mismatch: ${section}`);
+    if (status.indexOf("alpha: true") > status.indexOf("zeta: false")) throw new Error(`CLI status ordering mismatch: ${status}`);
+    if (warnings.indexOf("a-warning") > warnings.indexOf("b-warning")) throw new Error(`CLI warning ordering mismatch: ${warnings}`);
+    console.log("PASS cli-render-normalization");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-render-normalization");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRenderNormalizationUnit() {
+  try {
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const invariantBlock = renderers.renderInvariantBlock({ zeta: false, alpha: true });
+    const readonlyBlock = renderers.renderReadonlyStatusBlock(true);
+    const warnings = renderers.renderWarnings(["z-warning", "a-warning"]);
+    if (!readonlyBlock.includes("status: readonly") || !readonlyBlock.includes("Preview-only and non-mutating.")) throw new Error(`readonly block mismatch: ${readonlyBlock}`);
+    if (invariantBlock.indexOf("alpha: true") > invariantBlock.indexOf("zeta: false")) throw new Error(`invariant ordering mismatch: ${invariantBlock}`);
+    if (warnings.indexOf("a-warning") > warnings.indexOf("z-warning")) throw new Error(`governance warning ordering mismatch: ${warnings}`);
+    console.log("PASS governance-render-normalization");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-render-normalization");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runScenarioSuiteFilteringUnit() {
+  try {
+    if (parseRequestedSuite(["node", "scripts/run-scenarios.js"]) !== null) throw new Error("default suite filter should be null");
+    if (parseRequestedSuite(["node", "scripts/run-scenarios.js", "--suite", "renderers"]) !== "renderers") throw new Error("explicit suite filter mismatch");
+    if (parseRequestedSuite(["node", "scripts/run-scenarios.js", "--suite=cli"]) !== "cli") throw new Error("equals suite filter mismatch");
+    if (parseRequestedSuite(["node", "scripts/run-scenarios.js", "--suite", "unknown"]) !== "unknown") throw new Error("unknown suite should be preserved for deterministic error handling");
+    console.log("PASS scenario-suite-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL scenario-suite-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runScenarioSummaryRenderingUnit() {
+  try {
+    const rendered = renderScenarioExecutionSummary({
+      suitesExecuted: ["renderers"],
+      suitesSkipped: ["cli", "governance"],
+      totalChecks: 3,
+      passedChecks: 2,
+      failedChecks: 1,
+      executionDurationMs: 0
+    });
+    if (!rendered.includes("Suites executed: renderers") || !rendered.includes("Suites skipped: cli, governance") || !rendered.includes("failed checks: 1") || !rendered.includes("Read-only preview")) {
+      throw new Error(`scenario summary rendering mismatch: ${rendered}`);
+    }
+    console.log("PASS scenario-summary-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL scenario-summary-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runReadonlyRenderConsistencyUnit() {
+  try {
+    const utils = require(path.join(projectRoot, "dist", "governance", "utils", "governanceUtils.js"));
+    const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
+    const notice = cliRenderers.renderReadonlyNotice(true);
+    if (notice !== utils.createReadonlyGuaranteeLabel(true)) throw new Error("readonly notice differs between CLI and governance utility");
+    if (!notice.includes("no governance activation") || !notice.includes("runtime autonomy") || !notice.includes("mutation behavior")) throw new Error(`readonly notice lost guarantees: ${notice}`);
+    console.log("PASS readonly-render-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL readonly-render-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+const scenarioSuites = {
+  governance: [
+    runGovernanceArchitectureConsolidationInvariantsUnit,
+    runGovernanceArtifactSchemaConsistencyUnit,
+    runGovernanceStatusNormalizationUnit,
+    runGovernanceRenderNormalizationUnit,
+    runReadonlyRenderConsistencyUnit
+  ],
+  cli: [
+    runCliRenderConsistencyUnit,
+    runCliRenderNormalizationUnit,
+    runGovernanceReadonlyRenderingUnit,
+    runScenarioSummaryRenderingUnit
+  ],
+  renderers: [
+    runGovernanceRenderConsistencyUnit,
+    runGovernanceRenderNormalizationUnit,
+    runCliRenderConsistencyUnit,
+    runCliRenderNormalizationUnit,
+    runReadonlyRenderConsistencyUnit
+  ]
+};
+
+function parseRequestedSuite(argv) {
+  const suiteArg = argv.find((arg) => arg.startsWith("--suite="));
+  if (suiteArg) return suiteArg.slice("--suite=".length);
+  const suiteIndex = argv.indexOf("--suite");
+  if (suiteIndex === -1) return null;
+  return argv[suiteIndex + 1] ?? "";
+}
+
+function renderScenarioExecutionSummary(summary) {
+  const { renderValidationSummary } = require(path.join(projectRoot, "dist", "cli", "render", "validationSummaryRenderer.js"));
+  return renderValidationSummary(summary);
+}
+
+function runScenarioSuite(suiteName) {
+  const suite = scenarioSuites[suiteName];
+  const allSuites = Object.keys(scenarioSuites).sort();
+  if (!suite) {
+    console.log(`FAIL scenario-suite-${suiteName}`);
+    console.log(`  Unknown suite. Expected one of: ${allSuites.join(", ")}`);
+    return 1;
+  }
+  let failed = 0;
+  let passed = 0;
+  for (const check of suite) {
+    if (check()) passed += 1;
+    else failed += 1;
+  }
+  console.log(renderScenarioExecutionSummary({
+    suitesExecuted: [suiteName],
+    suitesSkipped: allSuites.filter((name) => name !== suiteName),
+    totalChecks: suite.length,
+    passedChecks: passed,
+    failedChecks: failed,
+    executionDurationMs: 0
+  }));
+  return failed;
+}
+
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -28903,6 +29053,12 @@ async function main() {
   if (!fs.existsSync(cliPath)) {
     console.error("dist/cli.js not found. Run npm run build first.");
     process.exitCode = 1;
+    return;
+  }
+
+  const requestedSuite = parseRequestedSuite(process.argv);
+  if (requestedSuite !== null) {
+    process.exitCode = runScenarioSuite(requestedSuite) === 0 ? 0 : 1;
     return;
   }
 
@@ -31277,6 +31433,21 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceReadonlyRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runCliRenderNormalizationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRenderNormalizationUnit()) {
+    failed += 1;
+  }
+  if (!runScenarioSuiteFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runScenarioSummaryRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runReadonlyRenderConsistencyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

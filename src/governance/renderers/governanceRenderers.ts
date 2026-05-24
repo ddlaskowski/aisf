@@ -34,6 +34,10 @@ export function renderStatusBlock(status: GovernanceStatus, severity?: Governanc
   return lines.join("\n");
 }
 
+export function renderReadonlyStatusBlock(previewOnly = true): string {
+  return renderStatusBlock(previewOnly ? "readonly" : "preview", "info", previewOnly ? "Preview-only and non-mutating." : "Read-only and non-mutating.");
+}
+
 export function renderInvariantBlock(invariants: Record<string, boolean | string | number>): string {
   const lines = Object.entries(invariants)
     .sort(([a], [b]) => a.localeCompare(b))

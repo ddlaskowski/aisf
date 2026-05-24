@@ -8,6 +8,7 @@ import {
   GOVERNANCE_RUNTIME_RESEARCH_CHAIN_PREVIEW_FLAGS,
   GOVERNANCE_RUNTIME_DISABLED_FLAGS
 } from "./governanceInvariants.js";
+import { renderMetadata, renderReadonlyStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
 
 import {
   buildGovernanceRuntimeResearchManifestPreview,
@@ -479,6 +480,22 @@ export function renderGovernanceRuntimeResearchAttestationPreviewMarkdown(previe
     "", "Future-only attestation note count:", String(preview.summary.totalFutureOnlyAttestationNotes),
     "", "Research attestation ready:", String(preview.summary.researchAttestationReady),
     "", "Recommended next stage:", preview.recommendedNextStage,
+    "",
+    "## Shared Governance Rendering Foundation",
+    "",
+    renderSummary("Runtime governance research attestation remains deterministic, read-only, and preview-only."),
+    "",
+    renderReadonlyStatusBlock(true),
+    "",
+    renderMetadata({
+      version: "v10.2",
+      source: "runtime-governance-research-attestation-preview",
+      command: "governance runtime research-attestation-preview",
+      readonly: true,
+      previewOnly: true
+    }),
+    "",
+    renderWarnings([]),
     "", "## Attestation Groups", ""
   ];
   for (const item of preview.attestationGroups) lines.push(`- [${item.category}] ${item.id} ${item.key} totalRecords=${item.totalRecords} previewOnly=${String(item.previewOnly)} - ${item.reason}`);

@@ -9443,6 +9443,65 @@ v10.1 deterministic checks:
 * cli-render-consistency
 * governance-readonly-rendering
 
+## v10.2 - Governance CLI & Scenario Execution Consolidation Layer
+
+v10.2 continues governance consolidation by expanding shared renderer usage and introducing deterministic scenario suite filtering for scalable validation. This is not a capability expansion release.
+
+CLI rendering consolidation:
+
+* `src/cli/render/cliRenderers.ts` now includes reusable status block, summary, divider, warning, metadata, section, and read-only notice helpers.
+* Runtime governance research manifest and attestation help paths use shared CLI read-only notices.
+* CLI read-only notices explicitly state that governance activation, policy enforcement, runtime autonomy, and mutation behavior are not enabled.
+
+Governance rendering consolidation:
+
+* `src/governance/renderers/governanceRenderers.ts` includes a shared read-only status block helper.
+* Runtime governance research attestation preview includes a small shared-rendered governance foundation section.
+* Runtime governance research manifest preview keeps its shared-rendered governance artifact foundation section.
+* Existing JSON artifact meaning remains unchanged.
+
+Scenario execution segmentation:
+
+```powershell
+node scripts\run-scenarios.js --suite governance
+node scripts\run-scenarios.js --suite cli
+node scripts\run-scenarios.js --suite renderers
+```
+
+Default execution remains the full scenario run when no `--suite` flag is provided. Suite filtering is deterministic, local, sequential, and does not introduce concurrency or orchestration changes.
+
+Validation summary rendering:
+
+* `src/cli/render/validationSummaryRenderer.ts` renders deterministic validation summaries with suites executed, suites skipped, total checks, passed checks, failed checks, and duration fields.
+* Summary rendering uses shared CLI renderer helpers and preserves read-only preview guarantees.
+
+v10.2 deterministic checks:
+
+* cli-render-normalization
+* governance-render-normalization
+* scenario-suite-filtering
+* scenario-summary-rendering
+* readonly-render-consistency
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no builder agents are introduced
+* no repair orchestration behavior changes are introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

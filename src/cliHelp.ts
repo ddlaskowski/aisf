@@ -1,4 +1,6 @@
-﻿export function renderMainHelp(): string {
+import { renderCliSection, renderReadonlyNotice } from "./cli/render/cliRenderers.js";
+
+export function renderMainHelp(): string {
   return [
     "# AI Software Factory CLI",
     "",
@@ -908,7 +910,9 @@ export function renderGovernanceRuntimeResearchManifestPreviewHelp(): string {
     "",
     "Runtime governance research manifest preview-only guarantee:",
     "  This command models runtime governance manifest groups, manifest records, manifest ownership entries, manifest version entries, preview-only manifest summaries, forbidden capability manifest records, and future-only manifest notes only.",
-    "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+    "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";
 }
 
@@ -929,7 +933,9 @@ export function renderGovernanceRuntimeResearchAttestationPreviewHelp(): string 
     "",
     "Runtime governance research attestation preview-only guarantee:",
     "  This command models runtime governance attestation groups, attestation records, attestation findings, attestation ownership summaries, preview-only attestation summaries, forbidden capability attestation findings, and future-only attestation notes only.",
-    "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+    "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";
 }
 
