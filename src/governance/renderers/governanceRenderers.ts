@@ -1,6 +1,7 @@
 import type { GovernanceRecommendation } from "../governanceArtifact.js";
 import type { GovernanceArtifact } from "../governanceArtifact.js";
 import type { GovernanceArtifactDiscoveryResults, GovernanceArtifactIndex, GovernanceArtifactIndexSummary } from "../governanceArtifactIndex.js";
+import type { GovernanceArtifactExportContract, GovernanceArtifactExportPayload } from "../governanceArtifactExport.js";
 import type { GovernanceArtifactQueryResult, GovernanceArtifactQuerySummary } from "../governanceArtifactQuery.js";
 import type { GovernanceArtifactRegistry, GovernanceArtifactRegistrySummary } from "../governanceArtifactRegistry.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
@@ -172,6 +173,33 @@ export function renderGovernanceArtifactQueryResult(result: GovernanceArtifactQu
     renderGovernanceArtifactQuerySummary(result.summary),
     "Matching artifact entries:",
     ...entries
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactExportContract(contract: GovernanceArtifactExportContract): string {
+  return [
+    "Governance artifact export contract:",
+    `- schemaVersion: ${contract.schemaVersion}`,
+    `- format: ${contract.format}`,
+    `- dataType: ${contract.dataType}`,
+    `- readonly: ${String(contract.readonly)}`,
+    `- previewOnly: ${String(contract.previewOnly)}`,
+    `- stdoutOnly: ${String(contract.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+    `- runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+    renderMetadata(contract.metadata)
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactExportPayload(payload: GovernanceArtifactExportPayload<unknown>): string {
+  return [
+    "Governance artifact export payload:",
+    `- schemaVersion: ${payload.schemaVersion}`,
+    renderGovernanceArtifactExportContract(payload.contract),
+    "Export data:",
+    JSON.stringify(payload.data, null, 2)
   ].join("\n");
 }
 

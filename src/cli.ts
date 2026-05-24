@@ -32,6 +32,11 @@ import {
 } from "./repair/governanceCiSummary.js";
 import { renderCliGovernanceArtifactQueryResult } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
+import {
+  exportGovernanceArtifactQueryResultAsJson,
+  exportGovernanceArtifactQueryResultAsMarkdown,
+  type GovernanceArtifactExportFormat
+} from "./governance/governanceArtifactExport.js";
 import { queryPreviewOnlyGovernanceArtifacts, type GovernanceArtifactQueryResult } from "./governance/governanceArtifactQuery.js";
 import { archiveGovernanceFiles, type GovernanceArchiveInputFile, type GovernanceArchiveKind, type GovernanceArchiveResult } from "./repair/governanceArchive.js";
 import {
@@ -762,6 +767,16 @@ function buildGovernanceArtifactIndexSampleQuery(): GovernanceArtifactQueryResul
   });
 }
 
+function buildGovernanceArtifactIndexExportMetadata(format: GovernanceArtifactExportFormat) {
+  return {
+    version: "v10.7",
+    source: "governance-artifact-index-cli-export-preview",
+    command: `governance artifact-index --export ${format}`,
+    readonly: true,
+    previewOnly: true
+  };
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -775,7 +790,7 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "artifact-index") {
-    const allowed = new Set(["--json", "--help", "-h"]);
+    const allowed = new Set(["--json", "--export", "--help", "-h"]);
     for (const arg of args.slice(2)) {
       if (!arg.startsWith("-")) {
         continue;
@@ -791,6 +806,20 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
     }
 
     const result = buildGovernanceArtifactIndexSampleQuery();
+    const exportEquals = args.find((arg) => arg.startsWith("--export="));
+    const exportIndex = args.indexOf("--export");
+    const exportFormat = exportEquals ? exportEquals.slice("--export=".length) : exportIndex === -1 ? null : args[exportIndex + 1];
+    if (exportFormat !== null) {
+      if (exportFormat !== "json" && exportFormat !== "markdown") {
+        printAndExit("Invalid export format for governance artifact-index. Expected one of: json, markdown", 1);
+      }
+      const format: GovernanceArtifactExportFormat = exportFormat === "json" ? "json" : "markdown";
+      const metadata = buildGovernanceArtifactIndexExportMetadata(format);
+      if (format === "json") {
+        printAndExit(exportGovernanceArtifactQueryResultAsJson(result, metadata), 0);
+      }
+      printAndExit(exportGovernanceArtifactQueryResultAsMarkdown(result, metadata), 0);
+    }
     if (args.includes("--json")) {
       printAndExit(JSON.stringify(result, null, 2), 0);
     }

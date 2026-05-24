@@ -1,5 +1,6 @@
 import type { GovernanceArtifact } from "../../governance/governanceArtifact.js";
 import type { GovernanceArtifactDiscoveryResults, GovernanceArtifactIndex } from "../../governance/governanceArtifactIndex.js";
+import type { GovernanceArtifactExportContract, GovernanceArtifactExportPayload } from "../../governance/governanceArtifactExport.js";
 import type { GovernanceArtifactQueryResult, GovernanceArtifactQuerySummary } from "../../governance/governanceArtifactQuery.js";
 import type { GovernanceArtifactRegistry } from "../../governance/governanceArtifactRegistry.js";
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
@@ -111,6 +112,35 @@ export function renderCliGovernanceArtifactQueryResult(result: GovernanceArtifac
     renderCliGovernanceArtifactQuerySummary(result.summary),
     renderCliSection("Matching artifact entries", entryLines),
     renderReadonlyNotice(result.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliGovernanceArtifactExportContract(contract: GovernanceArtifactExportContract): string {
+  return [
+    renderCliSection("Governance artifact export contract", [
+      `schemaVersion: ${contract.schemaVersion}`,
+      `format: ${contract.format}`,
+      `dataType: ${contract.dataType}`,
+      `readonly: ${String(contract.readonly)}`,
+      `previewOnly: ${String(contract.previewOnly)}`,
+      `stdoutOnly: ${String(contract.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+      `runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`
+    ]),
+    renderCliMetadata(contract.metadata),
+    renderReadonlyNotice(contract.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliGovernanceArtifactExportPayload(payload: GovernanceArtifactExportPayload<unknown>): string {
+  return [
+    renderCliSection("Governance artifact export payload", [
+      `schemaVersion: ${payload.schemaVersion}`
+    ]),
+    renderCliGovernanceArtifactExportContract(payload.contract),
+    renderCliSection("Export data", [JSON.stringify(payload.data, null, 2)])
   ].join("\n");
 }
 

@@ -9771,6 +9771,83 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v10.7 - Governance Artifact Export Contract Layer
+
+v10.7 continues the Governance Consolidation Era by adding deterministic export contracts for normalized governance artifacts, registries, indexes, and query results. The export layer is descriptive only and does not activate, enforce, schedule, execute, mutate, route, write files by default, or change runtime behavior.
+
+Governance artifact export contract model:
+
+* `src/governance/governanceArtifactExport.ts` adds `GovernanceArtifactExportFormat`, `GovernanceArtifactExportContract`, `GovernanceArtifactExportPayload`, `createGovernanceArtifactExportContract`, and `createGovernanceArtifactExportPayload`.
+* Supported export formats are explicit and limited to `json` and `markdown`.
+* Export contracts record read-only, preview-only, stdout-only, no-file-write, no-runtime-routing, no-runtime-activation, and no-policy-enforcement guarantees.
+* Export helpers require explicit metadata input and do not generate hidden timestamps.
+
+JSON export helpers:
+
+* `exportGovernanceArtifactAsJson`
+* `exportGovernanceArtifactRegistryAsJson`
+* `exportGovernanceArtifactIndexAsJson`
+* `exportGovernanceArtifactQueryResultAsJson`
+
+Markdown export helpers:
+
+* `exportGovernanceArtifactAsMarkdown`
+* `exportGovernanceArtifactRegistryAsMarkdown`
+* `exportGovernanceArtifactIndexAsMarkdown`
+* `exportGovernanceArtifactQueryResultAsMarkdown`
+
+Export rendering:
+
+* `renderGovernanceArtifactExportContract` and `renderGovernanceArtifactExportPayload` render deterministic export contract and payload previews.
+* `renderCliGovernanceArtifactExportContract` and `renderCliGovernanceArtifactExportPayload` provide equivalent CLI-safe deterministic output.
+* Empty query/index export output remains predictable.
+
+CLI export preview:
+
+```powershell
+node dist\cli.js governance artifact-index --export json
+node dist\cli.js governance artifact-index --export markdown
+```
+
+Export previews print to stdout only. They do not write files, mutate state, activate governance, enforce policy, route runtime behavior, or change repair orchestration. Existing `node dist\cli.js governance artifact-index --json` behavior remains stable.
+
+v10.7 deterministic checks:
+
+* governance-artifact-export-contract-consistency
+* governance-artifact-export-json-consistency
+* governance-artifact-export-markdown-consistency
+* cli-artifact-export-rendering
+* governance-artifact-export-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite export
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no builder agents are introduced
+* no runtime routing is introduced
+* no export file writing is introduced by default
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

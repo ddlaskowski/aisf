@@ -29163,6 +29163,117 @@ function runGovernanceArtifactQueryHelpOutputUnit() {
   }
 }
 
+function runGovernanceArtifactExportContractConsistencyUnit() {
+  try {
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactExport.js"));
+    const metadata = { version: "v10.7", source: "export-contract-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = exportModule.createGovernanceArtifactExportContract({ format: "json", dataType: "query-result", metadata });
+    const second = exportModule.createGovernanceArtifactExportContract({ format: "json", dataType: "query-result", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("export contract output is not deterministic");
+    if (first.readonly !== true || first.previewOnly !== true || first.stdoutOnly !== true || first.fileWriteAllowed !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false) throw new Error(`export contract invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`export contract introduced runtime flags: ${JSON.stringify(first)}`);
+    console.log("PASS governance-artifact-export-contract-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-export-contract-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactExportJsonConsistencyUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactExport.js"));
+    const metadata = { version: "v10.7", source: "json-export-unit", command: "unit", readonly: true, previewOnly: true };
+    const index = indexModule.createGovernanceArtifactIndex("Empty Export Index");
+    const result = queryModule.queryGovernanceArtifacts(index);
+    const first = exportModule.exportGovernanceArtifactQueryResultAsJson(result, metadata);
+    const second = exportModule.exportGovernanceArtifactQueryResultAsJson(result, metadata);
+    if (first !== second) throw new Error("JSON export output is not deterministic");
+    const parsed = JSON.parse(first);
+    if (parsed.contract.format !== "json" || parsed.contract.stdoutOnly !== true || parsed.contract.fileWriteAllowed !== false || parsed.data.totalMatches !== 0) throw new Error(`JSON export payload mismatch: ${first}`);
+    console.log("PASS governance-artifact-export-json-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-export-json-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactExportMarkdownConsistencyUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactExport.js"));
+    const metadata = { version: "v10.7", source: "markdown-export-unit", command: "unit", readonly: true, previewOnly: true };
+    const result = queryModule.queryGovernanceArtifacts(indexModule.createGovernanceArtifactIndex("Empty Markdown Export Index"));
+    const first = exportModule.exportGovernanceArtifactQueryResultAsMarkdown(result, metadata);
+    const second = exportModule.exportGovernanceArtifactQueryResultAsMarkdown(result, metadata);
+    if (first !== second) throw new Error("Markdown export output is not deterministic");
+    if (!first.includes("# Governance Artifact Export Preview") || !first.includes("- format: markdown") || !first.includes("- stdoutOnly: true") || !first.includes("- fileWriteAllowed: false") || !first.includes("- total matches: 0") || !first.includes("- none")) throw new Error(`Markdown export payload mismatch: ${first}`);
+    console.log("PASS governance-artifact-export-markdown-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-export-markdown-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliArtifactExportRenderingUnit() {
+  try {
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactExport.js"));
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const contract = exportModule.createGovernanceArtifactExportContract({
+      format: "json",
+      dataType: "query-result",
+      metadata: { version: "v10.7", source: "cli-export-unit", command: "unit", readonly: true, previewOnly: true }
+    });
+    const payload = exportModule.createGovernanceArtifactExportPayload(contract, { ok: true });
+    const renderedContract = cliArtifact.renderCliGovernanceArtifactExportContract(contract);
+    const renderedPayload = cliArtifact.renderCliGovernanceArtifactExportPayload(payload);
+    if (!renderedContract.includes("stdoutOnly: true") || !renderedContract.includes("fileWriteAllowed: false") || !renderedContract.includes("Read-only preview")) throw new Error(`CLI export contract render mismatch: ${renderedContract}`);
+    if (!renderedPayload.includes("Governance artifact export payload:") || !renderedPayload.includes('"ok": true')) throw new Error(`CLI export payload render mismatch: ${renderedPayload}`);
+    console.log("PASS cli-artifact-export-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-artifact-export-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactExportHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "artifact-index", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "--export <json|markdown>",
+      "stdout-only",
+      "do not write files by default",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    const json = runCliHelpCommand(["governance", "artifact-index", "--export", "json"]);
+    if (json.status !== 0) throw new Error(`json export command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.contract.format !== "json" || parsed.contract.stdoutOnly !== true || parsed.contract.fileWriteAllowed !== false || parsed.data.queryType !== "previewOnly") throw new Error(`json export output mismatch: ${json.stdout}`);
+    const markdown = runCliHelpCommand(["governance", "artifact-index", "--export", "markdown"]);
+    if (markdown.status !== 0) throw new Error(`markdown export command failed: ${markdown.stderr || markdown.stdout}`);
+    if (!markdown.stdout.includes("# Governance Artifact Export Preview") || !markdown.stdout.includes("- format: markdown") || !markdown.stdout.includes("- stdoutOnly: true") || !markdown.stdout.includes("Governance artifact query result:")) throw new Error(`markdown export output mismatch: ${markdown.stdout}`);
+    console.log("PASS governance-artifact-export-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-export-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -29263,7 +29374,8 @@ const scenarioSuites = {
     runGovernancePreviewRegistrySummaryUnit,
     runGovernanceArtifactIndexConsistencyUnit,
     runGovernancePreviewIndexSummaryUnit,
-    runGovernanceArtifactQueryConsistencyUnit
+    runGovernanceArtifactQueryConsistencyUnit,
+    runGovernanceArtifactExportContractConsistencyUnit
   ],
   governance: [
     runGovernanceArchitectureConsolidationInvariantsUnit,
@@ -29277,7 +29389,15 @@ const scenarioSuites = {
     runCliRenderNormalizationUnit,
     runGovernanceReadonlyRenderingUnit,
     runScenarioSummaryRenderingUnit,
-    runGovernanceArtifactQueryHelpOutputUnit
+    runGovernanceArtifactQueryHelpOutputUnit,
+    runGovernanceArtifactExportHelpOutputUnit
+  ],
+  export: [
+    runGovernanceArtifactExportContractConsistencyUnit,
+    runGovernanceArtifactExportJsonConsistencyUnit,
+    runGovernanceArtifactExportMarkdownConsistencyUnit,
+    runCliArtifactExportRenderingUnit,
+    runGovernanceArtifactExportHelpOutputUnit
   ],
   renderers: [
     runGovernanceRenderConsistencyUnit,
@@ -29292,6 +29412,7 @@ const scenarioSuites = {
     runCliArtifactIndexRenderingUnit,
     runGovernanceArtifactQueryRenderingUnit,
     runCliArtifactQueryRenderingUnit,
+    runCliArtifactExportRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   index: [
@@ -32062,6 +32183,21 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceArtifactQueryHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactExportContractConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactExportJsonConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactExportMarkdownConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runCliArtifactExportRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactExportHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
