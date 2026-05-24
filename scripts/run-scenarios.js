@@ -29542,6 +29542,126 @@ function runGovernanceArtifactReviewPackHelpOutputUnit() {
   }
 }
 
+function runGovernanceConsolidationAuditConsistencyUnit() {
+  try {
+    const auditModule = require(path.join(projectRoot, "dist", "governance", "governanceConsolidationAudit.js"));
+    const metadata = { version: "v10.10", source: "audit-unit", command: "unit", readonly: true, previewOnly: true };
+    const sections = [
+      auditModule.createAuditInvariantsSection(),
+      auditModule.createAuditSchemaSection(),
+      auditModule.createAuditRendererSection(),
+      auditModule.createAuditCliSection(),
+      auditModule.createAuditArtifactPipelineSection(),
+      auditModule.createAuditValidationSuiteSection(),
+      auditModule.createAuditReadonlyGuaranteeSection()
+    ];
+    const first = auditModule.createGovernanceConsolidationAudit({ title: "Unit Audit", metadata, sections });
+    const second = auditModule.createGovernanceConsolidationAudit({ title: "Unit Audit", metadata, sections });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("audit output is not deterministic");
+    if (first.summary.totalSections !== 7 || first.summary.totalEntries !== 51 || first.summary.completionStatus !== "complete") throw new Error(`audit summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.stdoutOnly !== true || first.fileWriteAllowed !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false) throw new Error(`audit invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`audit introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS governance-consolidation-audit-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-consolidation-audit-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConsolidationAuditSectionConsistencyUnit() {
+  try {
+    const auditModule = require(path.join(projectRoot, "dist", "governance", "governanceConsolidationAudit.js"));
+    const sections = [
+      auditModule.createAuditReadonlyGuaranteeSection(),
+      auditModule.createAuditValidationSuiteSection(),
+      auditModule.createAuditInvariantsSection(),
+      auditModule.createAuditCliSection(),
+      auditModule.createAuditArtifactPipelineSection(),
+      auditModule.createAuditRendererSection(),
+      auditModule.createAuditSchemaSection()
+    ];
+    const audit = auditModule.createGovernanceConsolidationAudit({
+      title: "Section Audit",
+      metadata: { version: "v10.10", source: "audit-section", readonly: true, previewOnly: true },
+      sections
+    });
+    const order = audit.sections.map((section) => section.sectionType).join(",");
+    if (order !== "artifact-pipeline,cli-renderers,invariants,readonly-guarantees,renderers,schemas,validation-suites") throw new Error(`audit section ordering mismatch: ${order}`);
+    if (audit.summary.completeSections !== 7 || audit.summary.warningSections !== 0 || audit.summary.blockedSections !== 0 || audit.summary.recommendations.length === 0) throw new Error(`audit section summary mismatch: ${JSON.stringify(audit.summary)}`);
+    console.log("PASS governance-consolidation-audit-section-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-consolidation-audit-section-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConsolidationAuditRenderingUnit() {
+  try {
+    const auditModule = require(path.join(projectRoot, "dist", "governance", "governanceConsolidationAudit.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const audit = auditModule.createGovernanceConsolidationAudit({ title: "Empty Audit", metadata: { version: "v10.10", source: "audit-render", readonly: true, previewOnly: true }, sections: [] });
+    const rendered = renderers.renderGovernanceConsolidationAudit(audit);
+    if (!rendered.includes("Governance consolidation audit: Empty Audit") || !rendered.includes("total sections: 0") || !rendered.includes("completion status: preview-only") || !rendered.includes("fileWriteAllowed: false") || !rendered.includes("- none")) throw new Error(`audit render mismatch: ${rendered}`);
+    console.log("PASS governance-consolidation-audit-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-consolidation-audit-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliGovernanceConsolidationAuditRenderingUnit() {
+  try {
+    const auditModule = require(path.join(projectRoot, "dist", "governance", "governanceConsolidationAudit.js"));
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const audit = auditModule.createGovernanceConsolidationAudit({ title: "CLI Audit", metadata: { version: "v10.10", source: "cli-audit-render", readonly: true, previewOnly: true }, sections: [] });
+    const rendered = cliArtifact.renderCliGovernanceConsolidationAudit(audit);
+    if (!rendered.includes("Governance consolidation audit:") || !rendered.includes("completion status: preview-only") || !rendered.includes("fileWriteAllowed: false") || !rendered.includes("Audit sections:") || !rendered.includes("Read-only preview")) throw new Error(`CLI audit render mismatch: ${rendered}`);
+    console.log("PASS cli-governance-consolidation-audit-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-governance-consolidation-audit-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceConsolidationAuditHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "consolidation-audit", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance consolidation-audit",
+      "read-only",
+      "preview-only",
+      "stdout-only",
+      "do not write files by default",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    const human = runCliHelpCommand(["governance", "consolidation-audit"]);
+    if (human.status !== 0 || !human.stdout.includes("Governance consolidation audit:") || !human.stdout.includes("fileWriteAllowed: false") || !human.stdout.includes("runtimeRoutingEnabled: false")) throw new Error(`audit human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "consolidation-audit", "--json"]);
+    if (json.status !== 0) throw new Error(`audit json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.fileWriteAllowed !== false || parsed.runtimeRoutingEnabled !== false || parsed.summary.totalSections !== 7 || parsed.summary.completionStatus !== "complete") throw new Error(`audit json output mismatch: ${json.stdout}`);
+    const sectionTypes = parsed.sections.map((section) => section.sectionType).join(",");
+    if (!sectionTypes.includes("validation-suites") || !sectionTypes.includes("cli-renderers")) throw new Error(`audit inventory missing expected sections: ${sectionTypes}`);
+    console.log("PASS governance-consolidation-audit-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-consolidation-audit-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -29645,7 +29765,8 @@ const scenarioSuites = {
     runGovernanceArtifactQueryConsistencyUnit,
     runGovernanceArtifactExportContractConsistencyUnit,
     runGovernanceArtifactSnapshotConsistencyUnit,
-    runGovernanceArtifactReviewPackConsistencyUnit
+    runGovernanceArtifactReviewPackConsistencyUnit,
+    runGovernanceConsolidationAuditConsistencyUnit
   ],
   governance: [
     runGovernanceArchitectureConsolidationInvariantsUnit,
@@ -29662,7 +29783,8 @@ const scenarioSuites = {
     runGovernanceArtifactQueryHelpOutputUnit,
     runGovernanceArtifactExportHelpOutputUnit,
     runGovernanceArtifactSnapshotHelpOutputUnit,
-    runGovernanceArtifactReviewPackHelpOutputUnit
+    runGovernanceArtifactReviewPackHelpOutputUnit,
+    runGovernanceConsolidationAuditHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -29689,7 +29811,16 @@ const scenarioSuites = {
     runCliArtifactSnapshotRenderingUnit,
     runGovernanceArtifactReviewPackRenderingUnit,
     runCliArtifactReviewPackRenderingUnit,
+    runGovernanceConsolidationAuditRenderingUnit,
+    runCliGovernanceConsolidationAuditRenderingUnit,
     runReadonlyRenderConsistencyUnit
+  ],
+  audit: [
+    runGovernanceConsolidationAuditConsistencyUnit,
+    runGovernanceConsolidationAuditSectionConsistencyUnit,
+    runGovernanceConsolidationAuditRenderingUnit,
+    runCliGovernanceConsolidationAuditRenderingUnit,
+    runGovernanceConsolidationAuditHelpOutputUnit
   ],
   "review-pack": [
     runGovernanceArtifactReviewPackConsistencyUnit,
@@ -32518,6 +32649,21 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceArtifactReviewPackHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConsolidationAuditConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConsolidationAuditSectionConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConsolidationAuditRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runCliGovernanceConsolidationAuditRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceConsolidationAuditHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

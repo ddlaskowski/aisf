@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -54,6 +54,17 @@ import {
   createReviewPackSnapshotSection,
   type GovernanceArtifactReviewPack
 } from "./governance/governanceArtifactReviewPack.js";
+import {
+  createAuditArtifactPipelineSection,
+  createAuditCliSection,
+  createAuditInvariantsSection,
+  createAuditReadonlyGuaranteeSection,
+  createAuditRendererSection,
+  createAuditSchemaSection,
+  createAuditValidationSuiteSection,
+  createGovernanceConsolidationAudit,
+  type GovernanceConsolidationAudit
+} from "./governance/governanceConsolidationAudit.js";
 import { archiveGovernanceFiles, type GovernanceArchiveInputFile, type GovernanceArchiveKind, type GovernanceArchiveResult } from "./repair/governanceArchive.js";
 import {
   buildGovernanceArchiveIndexEntry,
@@ -412,6 +423,7 @@ import {
   renderGovernanceRuntimeResearchRegistryPreviewHelp,
   renderGovernanceRuntimeResearchManifestPreviewHelp,
   renderGovernanceRuntimeResearchAttestationPreviewHelp,
+  renderGovernanceConsolidationAuditHelp,
   renderGovernanceArtifactIndexHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
@@ -848,6 +860,28 @@ function buildGovernanceArtifactIndexReviewPackPreview(result: GovernanceArtifac
   });
 }
 
+function buildGovernanceConsolidationAuditPreview(): GovernanceConsolidationAudit {
+  return createGovernanceConsolidationAudit({
+    title: "Governance Consolidation Completion Audit",
+    metadata: {
+      version: "v10.10",
+      source: "governance-consolidation-audit-cli-preview",
+      command: "governance consolidation-audit",
+      readonly: true,
+      previewOnly: true
+    },
+    sections: [
+      createAuditInvariantsSection(),
+      createAuditSchemaSection(),
+      createAuditRendererSection(),
+      createAuditCliSection(),
+      createAuditArtifactPipelineSection(),
+      createAuditValidationSuiteSection(),
+      createAuditReadonlyGuaranteeSection()
+    ]
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -858,6 +892,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
 
   if (command === undefined) {
     return;
+  }
+
+  if (command === "governance" && args[1] === "consolidation-audit") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance consolidation-audit", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceConsolidationAuditHelp(), 0);
+    }
+
+    const audit = buildGovernanceConsolidationAuditPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(audit, null, 2), 0);
+    }
+    printAndExit(renderCliGovernanceConsolidationAudit(audit), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

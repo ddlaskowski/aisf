@@ -6,6 +6,7 @@ import type { GovernanceArtifactQueryResult, GovernanceArtifactQuerySummary } fr
 import type { GovernanceArtifactRegistry, GovernanceArtifactRegistrySummary } from "../governanceArtifactRegistry.js";
 import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSection, GovernanceArtifactReviewPackSummary } from "../governanceArtifactReviewPack.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSection, GovernanceArtifactSnapshotSummary } from "../governanceArtifactSnapshot.js";
+import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSection, GovernanceConsolidationAuditSummary } from "../governanceConsolidationAudit.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -291,6 +292,58 @@ export function renderGovernanceArtifactReviewPack(reviewPack: GovernanceArtifac
     `- policyEnforcementEnabled: ${String(reviewPack.policyEnforcementEnabled)}`,
     renderMetadata(reviewPack.metadata),
     renderGovernanceArtifactReviewPackSummary(reviewPack.summary),
+    ...sections
+  ].join("\n");
+}
+
+export function renderGovernanceConsolidationAuditSummary(summary: GovernanceConsolidationAuditSummary): string {
+  return [
+    "Governance consolidation audit summary:",
+    `- total sections: ${summary.totalSections}`,
+    `- total entries: ${summary.totalEntries}`,
+    `- complete sections: ${summary.completeSections}`,
+    `- warning sections: ${summary.warningSections}`,
+    `- blocked sections: ${summary.blockedSections}`,
+    `- completion status: ${summary.completionStatus}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderGovernanceConsolidationAuditSection(section: GovernanceConsolidationAuditSection): string {
+  return [
+    `Audit section: ${section.title}`,
+    `- sectionType: ${section.sectionType}`,
+    `- status: ${section.status}`,
+    `- summary: ${section.summary}`,
+    `- entryCount: ${section.entryCount}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    renderWarnings(section.warnings),
+    "Recommendations:",
+    ...(section.recommendations.length === 0 ? ["- none"] : section.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderGovernanceConsolidationAudit(audit: GovernanceConsolidationAudit): string {
+  const sections = audit.sections.length === 0
+    ? ["Audit sections:", "- none"]
+    : ["Audit sections:", ...audit.sections.map(renderGovernanceConsolidationAuditSection)];
+  return [
+    `Governance consolidation audit: ${audit.title}`,
+    `- schemaVersion: ${audit.schemaVersion}`,
+    `- readonly: ${String(audit.readonly)}`,
+    `- previewOnly: ${String(audit.previewOnly)}`,
+    `- stdoutOnly: ${String(audit.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(audit.fileWriteAllowed)}`,
+    `- runtimeRoutingEnabled: ${String(audit.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(audit.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(audit.policyEnforcementEnabled)}`,
+    renderMetadata(audit.metadata),
+    renderGovernanceConsolidationAuditSummary(audit.summary),
     ...sections
   ].join("\n");
 }

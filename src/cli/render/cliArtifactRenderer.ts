@@ -6,6 +6,7 @@ import type { GovernanceArtifactRegistry } from "../../governance/governanceArti
 import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSummary } from "../../governance/governanceArtifactReviewPack.js";
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
+import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
 
 export function renderCliGovernanceArtifact(artifact: GovernanceArtifact & { readonlyContract?: GovernanceReadonlyContract }): string {
@@ -214,6 +215,46 @@ export function renderCliGovernanceArtifactReviewPack(reviewPack: GovernanceArti
     renderCliGovernanceArtifactReviewPackSummary(reviewPack.summary),
     renderCliSection("Review pack sections", sectionLines),
     renderReadonlyNotice(reviewPack.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliGovernanceConsolidationAuditSummary(summary: GovernanceConsolidationAuditSummary): string {
+  return [
+    renderCliSection("Governance consolidation audit summary", [
+      `total sections: ${summary.totalSections}`,
+      `total entries: ${summary.totalEntries}`,
+      `complete sections: ${summary.completeSections}`,
+      `warning sections: ${summary.warningSections}`,
+      `blocked sections: ${summary.blockedSections}`,
+      `completion status: ${summary.completionStatus}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliGovernanceConsolidationAudit(audit: GovernanceConsolidationAudit): string {
+  const sectionLines = audit.sections.length === 0
+    ? ["none"]
+    : audit.sections.map((section) => `${section.sectionType} | ${section.title} | status=${section.status} | entryCount=${section.entryCount} | readonly=${String(section.readonly)} | previewOnly=${String(section.previewOnly)}`);
+  return [
+    renderCliSection("Governance consolidation audit", [
+      `title: ${audit.title}`,
+      `schemaVersion: ${audit.schemaVersion}`,
+      `readonly: ${String(audit.readonly)}`,
+      `previewOnly: ${String(audit.previewOnly)}`,
+      `stdoutOnly: ${String(audit.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(audit.fileWriteAllowed)}`,
+      `runtimeRoutingEnabled: ${String(audit.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(audit.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(audit.policyEnforcementEnabled)}`
+    ]),
+    renderCliMetadata(audit.metadata),
+    renderCliGovernanceConsolidationAuditSummary(audit.summary),
+    renderCliSection("Audit sections", sectionLines),
+    renderReadonlyNotice(audit.previewOnly)
   ].join("\n");
 }
 
