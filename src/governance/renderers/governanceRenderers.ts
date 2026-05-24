@@ -16,6 +16,7 @@ import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, Proje
 import type { ProjectGenerationDependencyPlanEntry, ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanEntry, ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
+import type { ProjectGenerationValidationPlanCheck, ProjectGenerationValidationPlanPreview, ProjectGenerationValidationPlanSummary } from "../projectGenerationValidationPlanPreview.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
 
 export function renderSection(title: string, lines: readonly string[] = []): string {
@@ -680,6 +681,78 @@ export function renderProjectGenerationDependencyPlanPreview(preview: ProjectGen
   ].join("\n");
 }
 
+export function renderProjectGenerationValidationPlanSummary(summary: ProjectGenerationValidationPlanSummary): string {
+  return [
+    "Project generation validation plan preview summary:",
+    `- check count: ${summary.totalChecks}`,
+    `- approval-required count: ${summary.approvalRequiredCount}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- no-execute count: ${summary.noExecuteCount}`,
+    `- manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- risk distribution: ${renderValidationRiskGroups(summary.riskDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationValidationPlanCheck(check: ProjectGenerationValidationPlanCheck): string {
+  return [
+    `Project generation validation plan check: ${check.checkId}`,
+    `- checkType: ${check.checkType}`,
+    `- commandPreview: ${check.commandPreview}`,
+    `- purpose: ${check.purpose}`,
+    `- requiredBy: ${check.requiredBy.length === 0 ? "none" : check.requiredBy.join(", ")}`,
+    `- executionPolicy: ${check.executionPolicy}`,
+    `- riskLevel: ${check.riskLevel}`,
+    `- requiresApproval: ${String(check.requiresApproval)}`,
+    `- blockedReason: ${check.blockedReason ?? "none"}`,
+    `- expectedSignal: ${check.expectedSignal}`,
+    `- read-only: ${String(check.readonly)}`,
+    `- preview-only: ${String(check.previewOnly)}`,
+    renderWarnings(check.warnings),
+    "Recommendations:",
+    ...(check.recommendations.length === 0 ? ["- none"] : check.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationValidationPlanPreview(preview: ProjectGenerationValidationPlanPreview): string {
+  const checks = preview.checks.length === 0
+    ? ["Project generation validation plan checks:", "- none"]
+    : ["Project generation validation plan checks:", ...preview.checks.map(renderProjectGenerationValidationPlanCheck)];
+  return [
+    `Project generation validation plan preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- validationPlanPreviewOnly: ${String(preview.validationPlanPreviewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+    `- generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+    `- commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    "Notice: no validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(preview.metadata),
+    renderProjectGenerationValidationPlanSummary(preview.summary),
+    ...checks
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -693,4 +766,9 @@ function renderCapabilityGroups(groups: readonly { key: string; totalCapabilitie
 function renderDependencyRiskGroups(groups: readonly { key: string; totalDependencies: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalDependencies}`).join(", ");
+}
+
+function renderValidationRiskGroups(groups: readonly { key: string; totalChecks: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalChecks}`).join(", ");
 }

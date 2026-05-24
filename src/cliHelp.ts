@@ -78,6 +78,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance project-generation-blueprint",
     "  node dist/cli.js governance project-generation-file-plan",
     "  node dist/cli.js governance project-generation-dependency-plan",
+    "  node dist/cli.js governance project-generation-validation-plan",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -165,6 +166,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance project-generation-blueprint",
     "  node dist/cli.js governance project-generation-file-plan",
     "  node dist/cli.js governance project-generation-dependency-plan",
+    "  node dist/cli.js governance project-generation-validation-plan",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1135,6 +1137,32 @@ export function renderGovernanceProjectGenerationDependencyPlanHelp(): string {
     "  Dependency plan previews are stdout-only and do not write files by default.",
     "  This is a read-only / preview-only planning command.",
     "  It does not install dependencies, modify packages, generate projects, scaffold files, create files, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceProjectGenerationValidationPlanHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance project-generation-validation-plan",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance project-generation-validation-plan [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic validation plan preview output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance project-generation-validation-plan",
+    "  node dist/cli.js governance project-generation-validation-plan --json",
+    "",
+    "Project generation validation plan preview:",
+    "  This command previews future generated-project validation planning as descriptive data only, including check IDs, check types, command previews, purposes, required-by sections, execution policies, risk levels, approval requirements, expected signals, warnings, and recommendations.",
+    "  This is preview-only and does not execute validation commands, run generated-project validation, install dependencies, mutate package.json, edit lockfiles, implement builder agents, scaffold files, create files, or generate projects.",
+    "  Validation plan previews are stdout-only and do not write files by default.",
+    "  This is a read-only / preview-only planning command.",
+    "  It does not execute validation commands, run generated-project validation, install dependencies, modify packages, generate projects, scaffold files, create files, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";

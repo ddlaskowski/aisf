@@ -12,6 +12,7 @@ import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary
 import type { ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../../governance/projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../../governance/projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSummary } from "../../governance/projectGenerationReadiness.js";
+import type { ProjectGenerationValidationPlanPreview, ProjectGenerationValidationPlanSummary } from "../../governance/projectGenerationValidationPlanPreview.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
 
 export function renderCliGovernanceArtifact(artifact: GovernanceArtifact & { readonlyContract?: GovernanceReadonlyContract }): string {
@@ -511,6 +512,61 @@ export function renderCliProjectGenerationDependencyPlanPreview(preview: Project
   ].join("\n");
 }
 
+export function renderCliProjectGenerationValidationPlanSummary(summary: ProjectGenerationValidationPlanSummary): string {
+  return [
+    renderCliSection("Project generation validation plan preview summary", [
+      `check count: ${summary.totalChecks}`,
+      `approval-required count: ${summary.approvalRequiredCount}`,
+      `blocked count: ${summary.blockedCount}`,
+      `no-execute count: ${summary.noExecuteCount}`,
+      `manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `risk distribution: ${renderCliValidationRiskGroups(summary.riskDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationValidationPlanPreview(preview: ProjectGenerationValidationPlanPreview): string {
+  const checkLines = preview.checks.length === 0
+    ? ["none"]
+    : preview.checks.map((check) => `${check.checkId} | type=${check.checkType} | executionPolicy=${check.executionPolicy} | risk=${check.riskLevel} | requiresApproval=${String(check.requiresApproval)}`);
+  return [
+    renderCliSection("Project generation validation plan preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `validationPlanPreviewOnly: ${String(preview.validationPlanPreviewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+      `commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      "notice: no validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliProjectGenerationValidationPlanSummary(preview.summary),
+    renderCliSection("Validation plan checks", checkLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -524,4 +580,9 @@ function renderCliCapabilityGroups(groups: readonly { key: string; totalCapabili
 function renderCliDependencyRiskGroups(groups: readonly { key: string; totalDependencies: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalDependencies}`).join(", ");
+}
+
+function renderCliValidationRiskGroups(groups: readonly { key: string; totalChecks: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalChecks}`).join(", ");
 }

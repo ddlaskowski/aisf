@@ -30353,6 +30353,146 @@ function runProjectGenerationDependencyPlanHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationValidationPlanConsistencyUnit() {
+  try {
+    const validationPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationValidationPlanPreview.js"));
+    const metadata = { version: "v11.5", source: "validation-plan-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = validationPlanModule.createProjectGenerationValidationPlanPreview({ title: "Unit Validation Plan", metadata });
+    const second = validationPlanModule.createProjectGenerationValidationPlanPreview({ title: "Unit Validation Plan", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("validation plan output is not deterministic");
+    if (first.summary.totalChecks !== 8 || first.summary.approvalRequiredCount !== 7 || first.summary.blockedCount !== 0 || first.summary.completeness.score !== 70 || first.summary.completeness.level !== "partial") throw new Error(`validation plan summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.validationPlanPreviewOnly !== true || first.validationExecutionAllowed !== false || first.generatedProjectValidationAllowed !== false || first.commandExecutionAllowed !== false || first.dependencyInstallationAllowed !== false || first.packageMutationAllowed !== false || first.fileWriteAllowed !== false || first.fileCreationAllowed !== false || first.scaffoldGenerationEnabled !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`validation plan invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`validation plan introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-validation-plan-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-validation-plan-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationValidationPlanCheckSortingUnit() {
+  try {
+    const validationPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationValidationPlanPreview.js"));
+    const checks = validationPlanModule.createDefaultProjectGenerationValidationPlanChecks().reverse();
+    const sorted = validationPlanModule.sortValidationPlanChecks(checks);
+    const order = sorted.map((check) => check.checkId).join(",");
+    if (order !== "build-preview,governance-review-preview,lint-preview,manual-review-preview,runtime-smoke-preview,security-review-preview,test-preview,typecheck-preview") throw new Error(`validation plan check ordering mismatch: ${order}`);
+    console.log("PASS project-generation-validation-plan-check-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-validation-plan-check-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationValidationPlanFilteringUnit() {
+  try {
+    const validationPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationValidationPlanPreview.js"));
+    const checks = validationPlanModule.createDefaultProjectGenerationValidationPlanChecks();
+    const build = validationPlanModule.findValidationPlanChecksByType(checks, "build");
+    const critical = validationPlanModule.findValidationPlanChecksByRiskLevel(checks, "critical");
+    const approval = validationPlanModule.findApprovalRequiredValidationPlanChecks(checks);
+    const blocked = validationPlanModule.findBlockedValidationPlanChecks(checks);
+    if (build.length !== 1 || build[0].checkId !== "build-preview") throw new Error(`type filtering mismatch: ${JSON.stringify(build)}`);
+    if (critical.length !== 2 || critical[0].checkId !== "runtime-smoke-preview") throw new Error(`risk filtering mismatch: ${JSON.stringify(critical.map((check) => check.checkId))}`);
+    if (approval.length !== 7 || approval[0].checkId !== "build-preview") throw new Error(`approval filtering mismatch: ${JSON.stringify(approval.map((check) => check.checkId))}`);
+    if (blocked.length !== 0) throw new Error(`blocked filtering mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-validation-plan-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-validation-plan-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationValidationPlanCompletenessUnit() {
+  try {
+    const validationPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationValidationPlanPreview.js"));
+    const checks = [
+      validationPlanModule.createValidationPlanCheck({ checkId: "a", checkType: "typecheck", commandPreview: "npm run typecheck", purpose: "A.", requiredBy: ["validationPlan"], executionPolicy: "preview-only", riskLevel: "low", requiresApproval: false, expectedSignal: "Preview only." }),
+      validationPlanModule.createValidationPlanCheck({ checkId: "b", checkType: "build", commandPreview: "npm run build", purpose: "B.", requiredBy: ["validationPlan"], executionPolicy: "no-execute", riskLevel: "medium", requiresApproval: false, expectedSignal: "No execute." }),
+      validationPlanModule.createValidationPlanCheck({ checkId: "c", checkType: "test", commandPreview: "npm test", purpose: "C.", requiredBy: ["validationPlan"], executionPolicy: "manual-approval-required", riskLevel: "high", requiresApproval: true, expectedSignal: "Manual approval required." })
+    ];
+    const score = validationPlanModule.calculateProjectGenerationValidationPlanCompleteness(checks);
+    if (score.score !== 73 || score.level !== "partial") throw new Error(`validation plan completeness mismatch: ${JSON.stringify(score)}`);
+    const empty = validationPlanModule.calculateProjectGenerationValidationPlanCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty validation plan completeness mismatch: ${JSON.stringify(empty)}`);
+    const blocked = validationPlanModule.calculateProjectGenerationValidationPlanCompleteness([validationPlanModule.createValidationPlanCheck({ checkId: "blocked", checkType: "runtime-smoke", commandPreview: "npm run smoke", purpose: "Blocked.", requiredBy: ["validationPlan"], executionPolicy: "blocked", riskLevel: "critical", requiresApproval: true, expectedSignal: "Blocked.", blockedReason: "Blocked for test." })]);
+    if (blocked.score !== 0 || blocked.level !== "incomplete") throw new Error(`blocked validation plan completeness mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-validation-plan-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-validation-plan-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationValidationPlanRenderingUnit() {
+  try {
+    const validationPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationValidationPlanPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = validationPlanModule.createProjectGenerationValidationPlanPreview({ title: "Render Validation Plan", metadata: { version: "v11.5", source: "validation-plan-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationValidationPlanPreview(preview);
+    if (!rendered.includes("Project generation validation plan preview: Render Validation Plan") || !rendered.includes("check count: 8") || !rendered.includes("validationExecutionAllowed: false") || !rendered.includes("generatedProjectValidationAllowed: false") || !rendered.includes("commandExecutionAllowed: false") || !rendered.includes("no validation execution")) throw new Error(`validation plan render mismatch: ${rendered}`);
+    console.log("PASS project-generation-validation-plan-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-validation-plan-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationValidationPlanCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-validation-plan"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation validation plan preview:") || !human.stdout.includes("validationExecutionAllowed: false") || !human.stdout.includes("generatedProjectValidationAllowed: false") || !human.stdout.includes("commandExecutionAllowed: false")) throw new Error(`validation plan human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-validation-plan", "--json"]);
+    if (json.status !== 0) throw new Error(`validation plan json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.validationPlanPreviewOnly !== true || parsed.validationExecutionAllowed !== false || parsed.generatedProjectValidationAllowed !== false || parsed.commandExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalChecks !== 8 || parsed.summary.completeness.score !== 70) throw new Error(`validation plan json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-validation-plan-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-validation-plan-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationValidationPlanHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-validation-plan", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-validation-plan",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not execute validation commands",
+      "run generated-project validation",
+      "install dependencies",
+      "mutate package.json",
+      "modify packages",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-validation-plan-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-validation-plan-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -30488,7 +30628,9 @@ const scenarioSuites = {
     runProjectGenerationFilePlanCliOutputUnit,
     runProjectGenerationFilePlanHelpOutputUnit,
     runProjectGenerationDependencyPlanCliOutputUnit,
-    runProjectGenerationDependencyPlanHelpOutputUnit
+    runProjectGenerationDependencyPlanHelpOutputUnit,
+    runProjectGenerationValidationPlanCliOutputUnit,
+    runProjectGenerationValidationPlanHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -30522,6 +30664,7 @@ const scenarioSuites = {
     runProjectGenerationBlueprintRenderingUnit,
     runProjectGenerationFilePlanRenderingUnit,
     runProjectGenerationDependencyPlanRenderingUnit,
+    runProjectGenerationValidationPlanRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -30557,7 +30700,14 @@ const scenarioSuites = {
     runProjectGenerationDependencyPlanCompletenessUnit,
     runProjectGenerationDependencyPlanRenderingUnit,
     runProjectGenerationDependencyPlanCliOutputUnit,
-    runProjectGenerationDependencyPlanHelpOutputUnit
+    runProjectGenerationDependencyPlanHelpOutputUnit,
+    runProjectGenerationValidationPlanConsistencyUnit,
+    runProjectGenerationValidationPlanCheckSortingUnit,
+    runProjectGenerationValidationPlanFilteringUnit,
+    runProjectGenerationValidationPlanCompletenessUnit,
+    runProjectGenerationValidationPlanRenderingUnit,
+    runProjectGenerationValidationPlanCliOutputUnit,
+    runProjectGenerationValidationPlanHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -33507,6 +33657,27 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationDependencyPlanHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationValidationPlanConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationValidationPlanCheckSortingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationValidationPlanFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationValidationPlanCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationValidationPlanRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationValidationPlanCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationValidationPlanHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

@@ -10532,6 +10532,95 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v11.5 - Project Generation Validation Plan Preview Layer
+
+v11.5 continues the Project Generation Readiness Era by adding a deterministic, read-only validation plan preview model for future controlled project generation systems. The validation plan preview is descriptive planning data only. It does not execute validation commands, run generated-project validation, install dependencies, mutate package files, create files, scaffold files, write files, implement builder agents, generate projects, route runtime behavior, activate governance, enforce policy, expand mutation scope, or change repair orchestration.
+
+Validation plan preview model:
+
+* `src/governance/projectGenerationValidationPlanPreview.ts` adds `ProjectGenerationValidationPlanPreview`, `ProjectGenerationValidationPlanCheck`, `ProjectGenerationValidationPlanSummary`, `ProjectGenerationValidationPlanCompleteness`, `createProjectGenerationValidationPlanPreview`, and `summarizeProjectGenerationValidationPlanPreview`.
+* Validation plan previews explicitly preserve read-only, preview-only, validation-plan-preview-only, stdout-only, no-validation-execution, no-generated-project-validation, no-command-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Validation plan helpers require explicit metadata input and do not generate hidden timestamps.
+
+Validation plan check helpers:
+
+* `createValidationPlanCheck`
+* `sortValidationPlanChecks`
+* `findValidationPlanChecksByType`
+* `findValidationPlanChecksByRiskLevel`
+* `findApprovalRequiredValidationPlanChecks`
+* `findBlockedValidationPlanChecks`
+
+Each check records check ID, check type, command preview, purpose, required-by references, execution policy, risk level, approval requirement, blocked reason, expected signal, warnings, recommendations, read-only state, and preview-only state.
+
+Advisory completeness scoring:
+
+* `calculateProjectGenerationValidationPlanCompleteness` deterministically computes a 0-100 advisory score.
+* Completeness levels are `incomplete`, `partial`, `review-ready`, and `ready-for-design`.
+* Scoring is descriptive only and does not activate governance, route runtime behavior, execute validation commands, run generated-project validation, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Validation plan rendering:
+
+* `renderProjectGenerationValidationPlanSummary` renders deterministic check count, approval-required count, blocked count, execution-policy counts, risk distribution, completeness score, warnings, and recommendations.
+* `renderProjectGenerationValidationPlanCheck` renders stable validation check details.
+* `renderProjectGenerationValidationPlanPreview` renders validation plan title, guarantees, metadata, summary, check details, and an explicit no-execute/no-generated-project-validation notice.
+* `renderCliProjectGenerationValidationPlanSummary` and `renderCliProjectGenerationValidationPlanPreview` provide equivalent CLI-safe deterministic output.
+
+CLI validation plan preview:
+
+```powershell
+node dist\cli.js governance project-generation-validation-plan
+node dist\cli.js governance project-generation-validation-plan --json
+```
+
+Validation plan previews print to stdout only. They do not write files, create files, scaffold files, execute validation commands, run generated-project validation, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v11.5 deterministic checks:
+
+* project-generation-validation-plan-consistency
+* project-generation-validation-plan-check-sorting
+* project-generation-validation-plan-filtering
+* project-generation-validation-plan-completeness
+* project-generation-validation-plan-rendering
+* project-generation-validation-plan-cli-output
+* project-generation-validation-plan-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite project-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no builder agents are introduced
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
