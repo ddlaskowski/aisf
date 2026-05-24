@@ -71,6 +71,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance runtime research-registry-preview",
     "  node dist/cli.js governance runtime research-manifest-preview",
     "  node dist/cli.js governance runtime research-attestation-preview",
+    "  node dist/cli.js governance artifact-index --help",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -151,6 +152,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime research-registry-preview",
     "  node dist/cli.js governance runtime research-manifest-preview",
     "  node dist/cli.js governance runtime research-attestation-preview",
+    "  node dist/cli.js governance artifact-index --help",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -930,6 +932,30 @@ export function renderGovernanceRuntimeResearchManifestPreviewHelp(): string {
         previewOnly: true
       }
     })
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceArtifactIndexHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance artifact-index",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance artifact-index [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic sample query output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance artifact-index",
+    "  node dist/cli.js governance artifact-index --json",
+    "",
+    "Read-only guarantee:",
+    "  This is a read-only / preview-only inspection command.",
+    "  This command provides deterministic sample inspection of normalized governance artifact indexes only.",
+    "  It does not read live runtime artifacts, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";
 }
 

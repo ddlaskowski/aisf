@@ -29043,6 +29043,126 @@ function runGovernancePreviewIndexSummaryUnit() {
   }
 }
 
+function runGovernanceArtifactQueryConsistencyUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "Query Consistency Index",
+      entries: [
+        { artifactType: "manifest", status: "preview", severity: "info", source: "manifest-query", version: "v10.6", previewOnly: true, readonly: true, summary: "Manifest query." },
+        { artifactType: "attestation", status: "ready", severity: "warning", source: "attestation-query", version: "v10.5", previewOnly: true, readonly: true, summary: "Attestation query." }
+      ],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    const first = queryModule.queryGovernanceArtifacts(index);
+    const second = queryModule.queryGovernanceArtifacts(index);
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("query output is not deterministic");
+    if (queryModule.queryGovernanceArtifactsByType(index, "manifest").totalMatches !== 1) throw new Error("query by type mismatch");
+    if (queryModule.queryGovernanceArtifactsByStatus(index, "ready").entries[0].source !== "attestation-query") throw new Error("query by status mismatch");
+    if (queryModule.queryGovernanceArtifactsBySeverity(index, "warning").totalMatches !== 1) throw new Error("query by severity mismatch");
+    if (queryModule.queryReadonlyGovernanceArtifacts(index).totalMatches !== 2) throw new Error("readonly query mismatch");
+    if (queryModule.queryPreviewOnlyGovernanceArtifacts(index).totalMatches !== 2) throw new Error("preview-only query mismatch");
+    if ("runtimeActivationExecuted" in first.entries[0] || "runtimeGovernanceEnabled" in first.entries[0]) throw new Error(`query entry introduced runtime flags: ${JSON.stringify(first.entries[0])}`);
+    console.log("PASS governance-artifact-query-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-query-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactQueryEmptyResultsUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const index = indexModule.createGovernanceArtifactIndex("Empty Query Index");
+    const result = queryModule.queryGovernanceArtifactsByType(index, "manifest");
+    const rendered = renderers.renderGovernanceArtifactQueryResult(result);
+    if (result.totalMatches !== 0 || result.readonly !== false || result.previewOnly !== false) throw new Error(`empty query result mismatch: ${JSON.stringify(result)}`);
+    if (!rendered.includes("total matches: 0") || !rendered.includes("- none")) throw new Error(`empty query render mismatch: ${rendered}`);
+    console.log("PASS governance-artifact-query-empty-results");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-query-empty-results");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactQueryRenderingUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "Query Render Index",
+      entries: [{ artifactType: "manifest", status: "preview", severity: "info", source: "query-render", version: "v10.6", previewOnly: true, readonly: true, summary: "Query render." }],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    const rendered = renderers.renderGovernanceArtifactQueryResult(queryModule.queryPreviewOnlyGovernanceArtifacts(index));
+    if (!rendered.includes("Governance artifact query result:") || !rendered.includes("query type: previewOnly") || !rendered.includes("total matches: 1") || !rendered.includes("preview-only: true")) throw new Error(`query render mismatch: ${rendered}`);
+    console.log("PASS governance-artifact-query-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-query-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliArtifactQueryRenderingUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const queryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactQuery.js"));
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "CLI Query Render Index",
+      entries: [{ artifactType: "manifest", status: "preview", severity: "info", source: "cli-query-render", version: "v10.6", previewOnly: true, readonly: true, summary: "CLI query render." }],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    const rendered = cliArtifact.renderCliGovernanceArtifactQueryResult(queryModule.queryPreviewOnlyGovernanceArtifacts(index));
+    if (!rendered.includes("Governance artifact query result:") || !rendered.includes("query type: previewOnly") || !rendered.includes("Read-only preview") || !rendered.includes("previewOnly=true")) throw new Error(`CLI query render mismatch: ${rendered}`);
+    console.log("PASS cli-artifact-query-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-artifact-query-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactQueryHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "artifact-index", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance artifact-index",
+      "read-only",
+      "preview",
+      "does not read live runtime artifacts",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    const json = runCliHelpCommand(["governance", "artifact-index", "--json"]);
+    if (json.status !== 0) throw new Error(`json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.queryType !== "previewOnly" || parsed.previewOnly !== true || parsed.readonly !== true || parsed.totalMatches !== 1) throw new Error(`json query output mismatch: ${json.stdout}`);
+    console.log("PASS governance-artifact-query-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-query-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -29142,7 +29262,8 @@ const scenarioSuites = {
     runGovernanceArtifactRegistryConsistencyUnit,
     runGovernancePreviewRegistrySummaryUnit,
     runGovernanceArtifactIndexConsistencyUnit,
-    runGovernancePreviewIndexSummaryUnit
+    runGovernancePreviewIndexSummaryUnit,
+    runGovernanceArtifactQueryConsistencyUnit
   ],
   governance: [
     runGovernanceArchitectureConsolidationInvariantsUnit,
@@ -29155,7 +29276,8 @@ const scenarioSuites = {
     runCliRenderConsistencyUnit,
     runCliRenderNormalizationUnit,
     runGovernanceReadonlyRenderingUnit,
-    runScenarioSummaryRenderingUnit
+    runScenarioSummaryRenderingUnit,
+    runGovernanceArtifactQueryHelpOutputUnit
   ],
   renderers: [
     runGovernanceRenderConsistencyUnit,
@@ -29168,6 +29290,8 @@ const scenarioSuites = {
     runCliArtifactRenderingUnit,
     runCliArtifactRegistryRenderingUnit,
     runCliArtifactIndexRenderingUnit,
+    runGovernanceArtifactQueryRenderingUnit,
+    runCliArtifactQueryRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   index: [
@@ -29177,6 +29301,13 @@ const scenarioSuites = {
     runGovernanceArtifactIndexRenderingUnit,
     runCliArtifactIndexRenderingUnit,
     runGovernancePreviewIndexSummaryUnit
+  ],
+  query: [
+    runGovernanceArtifactQueryConsistencyUnit,
+    runGovernanceArtifactQueryEmptyResultsUnit,
+    runGovernanceArtifactQueryRenderingUnit,
+    runCliArtifactQueryRenderingUnit,
+    runGovernanceArtifactQueryHelpOutputUnit
   ],
   registry: [
     runGovernanceArtifactRegistryConsistencyUnit,
@@ -31916,6 +32047,21 @@ async function main() {
     failed += 1;
   }
   if (!runGovernancePreviewIndexSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactQueryConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactQueryEmptyResultsUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactQueryRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runCliArtifactQueryRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactQueryHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

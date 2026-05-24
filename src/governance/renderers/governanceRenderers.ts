@@ -1,6 +1,7 @@
 import type { GovernanceRecommendation } from "../governanceArtifact.js";
 import type { GovernanceArtifact } from "../governanceArtifact.js";
 import type { GovernanceArtifactDiscoveryResults, GovernanceArtifactIndex, GovernanceArtifactIndexSummary } from "../governanceArtifactIndex.js";
+import type { GovernanceArtifactQueryResult, GovernanceArtifactQuerySummary } from "../governanceArtifactQuery.js";
 import type { GovernanceArtifactRegistry, GovernanceArtifactRegistrySummary } from "../governanceArtifactRegistry.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
@@ -147,6 +148,29 @@ export function renderGovernanceArtifactDiscoveryResults(results: GovernanceArti
     `Governance artifact discovery results: ${results.query}`,
     `- total results: ${results.totalResults}`,
     "Results:",
+    ...entries
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactQuerySummary(summary: GovernanceArtifactQuerySummary): string {
+  return [
+    "Governance artifact query summary:",
+    `- total matches: ${summary.totalMatches}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactQueryResult(result: GovernanceArtifactQueryResult): string {
+  const entries = result.entries.length === 0
+    ? ["- none"]
+    : result.entries.map((entry) => `- ${entry.version} ${entry.source} artifactType=${entry.artifactType} status=${entry.status} readonly=${String(entry.readonly)} previewOnly=${String(entry.previewOnly)}`);
+  return [
+    "Governance artifact query result:",
+    `- query type: ${result.queryType}`,
+    `- query value: ${result.queryValue}`,
+    renderGovernanceArtifactQuerySummary(result.summary),
+    "Matching artifact entries:",
     ...entries
   ].join("\n");
 }

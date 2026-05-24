@@ -30,6 +30,9 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
+import { renderCliGovernanceArtifactQueryResult } from "./cli/render/cliArtifactRenderer.js";
+import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
+import { queryPreviewOnlyGovernanceArtifacts, type GovernanceArtifactQueryResult } from "./governance/governanceArtifactQuery.js";
 import { archiveGovernanceFiles, type GovernanceArchiveInputFile, type GovernanceArchiveKind, type GovernanceArchiveResult } from "./repair/governanceArchive.js";
 import {
   buildGovernanceArchiveIndexEntry,
@@ -388,6 +391,7 @@ import {
   renderGovernanceRuntimeResearchRegistryPreviewHelp,
   renderGovernanceRuntimeResearchManifestPreviewHelp,
   renderGovernanceRuntimeResearchAttestationPreviewHelp,
+  renderGovernanceArtifactIndexHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
@@ -730,6 +734,34 @@ function findInvalidGovernanceFlag(command: string, args: string[]): string | nu
   return null;
 }
 
+function buildGovernanceArtifactIndexSampleQuery(): GovernanceArtifactQueryResult {
+  const index = createGovernanceArtifactIndex("Governance Artifact CLI Inspection Sample Index");
+  return queryPreviewOnlyGovernanceArtifacts({
+    ...index,
+    entries: [
+      {
+        artifactType: "manifest",
+        status: "preview",
+        severity: "info",
+        source: "governance-artifact-index-cli-sample",
+        version: "v10.6",
+        previewOnly: true,
+        readonly: true,
+        summary: "Deterministic read-only governance artifact inspection sample."
+      }
+    ],
+    summary: {
+      totalEntries: 1,
+      artifactTypeGroups: [{ key: "manifest", totalEntries: 1 }],
+      statusGroups: [{ key: "preview", totalEntries: 1 }],
+      readonlyEntries: 1,
+      previewOnlyEntries: 1,
+      allReadonly: true,
+      allPreviewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -740,6 +772,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
 
   if (command === undefined) {
     return;
+  }
+
+  if (command === "governance" && args[1] === "artifact-index") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance artifact-index", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceArtifactIndexHelp(), 0);
+    }
+
+    const result = buildGovernanceArtifactIndexSampleQuery();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(result, null, 2), 0);
+    }
+    printAndExit(renderCliGovernanceArtifactQueryResult(result), 0);
   }
 
   if (command === "governance" && args[1] === "config") {

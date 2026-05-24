@@ -9703,6 +9703,74 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v10.6 - Governance Artifact Query & Inspection CLI Layer
+
+v10.6 continues the Governance Consolidation Era by adding deterministic read-only query helpers and a conservative CLI inspection path for normalized governance artifact indexes. The query layer is descriptive only and does not activate, enforce, schedule, execute, mutate, route, or change runtime behavior.
+
+Governance artifact query helpers:
+
+* `src/governance/governanceArtifactQuery.ts` adds `queryGovernanceArtifacts`, `queryGovernanceArtifactsByType`, `queryGovernanceArtifactsByStatus`, `queryGovernanceArtifactsBySeverity`, `queryReadonlyGovernanceArtifacts`, and `queryPreviewOnlyGovernanceArtifacts`.
+* Query helpers operate over `GovernanceArtifactIndex` values and return stable sorted entries from the index/discovery layer.
+* Query helpers are pure, do not write files, do not generate hidden timestamps, do not enforce policy, and do not route runtime behavior.
+
+Query result model:
+
+* `GovernanceArtifactQuery` records query type and query value.
+* `GovernanceArtifactQueryResult` records query type, query value, total matches, entries, read-only state, preview-only state, and summary.
+* `GovernanceArtifactQuerySummary` records total matches, read-only state, and preview-only state for dashboard-friendly consumers.
+
+Query rendering:
+
+* `renderGovernanceArtifactQuerySummary` renders deterministic query totals and read-only/preview-only state.
+* `renderGovernanceArtifactQueryResult` renders deterministic query type, query value, total matches, and matching artifact entries.
+* `renderCliGovernanceArtifactQuerySummary` and `renderCliGovernanceArtifactQueryResult` provide equivalent CLI-safe deterministic output.
+* Empty query results render predictably as `none`.
+
+Read-only CLI inspection path:
+
+```powershell
+node dist\cli.js governance artifact-index --help
+node dist\cli.js governance artifact-index --json
+```
+
+The `governance artifact-index` command provides deterministic sample inspection output only. It does not depend on live runtime artifacts, activate governance, enforce policy, route runtime behavior, mutate files, or change repair orchestration.
+
+v10.6 deterministic checks:
+
+* governance-artifact-query-consistency
+* governance-artifact-query-empty-results
+* governance-artifact-query-rendering
+* cli-artifact-query-rendering
+* governance-artifact-query-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite query
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no builder agents are introduced
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

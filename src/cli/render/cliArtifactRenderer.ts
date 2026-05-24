@@ -1,5 +1,6 @@
 import type { GovernanceArtifact } from "../../governance/governanceArtifact.js";
 import type { GovernanceArtifactDiscoveryResults, GovernanceArtifactIndex } from "../../governance/governanceArtifactIndex.js";
+import type { GovernanceArtifactQueryResult, GovernanceArtifactQuerySummary } from "../../governance/governanceArtifactQuery.js";
 import type { GovernanceArtifactRegistry } from "../../governance/governanceArtifactRegistry.js";
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
@@ -86,6 +87,30 @@ export function renderCliGovernanceArtifactDiscoveryResults(results: GovernanceA
       `total results: ${results.totalResults}`
     ]),
     renderCliSection("Discovery entries", entryLines)
+  ].join("\n");
+}
+
+export function renderCliGovernanceArtifactQuerySummary(summary: GovernanceArtifactQuerySummary): string {
+  return renderCliSection("Governance artifact query summary", [
+    `total matches: ${summary.totalMatches}`,
+    `read-only: ${String(summary.readonly)}`,
+    `preview-only: ${String(summary.previewOnly)}`
+  ]);
+}
+
+export function renderCliGovernanceArtifactQueryResult(result: GovernanceArtifactQueryResult): string {
+  const entryLines = result.entries.length === 0
+    ? ["none"]
+    : result.entries.map((entry) => `${entry.version} ${entry.source} | artifactType=${entry.artifactType} | status=${entry.status} | readonly=${String(entry.readonly)} | previewOnly=${String(entry.previewOnly)}`);
+  return [
+    renderCliSection("Governance artifact query result", [
+      `query type: ${result.queryType}`,
+      `query value: ${result.queryValue}`,
+      `total matches: ${result.totalMatches}`
+    ]),
+    renderCliGovernanceArtifactQuerySummary(result.summary),
+    renderCliSection("Matching artifact entries", entryLines),
+    renderReadonlyNotice(result.previewOnly)
   ].join("\n");
 }
 
