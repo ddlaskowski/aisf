@@ -11,6 +11,7 @@ import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
 import type { GovernanceSeverity, GovernanceStatus } from "../governanceStatus.js";
+import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
 
 export function renderSection(title: string, lines: readonly string[] = []): string {
@@ -344,6 +345,69 @@ export function renderGovernanceConsolidationAudit(audit: GovernanceConsolidatio
     `- policyEnforcementEnabled: ${String(audit.policyEnforcementEnabled)}`,
     renderMetadata(audit.metadata),
     renderGovernanceConsolidationAuditSummary(audit.summary),
+    ...sections
+  ].join("\n");
+}
+
+export function renderProjectGenerationReadinessSummary(summary: ProjectGenerationReadinessSummary): string {
+  return [
+    "Project generation readiness summary:",
+    `- total sections: ${summary.totalSections}`,
+    `- ready sections: ${summary.readySections}`,
+    `- partial sections: ${summary.partialSections}`,
+    `- blocked sections: ${summary.blockedSections}`,
+    `- not-started sections: ${summary.notStartedSections}`,
+    `- preview-only sections: ${summary.previewOnlySections}`,
+    `- readiness score: ${summary.readinessScore.score}`,
+    `- readiness level: ${summary.readinessScore.level}`,
+    `- score reason: ${summary.readinessScore.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    "Blocking risks:",
+    ...(summary.blockingRisks.length === 0 ? ["- none"] : summary.blockingRisks.map((risk) => `- ${risk}`)),
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationReadinessSection(section: ProjectGenerationReadinessSection): string {
+  return [
+    `Project generation readiness section: ${section.title}`,
+    `- sectionType: ${section.sectionType}`,
+    `- status: ${section.status}`,
+    `- readiness: ${section.readiness}`,
+    `- summary: ${section.summary}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    "Blocking risks:",
+    ...(section.blockingRisks.length === 0 ? ["- none"] : section.blockingRisks.map((risk) => `- ${risk}`)),
+    renderWarnings(section.warnings),
+    "Recommendations:",
+    ...(section.recommendations.length === 0 ? ["- none"] : section.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationReadinessAssessment(assessment: ProjectGenerationReadinessAssessment): string {
+  const sections = assessment.sections.length === 0
+    ? ["Project generation readiness sections:", "- none"]
+    : ["Project generation readiness sections:", ...assessment.sections.map(renderProjectGenerationReadinessSection)];
+  return [
+    `Project generation readiness assessment: ${assessment.title}`,
+    `- schemaVersion: ${assessment.schemaVersion}`,
+    `- readonly: ${String(assessment.readonly)}`,
+    `- previewOnly: ${String(assessment.previewOnly)}`,
+    `- assessmentOnly: ${String(assessment.assessmentOnly)}`,
+    `- stdoutOnly: ${String(assessment.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(assessment.fileWriteAllowed)}`,
+    `- runtimeRoutingEnabled: ${String(assessment.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(assessment.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(assessment.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(assessment.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(assessment.builderAgentRuntimeEnabled)}`,
+    "Notice: no runtime activation, project generation, builder-agent runtime, policy enforcement, runtime routing, or file writing is enabled.",
+    renderMetadata(assessment.metadata),
+    renderProjectGenerationReadinessSummary(assessment.summary),
     ...sections
   ].join("\n");
 }

@@ -7,6 +7,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSummary 
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
+import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSummary } from "../../governance/projectGenerationReadiness.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
 
 export function renderCliGovernanceArtifact(artifact: GovernanceArtifact & { readonlyContract?: GovernanceReadonlyContract }): string {
@@ -255,6 +256,54 @@ export function renderCliGovernanceConsolidationAudit(audit: GovernanceConsolida
     renderCliGovernanceConsolidationAuditSummary(audit.summary),
     renderCliSection("Audit sections", sectionLines),
     renderReadonlyNotice(audit.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationReadinessSummary(summary: ProjectGenerationReadinessSummary): string {
+  return [
+    renderCliSection("Project generation readiness summary", [
+      `total sections: ${summary.totalSections}`,
+      `ready sections: ${summary.readySections}`,
+      `partial sections: ${summary.partialSections}`,
+      `blocked sections: ${summary.blockedSections}`,
+      `not-started sections: ${summary.notStartedSections}`,
+      `preview-only sections: ${summary.previewOnlySections}`,
+      `readiness score: ${summary.readinessScore.score}`,
+      `readiness level: ${summary.readinessScore.level}`,
+      `score reason: ${summary.readinessScore.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliSection("Blocking risks", summary.blockingRisks.length === 0 ? ["none"] : summary.blockingRisks),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationReadinessAssessment(assessment: ProjectGenerationReadinessAssessment): string {
+  const sectionLines = assessment.sections.length === 0
+    ? ["none"]
+    : assessment.sections.map((section) => `${section.sectionType} | ${section.title} | status=${section.status} | readiness=${section.readiness} | readonly=${String(section.readonly)} | previewOnly=${String(section.previewOnly)}`);
+  return [
+    renderCliSection("Project generation readiness assessment", [
+      `title: ${assessment.title}`,
+      `schemaVersion: ${assessment.schemaVersion}`,
+      `readonly: ${String(assessment.readonly)}`,
+      `previewOnly: ${String(assessment.previewOnly)}`,
+      `assessmentOnly: ${String(assessment.assessmentOnly)}`,
+      `stdoutOnly: ${String(assessment.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(assessment.fileWriteAllowed)}`,
+      `runtimeRoutingEnabled: ${String(assessment.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(assessment.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(assessment.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(assessment.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(assessment.builderAgentRuntimeEnabled)}`,
+      "notice: no runtime activation, project generation, builder-agent runtime, policy enforcement, runtime routing, or file writing is enabled"
+    ]),
+    renderCliMetadata(assessment.metadata),
+    renderCliProjectGenerationReadinessSummary(assessment.summary),
+    renderCliSection("Readiness sections", sectionLines),
+    renderReadonlyNotice(assessment.previewOnly)
   ].join("\n");
 }
 

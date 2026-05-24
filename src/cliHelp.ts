@@ -73,6 +73,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance runtime research-attestation-preview",
     "  node dist/cli.js governance artifact-index --help",
     "  node dist/cli.js governance consolidation-audit",
+    "  node dist/cli.js governance project-generation-readiness",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -155,6 +156,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime research-attestation-preview",
     "  node dist/cli.js governance artifact-index --help",
     "  node dist/cli.js governance consolidation-audit",
+    "  node dist/cli.js governance project-generation-readiness",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -995,6 +997,32 @@ export function renderGovernanceConsolidationAuditHelp(): string {
     "  Audit previews are stdout-only and do not write files by default.",
     "  This is a read-only / preview-only audit command.",
     "  It does not activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceProjectGenerationReadinessHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance project-generation-readiness",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance project-generation-readiness [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic readiness assessment output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance project-generation-readiness",
+    "  node dist/cli.js governance project-generation-readiness --json",
+    "",
+    "Project generation readiness assessment:",
+    "  This command assesses future project generation readiness using consolidated governance artifacts, validation suites, read-only contracts, Safe Patch Engine boundaries, single-file mutation boundaries, disabled runtime activation, builder-agent readiness, scaffolding readiness, orchestration readiness, and human approval readiness.",
+    "  This is assessment-only and does not implement builder agents, project scaffolding, planner loops, runtime orchestration, or autonomous project generation.",
+    "  Readiness previews are stdout-only and do not write files by default.",
+    "  This is a read-only / preview-only assessment command.",
+    "  It does not generate projects, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, or change repair orchestration.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";

@@ -29662,6 +29662,154 @@ function runGovernanceConsolidationAuditHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationReadinessConsistencyUnit() {
+  try {
+    const readinessModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationReadiness.js"));
+    const metadata = { version: "v11.0", source: "project-generation-unit", command: "unit", readonly: true, previewOnly: true };
+    const sections = [
+      readinessModule.createGovernanceConsolidationReadinessSection(),
+      readinessModule.createArtifactPipelineReadinessSection(),
+      readinessModule.createCliInspectionReadinessSection(),
+      readinessModule.createValidationSuiteReadinessSection(),
+      readinessModule.createReadonlyContractReadinessSection(),
+      readinessModule.createSafePatchBoundaryReadinessSection(),
+      readinessModule.createSingleFileMutationBoundaryReadinessSection(),
+      readinessModule.createRuntimeActivationDisabledReadinessSection(),
+      readinessModule.createBuilderAgentReadinessSection(),
+      readinessModule.createProjectScaffoldingReadinessSection(),
+      readinessModule.createOrchestrationReadinessSection(),
+      readinessModule.createHumanApprovalReadinessSection()
+    ];
+    const first = readinessModule.createProjectGenerationReadinessAssessment({ title: "Unit Readiness", metadata, sections });
+    const second = readinessModule.createProjectGenerationReadinessAssessment({ title: "Unit Readiness", metadata, sections });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("project generation readiness output is not deterministic");
+    if (first.summary.totalSections !== 12 || first.summary.readySections !== 9 || first.summary.partialSections !== 3) throw new Error(`readiness summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.assessmentOnly !== true || first.fileWriteAllowed !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`readiness invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`readiness introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-readiness-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-readiness-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationReadinessSectionConsistencyUnit() {
+  try {
+    const readinessModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationReadiness.js"));
+    const sections = [
+      readinessModule.createHumanApprovalReadinessSection(),
+      readinessModule.createOrchestrationReadinessSection(),
+      readinessModule.createBuilderAgentReadinessSection(),
+      readinessModule.createRuntimeActivationDisabledReadinessSection(),
+      readinessModule.createArtifactPipelineReadinessSection(),
+      readinessModule.createProjectScaffoldingReadinessSection(),
+      readinessModule.createGovernanceConsolidationReadinessSection(),
+      readinessModule.createSafePatchBoundaryReadinessSection(),
+      readinessModule.createSingleFileMutationBoundaryReadinessSection(),
+      readinessModule.createReadonlyContractReadinessSection(),
+      readinessModule.createValidationSuiteReadinessSection(),
+      readinessModule.createCliInspectionReadinessSection()
+    ];
+    const assessment = readinessModule.createProjectGenerationReadinessAssessment({
+      title: "Section Readiness",
+      metadata: { version: "v11.0", source: "project-generation-section", readonly: true, previewOnly: true },
+      sections
+    });
+    const order = assessment.sections.map((section) => section.sectionType).join(",");
+    if (order !== "artifact-pipeline,builder-agent-readiness,cli-inspection,governance-consolidation,human-approval-readiness,orchestration-readiness,project-scaffolding-readiness,readonly-contracts,runtime-activation-disabled,safe-patch-boundary,single-file-mutation-boundary,validation-suites") throw new Error(`readiness section ordering mismatch: ${order}`);
+    if (assessment.summary.blockingRisks.length !== 0 || assessment.summary.warnings.length === 0 || assessment.summary.recommendations.length === 0) throw new Error(`readiness section summary mismatch: ${JSON.stringify(assessment.summary)}`);
+    console.log("PASS project-generation-readiness-section-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-readiness-section-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationReadinessScoringUnit() {
+  try {
+    const readinessModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationReadiness.js"));
+    const sections = [
+      readinessModule.createGovernanceConsolidationReadinessSection(),
+      readinessModule.createBuilderAgentReadinessSection(),
+      readinessModule.createProjectScaffoldingReadinessSection()
+    ];
+    const score = readinessModule.calculateProjectGenerationReadinessScore(sections);
+    if (score.score !== 67 || score.level !== "partial") throw new Error(`partial score mismatch: ${JSON.stringify(score)}`);
+    const readyScore = readinessModule.calculateProjectGenerationReadinessScore([readinessModule.createGovernanceConsolidationReadinessSection(), readinessModule.createArtifactPipelineReadinessSection()]);
+    if (readyScore.score !== 100 || readyScore.level !== "ready-for-preview") throw new Error(`ready score mismatch: ${JSON.stringify(readyScore)}`);
+    const emptyScore = readinessModule.calculateProjectGenerationReadinessScore([]);
+    if (emptyScore.score !== 0 || emptyScore.level !== "blocked") throw new Error(`empty score mismatch: ${JSON.stringify(emptyScore)}`);
+    console.log("PASS project-generation-readiness-scoring");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-readiness-scoring");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationReadinessRenderingUnit() {
+  try {
+    const readinessModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationReadiness.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const assessment = readinessModule.createProjectGenerationReadinessAssessment({ title: "Empty Readiness", metadata: { version: "v11.0", source: "project-generation-render", readonly: true, previewOnly: true }, sections: [] });
+    const rendered = renderers.renderProjectGenerationReadinessAssessment(assessment);
+    if (!rendered.includes("Project generation readiness assessment: Empty Readiness") || !rendered.includes("readiness score: 0") || !rendered.includes("readiness level: blocked") || !rendered.includes("fileWriteAllowed: false") || !rendered.includes("projectGenerationEnabled: false") || !rendered.includes("no runtime activation")) throw new Error(`readiness render mismatch: ${rendered}`);
+    console.log("PASS project-generation-readiness-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-readiness-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationReadinessCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-readiness"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation readiness assessment:") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("builderAgentRuntimeEnabled: false") || !human.stdout.includes("fileWriteAllowed: false")) throw new Error(`readiness human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-readiness", "--json"]);
+    if (json.status !== 0) throw new Error(`readiness json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.assessmentOnly !== true || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.runtimeRoutingEnabled !== false || parsed.summary.totalSections !== 12 || parsed.summary.readinessScore.score !== 88 || parsed.summary.readinessScore.level !== "ready-for-design") throw new Error(`readiness json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-readiness-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-readiness-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationReadinessHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-readiness", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-readiness",
+      "assessment-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not generate projects",
+      "builder agents",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-readiness-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-readiness-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -29773,7 +29921,8 @@ const scenarioSuites = {
     runGovernanceArtifactSchemaConsistencyUnit,
     runGovernanceStatusNormalizationUnit,
     runGovernanceRenderNormalizationUnit,
-    runReadonlyRenderConsistencyUnit
+    runReadonlyRenderConsistencyUnit,
+    runProjectGenerationReadinessConsistencyUnit
   ],
   cli: [
     runCliRenderConsistencyUnit,
@@ -29784,7 +29933,9 @@ const scenarioSuites = {
     runGovernanceArtifactExportHelpOutputUnit,
     runGovernanceArtifactSnapshotHelpOutputUnit,
     runGovernanceArtifactReviewPackHelpOutputUnit,
-    runGovernanceConsolidationAuditHelpOutputUnit
+    runGovernanceConsolidationAuditHelpOutputUnit,
+    runProjectGenerationReadinessCliOutputUnit,
+    runProjectGenerationReadinessHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -29813,7 +29964,16 @@ const scenarioSuites = {
     runCliArtifactReviewPackRenderingUnit,
     runGovernanceConsolidationAuditRenderingUnit,
     runCliGovernanceConsolidationAuditRenderingUnit,
+    runProjectGenerationReadinessRenderingUnit,
     runReadonlyRenderConsistencyUnit
+  ],
+  "project-generation": [
+    runProjectGenerationReadinessConsistencyUnit,
+    runProjectGenerationReadinessSectionConsistencyUnit,
+    runProjectGenerationReadinessScoringUnit,
+    runProjectGenerationReadinessRenderingUnit,
+    runProjectGenerationReadinessCliOutputUnit,
+    runProjectGenerationReadinessHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -32664,6 +32824,24 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceConsolidationAuditHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationReadinessConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationReadinessSectionConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationReadinessScoringUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationReadinessRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationReadinessCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationReadinessHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

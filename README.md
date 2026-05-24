@@ -10086,6 +10086,100 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v11.0 - Project Generation Readiness Assessment Layer
+
+v11.0 begins the Project Generation Readiness Era after the v10.x Governance Consolidation Era. This release adds a deterministic, read-only readiness assessment for future controlled project generation systems. It does not implement builder agents, autonomous project generation, scaffolding runtimes, planner loops, runtime routing, policy enforcement, governance activation, file writing, or runtime orchestration.
+
+Readiness assessment model:
+
+* `src/governance/projectGenerationReadiness.ts` adds `ProjectGenerationReadinessAssessment`, `ProjectGenerationReadinessSection`, `ProjectGenerationReadinessSummary`, `ProjectGenerationReadinessScore`, `createProjectGenerationReadinessAssessment`, and `summarizeProjectGenerationReadinessAssessment`.
+* Assessment records explicitly preserve read-only, preview-only, assessment-only, stdout-only, no-file-write, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Readiness helpers require explicit metadata input and do not generate hidden timestamps.
+
+Readiness sections:
+
+* governance consolidation
+* artifact pipeline
+* CLI inspection
+* validation suites
+* read-only contracts
+* Safe Patch Engine boundary
+* single-file mutation boundary
+* runtime activation disabled
+* builder-agent readiness, assessment-only
+* project scaffolding readiness, assessment-only
+* orchestration readiness, assessment-only
+* human approval readiness
+
+Advisory scoring:
+
+* `calculateProjectGenerationReadinessScore` deterministically computes a 0-100 advisory score.
+* Readiness levels are `blocked`, `partial`, `ready-for-design`, and `ready-for-preview`.
+* Scoring is descriptive only and does not activate governance, route runtime behavior, generate projects, or enable builder agents.
+
+Readiness rendering:
+
+* `renderProjectGenerationReadinessSummary` renders deterministic section totals, advisory score, readiness level, blocking risks, warnings, and recommendations.
+* `renderProjectGenerationReadinessSection` renders stable section details.
+* `renderProjectGenerationReadinessAssessment` renders assessment title, guarantees, metadata, summary, explicit no-runtime-activation notice, and section summaries.
+* `renderCliProjectGenerationReadinessSummary` and `renderCliProjectGenerationReadinessAssessment` provide equivalent CLI-safe deterministic output.
+
+CLI readiness preview:
+
+```powershell
+node dist\cli.js governance project-generation-readiness
+node dist\cli.js governance project-generation-readiness --json
+```
+
+Readiness previews print to stdout only. They do not write files, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, or change repair orchestration.
+
+Project Generation Readiness Era transition:
+
+* v10.x completed the Governance Consolidation Era with stable invariants, schemas, artifact registries, indexes, queries, exports, snapshots, review packs, and completion audit checks.
+* v11.0 starts the Project Generation Readiness Era by assessing future controlled generation prerequisites only.
+* No project generation runtime exists in v11.0.
+* No builder agents exist in v11.0.
+
+v11.0 deterministic checks:
+
+* project-generation-readiness-consistency
+* project-generation-readiness-section-consistency
+* project-generation-readiness-scoring
+* project-generation-readiness-rendering
+* project-generation-readiness-cli-output
+* project-generation-readiness-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite project-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no builder agents are introduced
+* no project scaffolding runtime is introduced
+* no runtime routing is introduced
+* no readiness file writing is introduced by default
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

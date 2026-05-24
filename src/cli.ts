@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -65,6 +65,22 @@ import {
   createGovernanceConsolidationAudit,
   type GovernanceConsolidationAudit
 } from "./governance/governanceConsolidationAudit.js";
+import {
+  createArtifactPipelineReadinessSection,
+  createBuilderAgentReadinessSection,
+  createCliInspectionReadinessSection,
+  createGovernanceConsolidationReadinessSection,
+  createHumanApprovalReadinessSection,
+  createOrchestrationReadinessSection,
+  createProjectGenerationReadinessAssessment,
+  createProjectScaffoldingReadinessSection,
+  createReadonlyContractReadinessSection,
+  createRuntimeActivationDisabledReadinessSection,
+  createSafePatchBoundaryReadinessSection,
+  createSingleFileMutationBoundaryReadinessSection,
+  createValidationSuiteReadinessSection,
+  type ProjectGenerationReadinessAssessment
+} from "./governance/projectGenerationReadiness.js";
 import { archiveGovernanceFiles, type GovernanceArchiveInputFile, type GovernanceArchiveKind, type GovernanceArchiveResult } from "./repair/governanceArchive.js";
 import {
   buildGovernanceArchiveIndexEntry,
@@ -424,6 +440,7 @@ import {
   renderGovernanceRuntimeResearchManifestPreviewHelp,
   renderGovernanceRuntimeResearchAttestationPreviewHelp,
   renderGovernanceConsolidationAuditHelp,
+  renderGovernanceProjectGenerationReadinessHelp,
   renderGovernanceArtifactIndexHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
@@ -882,6 +899,33 @@ function buildGovernanceConsolidationAuditPreview(): GovernanceConsolidationAudi
   });
 }
 
+function buildProjectGenerationReadinessAssessmentPreview(): ProjectGenerationReadinessAssessment {
+  return createProjectGenerationReadinessAssessment({
+    title: "Project Generation Readiness Assessment",
+    metadata: {
+      version: "v11.0",
+      source: "project-generation-readiness-cli-preview",
+      command: "governance project-generation-readiness",
+      readonly: true,
+      previewOnly: true
+    },
+    sections: [
+      createGovernanceConsolidationReadinessSection(),
+      createArtifactPipelineReadinessSection(),
+      createCliInspectionReadinessSection(),
+      createValidationSuiteReadinessSection(),
+      createReadonlyContractReadinessSection(),
+      createSafePatchBoundaryReadinessSection(),
+      createSingleFileMutationBoundaryReadinessSection(),
+      createRuntimeActivationDisabledReadinessSection(),
+      createBuilderAgentReadinessSection(),
+      createProjectScaffoldingReadinessSection(),
+      createOrchestrationReadinessSection(),
+      createHumanApprovalReadinessSection()
+    ]
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -915,6 +959,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(audit, null, 2), 0);
     }
     printAndExit(renderCliGovernanceConsolidationAudit(audit), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-readiness") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-readiness", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationReadinessHelp(), 0);
+    }
+
+    const assessment = buildProjectGenerationReadinessAssessmentPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(assessment, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationReadinessAssessment(assessment), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {
