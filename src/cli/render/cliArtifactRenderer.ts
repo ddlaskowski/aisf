@@ -7,6 +7,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSummary 
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
+import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSummary } from "../../governance/projectGenerationReadiness.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
@@ -352,6 +353,57 @@ export function renderCliProjectGenerationCapabilityMap(map: ProjectGenerationCa
     renderCliSection("Capabilities", capabilityLines),
     renderCliSection("Capability dependencies", dependencyLines),
     renderReadonlyNotice(map.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationBlueprintSummary(summary: ProjectGenerationBlueprintSummary): string {
+  return [
+    renderCliSection("Project generation blueprint preview summary", [
+      `total sections: ${summary.totalSections}`,
+      `ready-for-design sections: ${summary.readyForDesignSections}`,
+      `preview sections: ${summary.previewSections}`,
+      `requires-approval sections: ${summary.requiresApprovalSections}`,
+      `incomplete sections: ${summary.incompleteSections}`,
+      `blocked sections: ${summary.blockedSections}`,
+      `total items: ${summary.totalItems}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliSection("Risks", summary.risks.length === 0 ? ["none"] : summary.risks),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationBlueprintPreview(preview: ProjectGenerationBlueprintPreview): string {
+  const sectionLines = preview.sections.length === 0
+    ? ["none"]
+    : preview.sections.map((section) => `${section.sectionType} | ${section.title} | status=${section.status} | items=${section.items.length} | readonly=${String(section.readonly)} | previewOnly=${String(section.previewOnly)}`);
+  return [
+    renderCliSection("Project generation blueprint preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `blueprintPreviewOnly: ${String(preview.blueprintPreviewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      "notice: no project generation, scaffold generation, file creation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliProjectGenerationBlueprintSummary(preview.summary),
+    renderCliSection("Blueprint sections", sectionLines),
+    renderReadonlyNotice(preview.previewOnly)
   ].join("\n");
 }
 

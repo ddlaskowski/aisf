@@ -75,6 +75,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance consolidation-audit",
     "  node dist/cli.js governance project-generation-readiness",
     "  node dist/cli.js governance project-generation-capabilities",
+    "  node dist/cli.js governance project-generation-blueprint",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -159,6 +160,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance consolidation-audit",
     "  node dist/cli.js governance project-generation-readiness",
     "  node dist/cli.js governance project-generation-capabilities",
+    "  node dist/cli.js governance project-generation-blueprint",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1051,6 +1053,32 @@ export function renderGovernanceProjectGenerationCapabilitiesHelp(): string {
     "  Capability previews are stdout-only and do not write files by default.",
     "  This is a read-only / preview-only planning command.",
     "  It does not generate projects, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceProjectGenerationBlueprintHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance project-generation-blueprint",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance project-generation-blueprint [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic blueprint preview output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance project-generation-blueprint",
+    "  node dist/cli.js governance project-generation-blueprint --json",
+    "",
+    "Project generation blueprint preview:",
+    "  This command previews future project blueprint sections as descriptive data only: project intent, requirements, architecture, file plan, dependency plan, validation plan, governance plan, human approval plan, risk plan, and rollback plan.",
+    "  This is preview-only and does not implement builder agents, project scaffolding, planner loops, runtime orchestration, runtime routing, or autonomous project generation.",
+    "  Blueprint previews are stdout-only and do not write files by default.",
+    "  This is a read-only / preview-only planning command.",
+    "  It does not generate projects, scaffold files, create files, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";

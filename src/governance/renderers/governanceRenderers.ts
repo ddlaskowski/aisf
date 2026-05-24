@@ -11,6 +11,7 @@ import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
 import type { GovernanceSeverity, GovernanceStatus } from "../governanceStatus.js";
+import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSection, ProjectGenerationBlueprintSummary } from "../projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../projectGenerationCapabilityMap.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
@@ -473,6 +474,72 @@ export function renderProjectGenerationCapabilityMap(map: ProjectGenerationCapab
     renderProjectGenerationCapabilitySummary(map.summary),
     ...capabilities,
     ...dependencies
+  ].join("\n");
+}
+
+export function renderProjectGenerationBlueprintSummary(summary: ProjectGenerationBlueprintSummary): string {
+  return [
+    "Project generation blueprint preview summary:",
+    `- total sections: ${summary.totalSections}`,
+    `- ready-for-design sections: ${summary.readyForDesignSections}`,
+    `- preview sections: ${summary.previewSections}`,
+    `- requires-approval sections: ${summary.requiresApprovalSections}`,
+    `- incomplete sections: ${summary.incompleteSections}`,
+    `- blocked sections: ${summary.blockedSections}`,
+    `- total items: ${summary.totalItems}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    "Risks:",
+    ...(summary.risks.length === 0 ? ["- none"] : summary.risks.map((risk) => `- ${risk}`)),
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationBlueprintSection(section: ProjectGenerationBlueprintSection): string {
+  return [
+    `Project generation blueprint section: ${section.title}`,
+    `- sectionType: ${section.sectionType}`,
+    `- status: ${section.status}`,
+    `- summary: ${section.summary}`,
+    `- items: ${section.items.length === 0 ? "none" : section.items.join(", ")}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    "Risks:",
+    ...(section.risks.length === 0 ? ["- none"] : section.risks.map((risk) => `- ${risk}`)),
+    renderWarnings(section.warnings),
+    "Recommendations:",
+    ...(section.recommendations.length === 0 ? ["- none"] : section.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationBlueprintPreview(preview: ProjectGenerationBlueprintPreview): string {
+  const sections = preview.sections.length === 0
+    ? ["Project generation blueprint sections:", "- none"]
+    : ["Project generation blueprint sections:", ...preview.sections.map(renderProjectGenerationBlueprintSection)];
+  return [
+    `Project generation blueprint preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- blueprintPreviewOnly: ${String(preview.blueprintPreviewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    "Notice: no project generation, scaffold generation, file creation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(preview.metadata),
+    renderProjectGenerationBlueprintSummary(preview.summary),
+    ...sections
   ].join("\n");
 }
 

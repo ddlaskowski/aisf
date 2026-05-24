@@ -29944,6 +29944,139 @@ function runProjectGenerationCapabilityHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationBlueprintConsistencyUnit() {
+  try {
+    const blueprintModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationBlueprintPreview.js"));
+    const metadata = { version: "v11.2", source: "blueprint-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = blueprintModule.createProjectGenerationBlueprintPreview({ title: "Unit Blueprint", metadata });
+    const second = blueprintModule.createProjectGenerationBlueprintPreview({ title: "Unit Blueprint", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("blueprint output is not deterministic");
+    if (first.summary.totalSections !== 10 || first.summary.totalItems !== 30 || first.summary.completeness.score !== 84 || first.summary.completeness.level !== "review-ready") throw new Error(`blueprint summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.blueprintPreviewOnly !== true || first.fileWriteAllowed !== false || first.fileCreationAllowed !== false || first.scaffoldGenerationEnabled !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`blueprint invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`blueprint introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-blueprint-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-blueprint-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationBlueprintSectionConsistencyUnit() {
+  try {
+    const blueprintModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationBlueprintPreview.js"));
+    const sections = [
+      blueprintModule.createRollbackPlanBlueprintSection(),
+      blueprintModule.createProjectIntentBlueprintSection(),
+      blueprintModule.createFilePlanBlueprintSection(),
+      blueprintModule.createArchitectureBlueprintSection(),
+      blueprintModule.createRiskPlanBlueprintSection(),
+      blueprintModule.createGovernancePlanBlueprintSection(),
+      blueprintModule.createRequirementsBlueprintSection(),
+      blueprintModule.createHumanApprovalBlueprintSection(),
+      blueprintModule.createValidationPlanBlueprintSection(),
+      blueprintModule.createDependencyPlanBlueprintSection()
+    ];
+    const blueprint = blueprintModule.createProjectGenerationBlueprintPreview({
+      title: "Section Blueprint",
+      metadata: { version: "v11.2", source: "blueprint-section", readonly: true, previewOnly: true },
+      sections
+    });
+    const order = blueprint.sections.map((section) => section.sectionType).join(",");
+    if (order !== "architecture,dependencyPlan,filePlan,governancePlan,humanApprovalPlan,projectIntent,requirements,riskPlan,rollbackPlan,validationPlan") throw new Error(`blueprint section ordering mismatch: ${order}`);
+    if (blueprint.summary.readyForDesignSections !== 4 || blueprint.summary.previewSections !== 4 || blueprint.summary.requiresApprovalSections !== 2 || blueprint.summary.blockedSections !== 0) throw new Error(`blueprint section summary mismatch: ${JSON.stringify(blueprint.summary)}`);
+    console.log("PASS project-generation-blueprint-section-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-blueprint-section-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationBlueprintCompletenessUnit() {
+  try {
+    const blueprintModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationBlueprintPreview.js"));
+    const sections = [
+      blueprintModule.createProjectIntentBlueprintSection(),
+      blueprintModule.createArchitectureBlueprintSection(),
+      blueprintModule.createFilePlanBlueprintSection()
+    ];
+    const score = blueprintModule.calculateProjectGenerationBlueprintCompleteness(sections);
+    if (score.score !== 80 || score.level !== "review-ready") throw new Error(`mixed completeness mismatch: ${JSON.stringify(score)}`);
+    const ready = blueprintModule.calculateProjectGenerationBlueprintCompleteness([blueprintModule.createProjectIntentBlueprintSection(), blueprintModule.createRequirementsBlueprintSection()]);
+    if (ready.score !== 100 || ready.level !== "ready-for-design") throw new Error(`ready completeness mismatch: ${JSON.stringify(ready)}`);
+    const empty = blueprintModule.calculateProjectGenerationBlueprintCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty completeness mismatch: ${JSON.stringify(empty)}`);
+    console.log("PASS project-generation-blueprint-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-blueprint-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationBlueprintRenderingUnit() {
+  try {
+    const blueprintModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationBlueprintPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const blueprint = blueprintModule.createProjectGenerationBlueprintPreview({ title: "Render Blueprint", metadata: { version: "v11.2", source: "blueprint-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationBlueprintPreview(blueprint);
+    if (!rendered.includes("Project generation blueprint preview: Render Blueprint") || !rendered.includes("completeness score: 84") || !rendered.includes("fileCreationAllowed: false") || !rendered.includes("scaffoldGenerationEnabled: false") || !rendered.includes("projectGenerationEnabled: false") || !rendered.includes("no project generation")) throw new Error(`blueprint render mismatch: ${rendered}`);
+    console.log("PASS project-generation-blueprint-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-blueprint-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationBlueprintCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-blueprint"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation blueprint preview:") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("scaffoldGenerationEnabled: false") || !human.stdout.includes("fileCreationAllowed: false")) throw new Error(`blueprint human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-blueprint", "--json"]);
+    if (json.status !== 0) throw new Error(`blueprint json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.blueprintPreviewOnly !== true || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.scaffoldGenerationEnabled !== false || parsed.fileCreationAllowed !== false || parsed.summary.totalSections !== 10 || parsed.summary.completeness.score !== 84) throw new Error(`blueprint json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-blueprint-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-blueprint-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationBlueprintHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-blueprint", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-blueprint",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not generate projects",
+      "scaffold files",
+      "create files",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-blueprint-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-blueprint-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -30057,7 +30190,8 @@ const scenarioSuites = {
     runGovernanceRenderNormalizationUnit,
     runReadonlyRenderConsistencyUnit,
     runProjectGenerationReadinessConsistencyUnit,
-    runProjectGenerationCapabilityMapConsistencyUnit
+    runProjectGenerationCapabilityMapConsistencyUnit,
+    runProjectGenerationBlueprintConsistencyUnit
   ],
   cli: [
     runCliRenderConsistencyUnit,
@@ -30072,7 +30206,9 @@ const scenarioSuites = {
     runProjectGenerationReadinessCliOutputUnit,
     runProjectGenerationReadinessHelpOutputUnit,
     runProjectGenerationCapabilityCliOutputUnit,
-    runProjectGenerationCapabilityHelpOutputUnit
+    runProjectGenerationCapabilityHelpOutputUnit,
+    runProjectGenerationBlueprintCliOutputUnit,
+    runProjectGenerationBlueprintHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -30103,6 +30239,7 @@ const scenarioSuites = {
     runCliGovernanceConsolidationAuditRenderingUnit,
     runProjectGenerationReadinessRenderingUnit,
     runProjectGenerationCapabilityRenderingUnit,
+    runProjectGenerationBlueprintRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -30118,7 +30255,13 @@ const scenarioSuites = {
     runProjectGenerationCapabilityFilteringUnit,
     runProjectGenerationCapabilityRenderingUnit,
     runProjectGenerationCapabilityCliOutputUnit,
-    runProjectGenerationCapabilityHelpOutputUnit
+    runProjectGenerationCapabilityHelpOutputUnit,
+    runProjectGenerationBlueprintConsistencyUnit,
+    runProjectGenerationBlueprintSectionConsistencyUnit,
+    runProjectGenerationBlueprintCompletenessUnit,
+    runProjectGenerationBlueprintRenderingUnit,
+    runProjectGenerationBlueprintCliOutputUnit,
+    runProjectGenerationBlueprintHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -33008,6 +33151,24 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationCapabilityHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationBlueprintConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationBlueprintSectionConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationBlueprintCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationBlueprintRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationBlueprintCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationBlueprintHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

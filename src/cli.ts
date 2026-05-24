@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -65,6 +65,10 @@ import {
   createGovernanceConsolidationAudit,
   type GovernanceConsolidationAudit
 } from "./governance/governanceConsolidationAudit.js";
+import {
+  createProjectGenerationBlueprintPreview,
+  type ProjectGenerationBlueprintPreview
+} from "./governance/projectGenerationBlueprintPreview.js";
 import {
   createProjectGenerationCapabilityMap,
   type ProjectGenerationCapabilityMap
@@ -444,6 +448,7 @@ import {
   renderGovernanceRuntimeResearchManifestPreviewHelp,
   renderGovernanceRuntimeResearchAttestationPreviewHelp,
   renderGovernanceConsolidationAuditHelp,
+  renderGovernanceProjectGenerationBlueprintHelp,
   renderGovernanceProjectGenerationCapabilitiesHelp,
   renderGovernanceProjectGenerationReadinessHelp,
   renderGovernanceArtifactIndexHelp,
@@ -944,6 +949,19 @@ function buildProjectGenerationCapabilityMapPreview(): ProjectGenerationCapabili
   });
 }
 
+function buildProjectGenerationBlueprintPreview(): ProjectGenerationBlueprintPreview {
+  return createProjectGenerationBlueprintPreview({
+    title: "Project Generation Blueprint Preview",
+    metadata: {
+      version: "v11.2",
+      source: "project-generation-blueprint-cli-preview",
+      command: "governance project-generation-blueprint",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1023,6 +1041,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(capabilityMap, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationCapabilityMap(capabilityMap), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-blueprint") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-blueprint", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationBlueprintHelp(), 0);
+    }
+
+    const blueprint = buildProjectGenerationBlueprintPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(blueprint, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationBlueprintPreview(blueprint), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

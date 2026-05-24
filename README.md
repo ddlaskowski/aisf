@@ -10272,6 +10272,94 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v11.2 - Project Generation Blueprint Preview Layer
+
+v11.2 continues the Project Generation Readiness Era by adding a deterministic, read-only blueprint preview model for future controlled project generation systems. The blueprint preview is descriptive planning data only. It does not implement builder agents, autonomous project generation, scaffold generation, file creation, runtime routing, policy enforcement, governance activation, mutation expansion, or runtime orchestration.
+
+Blueprint preview model:
+
+* `src/governance/projectGenerationBlueprintPreview.ts` adds `ProjectGenerationBlueprintPreview`, `ProjectGenerationBlueprintSection`, `ProjectGenerationBlueprintSummary`, `ProjectGenerationBlueprintCompleteness`, `createProjectGenerationBlueprintPreview`, and `summarizeProjectGenerationBlueprintPreview`.
+* Blueprint previews explicitly preserve read-only, preview-only, blueprint-preview-only, stdout-only, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Blueprint helpers require explicit metadata input and do not generate hidden timestamps.
+
+Blueprint sections:
+
+* project intent
+* requirements
+* architecture
+* file plan
+* dependency plan
+* validation plan
+* governance plan
+* human approval plan
+* risk plan
+* rollback plan
+
+Each section records section type, title, status, summary, deterministic items, risks, warnings, recommendations, read-only state, and preview-only state.
+
+Advisory completeness scoring:
+
+* `calculateProjectGenerationBlueprintCompleteness` deterministically computes a 0-100 advisory score.
+* Completeness levels are `incomplete`, `partial`, `review-ready`, and `ready-for-design`.
+* Scoring is descriptive only and does not activate governance, route runtime behavior, generate projects, scaffold files, create files, or enable builder agents.
+
+Blueprint rendering:
+
+* `renderProjectGenerationBlueprintSummary` renders deterministic section totals, item totals, completeness score, completeness level, risks, warnings, and recommendations.
+* `renderProjectGenerationBlueprintSection` renders stable blueprint section details.
+* `renderProjectGenerationBlueprintPreview` renders blueprint title, guarantees, metadata, summary, section details, and an explicit no-project-generation notice.
+* `renderCliProjectGenerationBlueprintSummary` and `renderCliProjectGenerationBlueprintPreview` provide equivalent CLI-safe deterministic output.
+
+CLI blueprint preview:
+
+```powershell
+node dist\cli.js governance project-generation-blueprint
+node dist\cli.js governance project-generation-blueprint --json
+```
+
+Blueprint previews print to stdout only. They do not write files, create files, scaffold files, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v11.2 deterministic checks:
+
+* project-generation-blueprint-consistency
+* project-generation-blueprint-section-consistency
+* project-generation-blueprint-completeness
+* project-generation-blueprint-rendering
+* project-generation-blueprint-cli-output
+* project-generation-blueprint-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite project-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no builder agents are introduced
+* no runtime routing is introduced
+* no blueprint file writing is introduced by default
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
