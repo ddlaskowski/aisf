@@ -67,6 +67,7 @@
     "  node dist/cli.js governance runtime research-catalog-preview",
     "  node dist/cli.js governance runtime research-registry-preview",
     "  node dist/cli.js governance runtime research-manifest-preview",
+    "  node dist/cli.js governance runtime research-attestation-preview",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -146,6 +147,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance runtime research-catalog-preview",
     "  node dist/cli.js governance runtime research-registry-preview",
     "  node dist/cli.js governance runtime research-manifest-preview",
+    "  node dist/cli.js governance runtime research-attestation-preview",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -906,6 +908,27 @@ export function renderGovernanceRuntimeResearchManifestPreviewHelp(): string {
     "",
     "Runtime governance research manifest preview-only guarantee:",
     "  This command models runtime governance manifest groups, manifest records, manifest ownership entries, manifest version entries, preview-only manifest summaries, forbidden capability manifest records, and future-only manifest notes only.",
+    "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceRuntimeResearchAttestationPreviewHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance runtime research-attestation-preview",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance runtime research-attestation-preview [options]",
+    "",
+    "Options:",
+    "  --json      Print JSON output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance runtime research-attestation-preview",
+    "  node dist/cli.js governance runtime research-attestation-preview --json",
+    "",
+    "Runtime governance research attestation preview-only guarantee:",
+    "  This command models runtime governance attestation groups, attestation records, attestation findings, attestation ownership summaries, preview-only attestation summaries, forbidden capability attestation findings, and future-only attestation notes only.",
     "  It does not activate runtime governance, approve runtime activation, execute runtime activation, enable runtime autonomy, enforce policies, activate config, execute sandboxes, execute rollback, apply overrides, or change repair orchestration."
   ].join("\n") + "\n";
 }

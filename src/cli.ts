@@ -334,6 +334,11 @@ import {
   writeGovernanceRuntimeResearchManifestPreviewArtifacts
 } from "./governance/runtimeGovernanceResearchManifestPreview.js";
 import {
+  buildGovernanceRuntimeResearchAttestationPreview,
+  renderGovernanceRuntimeResearchAttestationPreviewText,
+  writeGovernanceRuntimeResearchAttestationPreviewArtifacts
+} from "./governance/runtimeGovernanceResearchAttestationPreview.js";
+import {
   renderArchiveRequiresExportError,
   renderArchiveHelp,
   renderCiSummaryHelp,
@@ -382,6 +387,7 @@ import {
   renderGovernanceRuntimeResearchCatalogPreviewHelp,
   renderGovernanceRuntimeResearchRegistryPreviewHelp,
   renderGovernanceRuntimeResearchManifestPreviewHelp,
+  renderGovernanceRuntimeResearchAttestationPreviewHelp,
   renderGovernanceAutonomyScopePreviewHelp,
   renderGovernanceAutonomyReadinessHelp,
   renderGovernanceProfileInheritancePreviewHelp,
@@ -1867,6 +1873,28 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderGovernanceRuntimeResearchManifestPreviewText(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "runtime" && args[2] === "research-attestation-preview") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(3)) {
+      if (!arg.startsWith("-")) continue;
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance runtime research-attestation-preview", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceRuntimeResearchAttestationPreviewHelp(), 0);
+    }
+
+    const preview = buildGovernanceRuntimeResearchAttestationPreview(process.cwd());
+    writeGovernanceRuntimeResearchAttestationPreviewArtifacts(process.cwd(), preview);
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderGovernanceRuntimeResearchAttestationPreviewText(preview), 0);
   }
 
   const commandHelp = renderCommandHelp(command);

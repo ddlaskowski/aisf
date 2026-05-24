@@ -9123,6 +9123,200 @@ v9.8 deterministic checks:
 * governance-runtime-research-manifest-preview-no-manifest-application
 * governance-runtime-research-manifest-preview-no-autonomy
 
+## Runtime Governance Research Attestation Preview (v9.9)
+
+v9.9 adds a deterministic runtime governance research attestation preview command:
+
+```bash
+node dist/cli.js governance runtime research-attestation-preview
+node dist/cli.js governance runtime research-attestation-preview --json
+```
+
+Artifacts:
+
+```text
+.factory/governance/runtime-governance-research-attestation-preview.json
+.factory/governance/runtime-governance-research-attestation-preview.md
+```
+
+The attestation preview consolidates the full preview-only runtime governance research chain into attestation groups, attestation records, attestation findings, attestation ownership summaries, preview-only attestation summaries, forbidden capability attestation findings, and future-only attestation notes.
+
+Safety guarantees:
+
+* runtime research attestation is preview-only
+* runtime research attestation is not applied
+* runtime research attestation is not enforced
+* runtime governance is NOT enabled
+* runtime autonomy is NOT enabled
+* runtime activation is NOT approved
+* runtime activation is NOT executed
+* runtime policies are NOT enforced
+* runtime config activation is disabled
+* runtime behavior does not change
+* governance decisions do not change
+* repair orchestration does not change
+* Safe Patch Engine remains the only mutation layer
+
+Example human output:
+
+```text
+# AI Software Factory - Runtime Governance Research Attestation Preview
+
+Preview status:
+created
+
+Source runtime research manifest status:
+created
+
+Runtime research attestation conclusion:
+research-attestation-ready
+
+Runtime research attestation applied:
+false
+
+Runtime research attestation enforced:
+false
+
+Runtime governance enabled:
+false
+
+Runtime autonomy enabled:
+false
+
+Runtime activation approved:
+false
+
+Runtime activation executed:
+false
+
+Policy runtime mode:
+preview-only
+
+Research attestation score:
+80
+
+Research attestation rating:
+research-attestation-ready
+
+Recommended next stage:
+prepare-runtime-governance-preview-conclusion
+```
+
+Example JSON fields:
+
+```json
+{
+  "schemaVersion": 1,
+  "previewStatus": "created",
+  "sourceRuntimeResearchManifestStatus": "created",
+  "runtimeResearchAttestationConclusion": "research-attestation-ready",
+  "runtimeResearchAttestationApplied": false,
+  "runtimeResearchAttestationEnforced": false,
+  "runtimeGovernanceEnabled": false,
+  "runtimeAutonomyEnabled": false,
+  "runtimeActivationApproved": false,
+  "runtimeActivationExecuted": false,
+  "policyRuntimeMode": "preview-only",
+  "runtimeBehaviorChanged": false,
+  "repairOrchestrationChanged": false,
+  "safePatchEngineOnly": true,
+  "researchAttestationScore": {
+    "score": 80,
+    "rating": "research-attestation-ready"
+  }
+}
+```
+
+Example markdown runtime-governance-research-attestation-preview shape:
+
+```markdown
+# AI Software Factory - Runtime Governance Research Attestation Preview
+
+Preview status:
+created
+
+Runtime research attestation conclusion:
+research-attestation-ready
+
+Runtime research attestation applied:
+false
+
+Runtime research attestation enforced:
+false
+
+## Attestation Groups
+
+## Attestation Records
+
+## Attestation Findings
+
+## Attestation Ownership Summaries
+
+## Preview-only Attestation Summaries
+
+## Forbidden Capability Attestation Findings
+
+## Future-only Attestation Notes
+
+## Warnings
+```
+
+v9.9 hard invariants:
+
+* `runtimeResearchAttestationApplied` is always `false`
+* `runtimeResearchAttestationEnforced` is always `false`
+* `runtimeResearchManifestApplied` is always `false`
+* `runtimeResearchManifestEnforced` is always `false`
+* `runtimeResearchRegistryApplied` is always `false`
+* `runtimeResearchRegistryEnforced` is always `false`
+* `runtimeResearchCatalogApplied` is always `false`
+* `runtimeResearchCatalogEnforced` is always `false`
+* `runtimeResearchArchiveApplied` is always `false`
+* `runtimeResearchArchiveEnforced` is always `false`
+* `runtimeResearchTimelineApplied` is always `false`
+* `runtimeResearchTimelineEnforced` is always `false`
+* `runtimeResearchMapApplied` is always `false`
+* `runtimeResearchMapEnforced` is always `false`
+* `runtimeResearchIndexApplied` is always `false`
+* `runtimeResearchIndexEnforced` is always `false`
+* `runtimeResearchApplied` is always `false`
+* `runtimeResearchEnforced` is always `false`
+* `runtimeFinalReviewApproved` is always `false`
+* `runtimeFinalReviewApplied` is always `false`
+* `runtimeFinalReviewEnforced` is always `false`
+* `runtimeActivationApproved` is always `false`
+* `runtimeActivationExecuted` is always `false`
+* `runtimeGovernanceEnabled` is always `false`
+* `runtimeAutonomyEnabled` is always `false`
+* `runtimeAutonomyActionsAllowed` is always `false`
+* `runtimePolicyEnforcementEnabled` is always `false`
+* `runtimeConfigActivationEnabled` is always `false`
+* `runtimeLearningEnabled` is always `false`
+* `runtimeMlDecisioningEnabled` is always `false`
+* `runtimeMultiAgentCoordinationEnabled` is always `false`
+* `governanceBypassAllowed` is always `false`
+* `applied` is always `false`
+* `enforced` is always `false`
+* `policyRuntimeMode` is always `preview-only`
+* `runtimeBehaviorChanged` is always `false`
+* `governanceDecisionsChanged` is always `false`
+* `repairOrchestrationChanged` is always `false`
+* `safePatchEngineOnly` is always `true`
+
+v9.9 deterministic checks:
+
+* governance-runtime-research-attestation-preview-unit
+* governance-runtime-research-attestation-preview-missing
+* governance-runtime-research-attestation-preview-not-ready
+* governance-runtime-research-attestation-preview-ready
+* governance-runtime-research-attestation-preview-blocked
+* governance-runtime-research-attestation-preview-score
+* governance-runtime-research-attestation-preview-forbidden-capabilities
+* governance-runtime-research-attestation-preview-json-output
+* governance-runtime-research-attestation-preview-artifact
+* governance-runtime-research-attestation-preview-no-attestation-application
+* governance-runtime-research-attestation-preview-no-autonomy
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

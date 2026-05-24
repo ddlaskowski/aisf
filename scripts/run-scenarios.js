@@ -28174,6 +28174,339 @@ function runGovernanceRuntimeResearchManifestPreviewNoAutonomyUnit() {
   }
 }
 
+function directGovernanceRuntimeResearchAttestationPreview(repo) {
+  const { buildGovernanceRuntimeResearchAttestationPreview } = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchAttestationPreview.js"));
+  return buildGovernanceRuntimeResearchAttestationPreview(repo);
+}
+
+function directGovernanceRuntimeResearchAttestationPreviewFromManifest(source) {
+  const { buildGovernanceRuntimeResearchAttestationPreviewFromManifest } = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchAttestationPreview.js"));
+  return buildGovernanceRuntimeResearchAttestationPreviewFromManifest(source);
+}
+
+function cleanupProjectGovernanceRuntimeResearchAttestationPreviewArtifacts() {
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-governance-research-attestation-preview.json"), { force: true });
+  fs.rmSync(path.join(projectRoot, ".factory", "governance", "runtime-governance-research-attestation-preview.md"), { force: true });
+}
+
+function cleanupProjectGovernanceRuntimeResearchAttestationPreviewChainArtifacts() {
+  cleanupProjectGovernanceRuntimeResearchAttestationPreviewArtifacts();
+  cleanupProjectGovernanceRuntimeResearchManifestPreviewChainArtifacts();
+}
+
+function createSyntheticRuntimeResearchManifestPreview(overrides = {}) {
+  const preview = directGovernanceRuntimeResearchManifestPreviewFromRegistry(createSyntheticRuntimeResearchRegistryPreview());
+  return { ...preview, ...overrides, summary: { ...preview.summary, ...(overrides.summary || {}) } };
+}
+
+function assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, label) {
+  const runtimeFlags = [
+    "runtimeResearchAttestationApplied",
+    "runtimeResearchAttestationEnforced",
+    "runtimeResearchManifestApplied",
+    "runtimeResearchManifestEnforced",
+    "runtimeResearchRegistryApplied",
+    "runtimeResearchRegistryEnforced",
+    "runtimeResearchCatalogApplied",
+    "runtimeResearchCatalogEnforced",
+    "runtimeResearchArchiveApplied",
+    "runtimeResearchArchiveEnforced",
+    "runtimeResearchTimelineApplied",
+    "runtimeResearchTimelineEnforced",
+    "runtimeResearchMapApplied",
+    "runtimeResearchMapEnforced",
+    "runtimeResearchIndexApplied",
+    "runtimeResearchIndexEnforced",
+    "runtimeResearchApplied",
+    "runtimeResearchEnforced",
+    "runtimeFinalReviewApproved",
+    "runtimeFinalReviewApplied",
+    "runtimeFinalReviewEnforced",
+    "runtimeActivationApproved",
+    "runtimeActivationExecuted",
+    "runtimeGovernanceEnabled",
+    "runtimeAutonomyEnabled",
+    "runtimeAutonomyActionsAllowed",
+    "runtimePolicyEnforcementEnabled",
+    "runtimeConfigActivationEnabled",
+    "runtimeControlPlaneApplied",
+    "runtimeControlPlaneActivated",
+    "runtimeKillSwitchActivated",
+    "runtimeEmergencyStopExecuted",
+    "runtimeOperatorOverrideApplied",
+    "runtimeRollbackExecuted",
+    "runtimeObservabilityApplied",
+    "runtimeObservabilityEnforced",
+    "runtimeSafetyApplied",
+    "runtimeSafetyEnforced",
+    "runtimeSafetyActivated",
+    "runtimeSandboxExecutionAllowed",
+    "runtimeSandboxExecuted",
+    "runtimeMutationScopeExpanded",
+    "runtimeExternalExecutionAllowed",
+    "runtimePluginExecutionAllowed",
+    "runtimeScriptEvaluationAllowed",
+    "runtimeLearningEnabled",
+    "runtimeMlDecisioningEnabled",
+    "runtimeMultiAgentCoordinationEnabled",
+    "governanceBypassAllowed",
+    "applied",
+    "enforced",
+    "runtimeBehaviorChanged",
+    "governanceDecisionsChanged",
+    "repairOrchestrationChanged"
+  ];
+  for (const key of runtimeFlags) {
+    if (preview[key] !== false) throw new Error(`${label} expected ${key}=false: ${JSON.stringify(preview)}`);
+  }
+  if (
+    preview.policyRuntimeMode !== "preview-only" ||
+    preview.safePatchEngineOnly !== true ||
+    preview.researchAttestationScore.score === 100 ||
+    !preview.attestationGroups.every((item) => item.previewOnly === true) ||
+    !preview.attestationRecords.every((item) => item.previewOnly === true) ||
+    !preview.attestationOwnershipSummaries.every((item) => item.previewOnly === true) ||
+    !preview.previewOnlyAttestationSummaries.every((item) => item.previewOnly === true) ||
+    !preview.forbiddenCapabilityAttestationFindings.every((item) => item.permanentlyForbidden === true) ||
+    !preview.futureOnlyAttestationNotes.every((item) => item.futureOnly === true)
+  ) throw new Error(`${label} relaxed runtime research attestation invariants: ${JSON.stringify(preview)}`);
+}
+
+function assertGovernanceRuntimeResearchAttestationPreviewOrdering(preview) {
+  const lists = [
+    ["gov-runtime-research-attestation-group", preview.attestationGroups, (item) => `${item.category}:${item.key}`],
+    ["gov-runtime-research-attestation-record", preview.attestationRecords, (item) => `${item.version}:${item.attestationType}`],
+    ["gov-runtime-research-attestation-finding", preview.attestationFindings, (item) => `${item.category}:${item.severity}:${item.reason}`],
+    ["gov-runtime-research-attestation-ownership", preview.attestationOwnershipSummaries, (item) => item.ownershipCategory],
+    ["gov-runtime-research-attestation-preview", preview.previewOnlyAttestationSummaries, (item) => item.category],
+    ["gov-runtime-research-attestation-forbidden", preview.forbiddenCapabilityAttestationFindings, (item) => item.category],
+    ["gov-runtime-research-attestation-note", preview.futureOnlyAttestationNotes, (item) => `${item.category}:${item.reason}`]
+  ];
+  for (const [prefix, list, keyReader] of lists) {
+    for (let index = 0; index < list.length; index += 1) {
+      const expectedId = `${prefix}-${String(index + 1).padStart(3, "0")}`;
+      if (list[index].id !== expectedId) throw new Error(`runtime research attestation id mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      if (index > 0 && String(keyReader(list[index - 1])).localeCompare(String(keyReader(list[index]))) > 0) {
+        throw new Error(`runtime research attestation ordering mismatch for ${prefix}: ${JSON.stringify(list)}`);
+      }
+    }
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewUnit() {
+  try {
+    const preview = directGovernanceRuntimeResearchAttestationPreviewFromManifest(createSyntheticRuntimeResearchManifestPreview());
+    const { renderGovernanceRuntimeResearchAttestationPreviewText } = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchAttestationPreview.js"));
+    const rendered = renderGovernanceRuntimeResearchAttestationPreviewText(preview);
+    assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, "runtime research attestation unit");
+    assertGovernanceRuntimeResearchAttestationPreviewOrdering(preview);
+    if (preview.schemaVersion !== 1 || preview.previewStatus !== "created" || preview.runtimeResearchAttestationConclusion !== "research-attestation-ready" || preview.researchAttestationScore.score !== 80 || preview.runtimeResearchAttestationApplied !== false || !rendered.includes("Runtime Governance Research Attestation Preview")) {
+      throw new Error(`runtime research attestation unit mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-research-attestation-preview-unit");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-unit");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewMissingUnit() {
+  try {
+    const repo = createGovernanceHardeningEmptyRepo("governance-runtime-research-attestation-preview-missing");
+    const preview = directGovernanceRuntimeResearchAttestationPreview(repo);
+    assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, "runtime research attestation missing");
+    if (preview.previewStatus !== "not-created" || preview.sourceRuntimeResearchManifestStatus !== "not-created" || preview.runtimeResearchAttestationConclusion !== "source-missing" || preview.researchAttestationScore.score !== 20) throw new Error(`runtime research attestation missing mismatch: ${JSON.stringify(preview)}`);
+    console.log("PASS governance-runtime-research-attestation-preview-missing");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-missing");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewNotReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeResearchAttestationPreviewFromManifest(createSyntheticRuntimeResearchManifestPreview({ previewStatus: "created", runtimeResearchManifestConclusion: "not-ready", recommendedNextStage: "continue-preview-only-research", summary: { researchManifestReady: false } }));
+    assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, "runtime research attestation not ready");
+    if (preview.runtimeResearchAttestationConclusion !== "not-ready" || preview.researchAttestationScore.score !== 40 || preview.recommendedNextStage !== "continue-preview-only-research") throw new Error(`runtime research attestation not-ready mismatch: ${JSON.stringify(preview)}`);
+    console.log("PASS governance-runtime-research-attestation-preview-not-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-not-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewReadyUnit() {
+  try {
+    const preview = directGovernanceRuntimeResearchAttestationPreviewFromManifest(createSyntheticRuntimeResearchManifestPreview());
+    assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, "runtime research attestation ready");
+    assertGovernanceRuntimeResearchAttestationPreviewOrdering(preview);
+    if (preview.runtimeResearchAttestationConclusion !== "research-attestation-ready" || preview.recommendedNextStage !== "prepare-runtime-governance-preview-conclusion" || preview.summary.researchAttestationReady !== true) throw new Error(`runtime research attestation ready mismatch: ${JSON.stringify(preview)}`);
+    console.log("PASS governance-runtime-research-attestation-preview-ready");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-ready");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewBlockedUnit() {
+  try {
+    const preview = directGovernanceRuntimeResearchAttestationPreviewFromManifest(createSyntheticRuntimeResearchManifestPreview({ previewStatus: "blocked", runtimeResearchManifestConclusion: "blocked", recommendedNextStage: "blocked", summary: { researchManifestReady: false } }));
+    assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, "runtime research attestation blocked");
+    if (preview.previewStatus !== "blocked" || preview.sourceRuntimeResearchManifestStatus !== "blocked" || preview.runtimeResearchAttestationConclusion !== "blocked" || preview.researchAttestationScore.score !== 0) throw new Error(`runtime research attestation blocked mismatch: ${JSON.stringify(preview)}`);
+    console.log("PASS governance-runtime-research-attestation-preview-blocked");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-blocked");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewScoreUnit() {
+  try {
+    const cases = [
+      [createSyntheticRuntimeResearchManifestPreview({ previewStatus: "not-created", runtimeResearchManifestConclusion: "source-missing" }), 20, "not-ready"],
+      [createSyntheticRuntimeResearchManifestPreview({ previewStatus: "created", runtimeResearchManifestConclusion: "not-ready" }), 40, "partial-attestation-readiness"],
+      [createSyntheticRuntimeResearchManifestPreview(), 80, "research-attestation-ready"],
+      [createSyntheticRuntimeResearchManifestPreview({ previewStatus: "blocked", runtimeResearchManifestConclusion: "blocked" }), 0, "blocked"]
+    ];
+    for (const [source, score, rating] of cases) {
+      const preview = directGovernanceRuntimeResearchAttestationPreviewFromManifest(source);
+      if (preview.researchAttestationScore.score !== score || preview.researchAttestationScore.rating !== rating) throw new Error(`runtime research attestation score mismatch: ${JSON.stringify(preview)}`);
+    }
+    console.log("PASS governance-runtime-research-attestation-preview-score");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-score");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewForbiddenCapabilitiesUnit() {
+  try {
+    const preview = directGovernanceRuntimeResearchAttestationPreviewFromManifest(createSyntheticRuntimeResearchManifestPreview());
+    assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, "runtime research attestation forbidden capabilities");
+    assertGovernanceRuntimeResearchAttestationPreviewOrdering(preview);
+    if (preview.forbiddenCapabilityAttestationFindings.length !== 9 || !preview.forbiddenCapabilityAttestationFindings.some((item) => item.category === "safe-patch-engine-bypass")) throw new Error(`runtime research attestation forbidden capability mismatch: ${JSON.stringify(preview)}`);
+    console.log("PASS governance-runtime-research-attestation-preview-forbidden-capabilities");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-forbidden-capabilities");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewJsonOutputUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeResearchAttestationPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createRuntimeLifecycleReadyProjectChain(content);
+    for (const commandArgs of [
+      ["governance", "runtime", "lifecycle-preview", "--json"],
+      ["governance", "runtime", "activation-readiness-preview", "--json"],
+      ["governance", "runtime", "certification-preview", "--json"],
+      ["governance", "runtime", "activation-governance-review-preview", "--json"],
+      ["governance", "runtime", "activation-boundary-preview", "--json"],
+      ["governance", "runtime", "activation-freeze-preview", "--json"],
+      ["governance", "runtime", "final-review-preview", "--json"],
+      ["governance", "runtime", "research-preview", "--json"],
+      ["governance", "runtime", "research-index-preview", "--json"],
+      ["governance", "runtime", "research-map-preview", "--json"],
+      ["governance", "runtime", "research-timeline-preview", "--json"],
+      ["governance", "runtime", "research-archive-preview", "--json"],
+      ["governance", "runtime", "research-catalog-preview", "--json"],
+      ["governance", "runtime", "research-registry-preview", "--json"],
+      ["governance", "runtime", "research-manifest-preview", "--json"]
+    ]) withProjectGovernanceConfig(content, () => runCliHelpCommand(commandArgs));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "research-attestation-preview", "--json"]));
+    const parsed = JSON.parse(result.stdout);
+    if (result.status !== 0 || parsed.runtimeResearchAttestationApplied !== false || parsed.runtimeResearchAttestationEnforced !== false || parsed.researchAttestationScore.score === 100 || !parsed.attestationRecords.every((item) => item.id.startsWith("gov-runtime-research-attestation-record-"))) throw new Error(`runtime research attestation JSON mismatch: status=${result.status} stdout=${result.stdout} stderr=${result.stderr}`);
+    cleanupProjectGovernanceRuntimeResearchAttestationPreviewChainArtifacts();
+    console.log("PASS governance-runtime-research-attestation-preview-json-output");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeResearchAttestationPreviewChainArtifacts();
+    console.log("FAIL governance-runtime-research-attestation-preview-json-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewArtifactUnit() {
+  try {
+    cleanupProjectGovernanceRuntimeResearchAttestationPreviewChainArtifacts();
+    const content = `${JSON.stringify(createValidGovernanceConfigWithOverrides(), null, 2)}\n`;
+    createRuntimeLifecycleReadyProjectChain(content);
+    for (const commandArgs of [
+      ["governance", "runtime", "lifecycle-preview", "--json"],
+      ["governance", "runtime", "activation-readiness-preview", "--json"],
+      ["governance", "runtime", "certification-preview", "--json"],
+      ["governance", "runtime", "activation-governance-review-preview", "--json"],
+      ["governance", "runtime", "activation-boundary-preview", "--json"],
+      ["governance", "runtime", "activation-freeze-preview", "--json"],
+      ["governance", "runtime", "final-review-preview", "--json"],
+      ["governance", "runtime", "research-preview", "--json"],
+      ["governance", "runtime", "research-index-preview", "--json"],
+      ["governance", "runtime", "research-map-preview", "--json"],
+      ["governance", "runtime", "research-timeline-preview", "--json"],
+      ["governance", "runtime", "research-archive-preview", "--json"],
+      ["governance", "runtime", "research-catalog-preview", "--json"],
+      ["governance", "runtime", "research-registry-preview", "--json"],
+      ["governance", "runtime", "research-manifest-preview", "--json"]
+    ]) withProjectGovernanceConfig(content, () => runCliHelpCommand(commandArgs));
+    const result = withProjectGovernanceConfig(content, () => runCliHelpCommand(["governance", "runtime", "research-attestation-preview"]));
+    const artifactPath = path.join(projectRoot, ".factory", "governance", "runtime-governance-research-attestation-preview.json");
+    const markdownPath = path.join(projectRoot, ".factory", "governance", "runtime-governance-research-attestation-preview.md");
+    if (result.status !== 0 || !fs.existsSync(artifactPath) || !fs.existsSync(markdownPath)) throw new Error(`runtime research attestation artifact missing: status=${result.status}`);
+    const artifact = readJson(artifactPath);
+    const markdown = fs.readFileSync(markdownPath, "utf8");
+    if (!markdown.includes("Runtime Governance Research Attestation Preview") || artifact.runtimeResearchAttestationApplied !== false || artifact.runtimeResearchAttestationEnforced !== false) throw new Error(`runtime research attestation artifact mismatch: ${JSON.stringify(artifact)}`);
+    cleanupProjectGovernanceRuntimeResearchAttestationPreviewChainArtifacts();
+    console.log("PASS governance-runtime-research-attestation-preview-artifact");
+    return true;
+  } catch (error) {
+    cleanupProjectGovernanceRuntimeResearchAttestationPreviewChainArtifacts();
+    console.log("FAIL governance-runtime-research-attestation-preview-artifact");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewNoAttestationApplicationUnit() {
+  try {
+    const preview = directGovernanceRuntimeResearchAttestationPreviewFromManifest(createSyntheticRuntimeResearchManifestPreview());
+    assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, "runtime research attestation no attestation application");
+    console.log("PASS governance-runtime-research-attestation-preview-no-attestation-application");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-no-attestation-application");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceRuntimeResearchAttestationPreviewNoAutonomyUnit() {
+  try {
+    const preview = directGovernanceRuntimeResearchAttestationPreviewFromManifest(createSyntheticRuntimeResearchManifestPreview());
+    assertGovernanceRuntimeResearchAttestationPreviewSafety(preview, "runtime research attestation no autonomy");
+    console.log("PASS governance-runtime-research-attestation-preview-no-autonomy");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-runtime-research-attestation-preview-no-autonomy");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
 function runCliHelpCommand(args, cwd = projectRoot) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
@@ -30745,6 +31078,39 @@ async function main() {
     failed += 1;
   }
   if (!runGovernanceRuntimeResearchManifestPreviewNoAutonomyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewMissingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewNotReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewReadyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewBlockedUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewScoreUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewForbiddenCapabilitiesUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewJsonOutputUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewArtifactUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewNoAttestationApplicationUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceRuntimeResearchAttestationPreviewNoAutonomyUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
