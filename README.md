@@ -9628,6 +9628,81 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v10.5 - Governance Artifact Index & Discovery Layer
+
+v10.5 continues the Governance Consolidation Era by adding a deterministic index and discovery layer over governance artifact registry entries. The index is descriptive only and does not activate, enforce, schedule, execute, mutate, route, or change runtime behavior.
+
+Governance artifact index model:
+
+* `src/governance/governanceArtifactIndex.ts` adds `GovernanceArtifactIndex`, `GovernanceArtifactIndexEntry`, `createGovernanceArtifactIndex`, `indexGovernanceArtifactRegistry`, `sortGovernanceArtifactIndex`, and `summarizeGovernanceArtifactIndex`.
+* Index entries record stable artifact fields: `artifactType`, `status`, `severity`, `source`, `version`, `previewOnly`, `readonly`, and `summary`.
+* Index helpers are pure, deterministic, do not write files, do not generate hidden timestamps, and do not introduce runtime activation, policy enforcement, or runtime routing.
+
+Discovery/filter helpers:
+
+* `findArtifactsByType`
+* `findArtifactsByStatus`
+* `findArtifactsBySeverity`
+* `findReadonlyArtifacts`
+* `findPreviewOnlyArtifacts`
+* `findArtifactsBySource`
+
+Index sorting and summaries:
+
+* Index entries sort deterministically by version, artifact type, status, severity, source, and summary.
+* Index summaries include total entries, grouped artifact types, grouped statuses, read-only entry counts, preview-only entry counts, all-read-only state, and all-preview-only state.
+* Empty discovery results render predictably as `none`.
+
+Index rendering:
+
+* `renderGovernanceArtifactIndexSummary` renders stable index totals, grouped artifact types, grouped statuses, read-only state, and preview-only state.
+* `renderGovernanceArtifactIndex` renders deterministic index title, summary, and entries.
+* `renderGovernanceArtifactDiscoveryResults` renders deterministic discovery query summaries and result entries.
+* `renderCliGovernanceArtifactIndex` and `renderCliGovernanceArtifactDiscoveryResults` provide equivalent CLI-safe deterministic output.
+
+Selected preview integration:
+
+* `runtimeGovernanceResearchManifestPreview` includes `normalizedGovernanceArtifactIndex` derived from its normalized governance artifact registry.
+* `runtimeGovernanceResearchAttestationPreview` includes `normalizedGovernanceArtifactIndex` derived from its normalized governance artifact registry.
+* Existing preview fields, JSON meaning, CLI semantics, governance decisions, runtime behavior, and repair orchestration remain unchanged.
+
+v10.5 deterministic checks:
+
+* governance-artifact-index-consistency
+* governance-artifact-index-sorting
+* governance-artifact-discovery-filtering
+* governance-artifact-index-rendering
+* cli-artifact-index-rendering
+* governance-preview-index-summary
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite index
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no builder agents are introduced
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

@@ -1,4 +1,5 @@
 import type { GovernanceArtifact } from "../../governance/governanceArtifact.js";
+import type { GovernanceArtifactDiscoveryResults, GovernanceArtifactIndex } from "../../governance/governanceArtifactIndex.js";
 import type { GovernanceArtifactRegistry } from "../../governance/governanceArtifactRegistry.js";
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
@@ -53,4 +54,42 @@ export function renderCliGovernanceArtifactRegistry(registry: GovernanceArtifact
     renderCliSection("Registry entries", entryLines),
     renderReadonlyNotice(registry.summary.allPreviewOnly)
   ].join("\n");
+}
+
+export function renderCliGovernanceArtifactIndex(index: GovernanceArtifactIndex): string {
+  const entryLines = index.entries.length === 0
+    ? ["none"]
+    : index.entries.map((entry) => `${entry.version} ${entry.source} | artifactType=${entry.artifactType} | status=${entry.status} | readonly=${String(entry.readonly)} | previewOnly=${String(entry.previewOnly)}`);
+  return [
+    renderCliSection("Governance artifact index", [
+      `title: ${index.title}`,
+      `total entries: ${index.summary.totalEntries}`,
+      `artifact types: ${renderCliIndexGroups(index.summary.artifactTypeGroups)}`,
+      `statuses: ${renderCliIndexGroups(index.summary.statusGroups)}`,
+      `read-only entries: ${index.summary.readonlyEntries}`,
+      `preview-only entries: ${index.summary.previewOnlyEntries}`,
+      `all read-only: ${String(index.summary.allReadonly)}`,
+      `all preview-only: ${String(index.summary.allPreviewOnly)}`
+    ]),
+    renderCliSection("Index entries", entryLines),
+    renderReadonlyNotice(index.summary.allPreviewOnly)
+  ].join("\n");
+}
+
+export function renderCliGovernanceArtifactDiscoveryResults(results: GovernanceArtifactDiscoveryResults): string {
+  const entryLines = results.entries.length === 0
+    ? ["none"]
+    : results.entries.map((entry) => `${entry.version} ${entry.source} | artifactType=${entry.artifactType} | status=${entry.status}`);
+  return [
+    renderCliSection("Governance artifact discovery results", [
+      `query: ${results.query}`,
+      `total results: ${results.totalResults}`
+    ]),
+    renderCliSection("Discovery entries", entryLines)
+  ].join("\n");
+}
+
+function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
 }

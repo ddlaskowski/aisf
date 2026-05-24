@@ -1,5 +1,6 @@
 import type { GovernanceRecommendation } from "../governanceArtifact.js";
 import type { GovernanceArtifact } from "../governanceArtifact.js";
+import type { GovernanceArtifactDiscoveryResults, GovernanceArtifactIndex, GovernanceArtifactIndexSummary } from "../governanceArtifactIndex.js";
 import type { GovernanceArtifactRegistry, GovernanceArtifactRegistrySummary } from "../governanceArtifactRegistry.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
@@ -105,4 +106,52 @@ export function renderGovernanceArtifactRegistry(registry: GovernanceArtifactReg
     "Registry entries:",
     ...entries
   ].join("\n");
+}
+
+export function renderGovernanceArtifactIndexSummary(summary: GovernanceArtifactIndexSummary): string {
+  return [
+    "Governance artifact index summary:",
+    `- total entries: ${summary.totalEntries}`,
+    `- artifact types: ${renderIndexGroups(summary.artifactTypeGroups)}`,
+    `- statuses: ${renderIndexGroups(summary.statusGroups)}`,
+    `- read-only entries: ${summary.readonlyEntries}`,
+    `- preview-only entries: ${summary.previewOnlyEntries}`,
+    `- all read-only: ${String(summary.allReadonly)}`,
+    `- all preview-only: ${String(summary.allPreviewOnly)}`
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactIndex(index: GovernanceArtifactIndex): string {
+  const entries = index.entries.length === 0
+    ? ["- none"]
+    : index.entries.map((entry) => [
+        `- ${entry.version} ${entry.source}`,
+        `artifactType=${entry.artifactType}`,
+        `status=${entry.status}`,
+        `readonly=${String(entry.readonly)}`,
+        `previewOnly=${String(entry.previewOnly)}`
+      ].join(" | "));
+  return [
+    `Governance artifact index: ${index.title}`,
+    renderGovernanceArtifactIndexSummary(index.summary),
+    "Index entries:",
+    ...entries
+  ].join("\n");
+}
+
+export function renderGovernanceArtifactDiscoveryResults(results: GovernanceArtifactDiscoveryResults): string {
+  const entries = results.entries.length === 0
+    ? ["- none"]
+    : results.entries.map((entry) => `- ${entry.version} ${entry.source} artifactType=${entry.artifactType} status=${entry.status}`);
+  return [
+    `Governance artifact discovery results: ${results.query}`,
+    `- total results: ${results.totalResults}`,
+    "Results:",
+    ...entries
+  ].join("\n");
+}
+
+function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
 }

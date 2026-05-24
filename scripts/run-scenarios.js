@@ -28899,6 +28899,150 @@ function runGovernancePreviewRegistrySummaryUnit() {
   }
 }
 
+function runGovernanceArtifactIndexConsistencyUnit() {
+  try {
+    const factory = require(path.join(projectRoot, "dist", "governance", "governanceArtifactFactory.js"));
+    const registryModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactRegistry.js"));
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const artifact = factory.createReadonlyGovernanceArtifact({
+      artifactType: "index",
+      status: "preview",
+      summary: "Index consistency check.",
+      warnings: [],
+      recommendations: [],
+      metadata: { version: "v10.5", source: "index-unit", readonly: true, previewOnly: true }
+    });
+    const registry = registryModule.registerGovernanceArtifact(registryModule.createGovernanceArtifactRegistry("Index Unit Registry"), artifact);
+    const first = indexModule.indexGovernanceArtifactRegistry(registry, "Index Unit");
+    const second = indexModule.indexGovernanceArtifactRegistry(registry, "Index Unit");
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("index output is not deterministic");
+    if (first.summary.totalEntries !== 1 || first.summary.allPreviewOnly !== true || first.summary.allReadonly !== true) throw new Error(`index summary mismatch: ${JSON.stringify(first.summary)}`);
+    if ("runtimeActivationExecuted" in first.entries[0] || "runtimeGovernanceEnabled" in first.entries[0]) throw new Error(`index entry introduced runtime flags: ${JSON.stringify(first.entries[0])}`);
+    console.log("PASS governance-artifact-index-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-index-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactIndexSortingUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "Sorting Index",
+      entries: [
+        { artifactType: "manifest", status: "preview", source: "z-source", version: "v10.5", previewOnly: true, readonly: true, summary: "Z summary." },
+        { artifactType: "attestation", status: "ready", source: "a-source", version: "v10.3", previewOnly: true, readonly: true, summary: "A summary." }
+      ],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    if (index.entries[0].source !== "a-source" || index.entries[1].source !== "z-source") throw new Error(`index sorting mismatch: ${JSON.stringify(index.entries)}`);
+    if (index.summary.artifactTypeGroups.map((group) => group.key).join(",") !== "attestation,manifest") throw new Error(`index group sorting mismatch: ${JSON.stringify(index.summary.artifactTypeGroups)}`);
+    console.log("PASS governance-artifact-index-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-index-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactDiscoveryFilteringUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "Discovery Index",
+      entries: [
+        { artifactType: "manifest", status: "preview", severity: "info", source: "manifest-source", version: "v10.5", previewOnly: true, readonly: true, summary: "Manifest." },
+        { artifactType: "attestation", status: "ready", severity: "warning", source: "attestation-source", version: "v10.4", previewOnly: true, readonly: true, summary: "Attestation." }
+      ],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    if (indexModule.findArtifactsByType(index, "manifest").totalResults !== 1) throw new Error("type discovery mismatch");
+    if (indexModule.findArtifactsByStatus(index, "ready").entries[0].source !== "attestation-source") throw new Error("status discovery mismatch");
+    if (indexModule.findArtifactsBySeverity(index, "warning").totalResults !== 1) throw new Error("severity discovery mismatch");
+    if (indexModule.findReadonlyArtifacts(index).totalResults !== 2) throw new Error("readonly discovery mismatch");
+    if (indexModule.findPreviewOnlyArtifacts(index).totalResults !== 2) throw new Error("preview-only discovery mismatch");
+    if (indexModule.findArtifactsBySource(index, "missing-source").totalResults !== 0) throw new Error("empty source discovery mismatch");
+    console.log("PASS governance-artifact-discovery-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-discovery-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernanceArtifactIndexRenderingUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "Render Index",
+      entries: [{ artifactType: "index", status: "preview", source: "render-source", version: "v10.5", previewOnly: true, readonly: true, summary: "Render summary." }],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    const rendered = renderers.renderGovernanceArtifactIndex(index);
+    const emptyResults = renderers.renderGovernanceArtifactDiscoveryResults(indexModule.findArtifactsBySource(index, "missing-source"));
+    if (!rendered.includes("Governance artifact index: Render Index") || !rendered.includes("total entries: 1") || !rendered.includes("all preview-only: true")) throw new Error(`index render mismatch: ${rendered}`);
+    if (!emptyResults.includes("total results: 0") || !emptyResults.includes("- none")) throw new Error(`empty discovery render mismatch: ${emptyResults}`);
+    console.log("PASS governance-artifact-index-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-artifact-index-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliArtifactIndexRenderingUnit() {
+  try {
+    const indexModule = require(path.join(projectRoot, "dist", "governance", "governanceArtifactIndex.js"));
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const index = indexModule.sortGovernanceArtifactIndex({
+      schemaVersion: 1,
+      title: "CLI Index",
+      entries: [{ artifactType: "catalog", status: "preview", source: "cli-index-source", version: "v10.5", previewOnly: true, readonly: true, summary: "CLI index summary." }],
+      summary: indexModule.createGovernanceArtifactIndex().summary
+    });
+    const rendered = cliArtifact.renderCliGovernanceArtifactIndex(index);
+    const discovery = cliArtifact.renderCliGovernanceArtifactDiscoveryResults(indexModule.findArtifactsBySource(index, "missing-source"));
+    if (!rendered.includes("Governance artifact index:") || !rendered.includes("total entries: 1") || !rendered.includes("Read-only preview")) throw new Error(`CLI index render mismatch: ${rendered}`);
+    if (!discovery.includes("total results: 0") || !discovery.includes("none")) throw new Error(`CLI empty discovery render mismatch: ${discovery}`);
+    console.log("PASS cli-artifact-index-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-artifact-index-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runGovernancePreviewIndexSummaryUnit() {
+  try {
+    const manifest = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchManifestPreview.js"));
+    const attestation = require(path.join(projectRoot, "dist", "governance", "runtimeGovernanceResearchAttestationPreview.js"));
+    const manifestPreview = manifest.buildGovernanceRuntimeResearchManifestPreviewFromRegistry({ previewStatus: "created", runtimeResearchRegistryConclusion: "research-registry-ready" });
+    const attestationPreview = attestation.buildGovernanceRuntimeResearchAttestationPreviewFromManifest(manifestPreview);
+    for (const preview of [manifestPreview, attestationPreview]) {
+      const index = preview.normalizedGovernanceArtifactIndex;
+      if (!index || index.summary.totalEntries !== 1 || index.summary.allPreviewOnly !== true || index.summary.allReadonly !== true) throw new Error(`preview index summary mismatch: ${JSON.stringify(index)}`);
+      if ("runtimeActivationExecuted" in index.entries[0] || "runtimeGovernanceEnabled" in index.entries[0]) throw new Error(`preview index entry introduced runtime flags: ${JSON.stringify(index.entries[0])}`);
+    }
+    console.log("PASS governance-preview-index-summary");
+    return true;
+  } catch (error) {
+    console.log("FAIL governance-preview-index-summary");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -28996,7 +29140,9 @@ const scenarioSuites = {
     runCliArtifactRenderingUnit,
     runGovernancePreviewArtifactShapeUnit,
     runGovernanceArtifactRegistryConsistencyUnit,
-    runGovernancePreviewRegistrySummaryUnit
+    runGovernancePreviewRegistrySummaryUnit,
+    runGovernanceArtifactIndexConsistencyUnit,
+    runGovernancePreviewIndexSummaryUnit
   ],
   governance: [
     runGovernanceArchitectureConsolidationInvariantsUnit,
@@ -29016,11 +29162,21 @@ const scenarioSuites = {
     runGovernanceRenderNormalizationUnit,
     runGovernanceArtifactRenderingUnit,
     runGovernanceArtifactRegistryRenderingUnit,
+    runGovernanceArtifactIndexRenderingUnit,
     runCliRenderConsistencyUnit,
     runCliRenderNormalizationUnit,
     runCliArtifactRenderingUnit,
     runCliArtifactRegistryRenderingUnit,
+    runCliArtifactIndexRenderingUnit,
     runReadonlyRenderConsistencyUnit
+  ],
+  index: [
+    runGovernanceArtifactIndexConsistencyUnit,
+    runGovernanceArtifactIndexSortingUnit,
+    runGovernanceArtifactDiscoveryFilteringUnit,
+    runGovernanceArtifactIndexRenderingUnit,
+    runCliArtifactIndexRenderingUnit,
+    runGovernancePreviewIndexSummaryUnit
   ],
   registry: [
     runGovernanceArtifactRegistryConsistencyUnit,
@@ -31742,6 +31898,24 @@ async function main() {
     failed += 1;
   }
   if (!runGovernancePreviewRegistrySummaryUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactIndexConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactIndexSortingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactDiscoveryFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runGovernanceArtifactIndexRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runCliArtifactIndexRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runGovernancePreviewIndexSummaryUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

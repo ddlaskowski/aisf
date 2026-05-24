@@ -9,8 +9,9 @@ import {
   GOVERNANCE_RUNTIME_DISABLED_FLAGS
 } from "./governanceInvariants.js";
 import { createReadonlyGovernanceArtifact, type GovernanceArtifactWithReadonlyContract } from "./governanceArtifactFactory.js";
+import { indexGovernanceArtifactRegistry, type GovernanceArtifactIndex } from "./governanceArtifactIndex.js";
 import { createGovernanceArtifactRegistry, registerGovernanceArtifact, type GovernanceArtifactRegistry } from "./governanceArtifactRegistry.js";
-import { renderDivider, renderGovernanceArtifact, renderGovernanceArtifactRegistrySummary, renderMetadata, renderRecommendations, renderStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
+import { renderDivider, renderGovernanceArtifact, renderGovernanceArtifactIndexSummary, renderGovernanceArtifactRegistrySummary, renderMetadata, renderRecommendations, renderStatusBlock, renderSummary, renderWarnings } from "./renderers/governanceRenderers.js";
 
 import {
   buildGovernanceRuntimeResearchRegistryPreview,
@@ -178,6 +179,7 @@ export type GovernanceRuntimeResearchManifestPreview = {
   futureOnlyManifestNotes: GovernanceRuntimeFutureManifestNote[];
   normalizedGovernanceArtifact: GovernanceArtifactWithReadonlyContract;
   normalizedGovernanceArtifactRegistry: GovernanceArtifactRegistry;
+  normalizedGovernanceArtifactIndex: GovernanceArtifactIndex;
   summary: {
     researchManifestScoreValue: number;
     totalManifestGroups: number;
@@ -366,6 +368,10 @@ export function buildGovernanceRuntimeResearchManifestPreviewFromRegistry(source
     createGovernanceArtifactRegistry("Runtime Governance Research Manifest Artifact Registry"),
     normalizedGovernanceArtifact
   );
+  const normalizedGovernanceArtifactIndex = indexGovernanceArtifactRegistry(
+    normalizedGovernanceArtifactRegistry,
+    "Runtime Governance Research Manifest Artifact Index"
+  );
   return {
     schemaVersion: 1,
     previewStatus: conclusion.previewStatus,
@@ -435,6 +441,7 @@ export function buildGovernanceRuntimeResearchManifestPreviewFromRegistry(source
     futureOnlyManifestNotes,
     normalizedGovernanceArtifact,
     normalizedGovernanceArtifactRegistry,
+    normalizedGovernanceArtifactIndex,
     summary: {
       researchManifestScoreValue: researchManifestScore.score,
       totalManifestGroups: manifestGroups.length,
@@ -543,6 +550,10 @@ export function renderGovernanceRuntimeResearchManifestPreviewMarkdown(preview: 
     "## Normalized Governance Artifact Registry",
     "",
     renderGovernanceArtifactRegistrySummary(preview.normalizedGovernanceArtifactRegistry.summary),
+    "",
+    "## Normalized Governance Artifact Index",
+    "",
+    renderGovernanceArtifactIndexSummary(preview.normalizedGovernanceArtifactIndex.summary),
     "", "## Manifest Groups", ""
   ];
   for (const item of preview.manifestGroups) lines.push(`- [${item.category}] ${item.id} ${item.key} totalRecords=${item.totalRecords} previewOnly=${String(item.previewOnly)} - ${item.reason}`);
