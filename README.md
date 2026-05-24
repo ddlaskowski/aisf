@@ -10180,6 +10180,98 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v11.1 - Project Generation Capability Map Layer
+
+v11.1 continues the Project Generation Readiness Era by adding a deterministic, read-only capability map for future controlled project generation systems. The capability map is descriptive planning data only. It does not implement builder agents, autonomous project generation, project scaffolding runtime, planner loops, runtime routing, policy enforcement, governance activation, file writing, mutation expansion, or runtime orchestration.
+
+Capability map model:
+
+* `src/governance/projectGenerationCapabilityMap.ts` adds `ProjectGenerationCapabilityMap`, `ProjectGenerationCapability`, `ProjectGenerationCapabilityDependency`, `ProjectGenerationCapabilitySummary`, `createProjectGenerationCapabilityMap`, and `summarizeProjectGenerationCapabilityMap`.
+* Capability maps explicitly preserve read-only, preview-only, planning-only, stdout-only, no-file-write, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Capability map helpers require explicit metadata input and do not generate hidden timestamps.
+
+Capability classification:
+
+* project intent capture
+* requirements normalization
+* project blueprint planning
+* file plan preview
+* dependency plan preview
+* task graph preview
+* Safe Patch integration
+* human approval workflow
+* validation plan preview
+* rollback plan preview
+* artifact review pack integration
+
+Each capability records deterministic ID, title, description, status, risk level, readiness, dependencies, blocked-by items, required governance artifacts, warnings, recommendations, read-only state, and preview-only state.
+
+Dependency helpers:
+
+* `sortProjectGenerationCapabilities`
+* `findCapabilityById`
+* `findCapabilitiesByStatus`
+* `findCapabilitiesByRiskLevel`
+* `findBlockedCapabilities`
+* `summarizeCapabilityDependencies`
+
+Capability map rendering:
+
+* `renderProjectGenerationCapabilitySummary` renders deterministic capability totals, status distribution, risk distribution, blocked capabilities, dependencies, warnings, and recommendations.
+* `renderProjectGenerationCapability` renders stable capability details.
+* `renderProjectGenerationCapabilityMap` renders map title, guarantees, metadata, summary, capabilities, dependency edges, and an explicit no-runtime-generation notice.
+* `renderCliProjectGenerationCapabilitySummary` and `renderCliProjectGenerationCapabilityMap` provide equivalent CLI-safe deterministic output.
+
+CLI capability map preview:
+
+```powershell
+node dist\cli.js governance project-generation-capabilities
+node dist\cli.js governance project-generation-capabilities --json
+```
+
+Capability previews print to stdout only. They do not write files, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v11.1 deterministic checks:
+
+* project-generation-capability-map-consistency
+* project-generation-capability-map-summary
+* project-generation-capability-dependency-sorting
+* project-generation-capability-filtering
+* project-generation-capability-rendering
+* project-generation-capability-cli-output
+* project-generation-capability-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite project-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no builder agents are introduced
+* no project scaffolding runtime is introduced
+* no runtime routing is introduced
+* no capability file writing is introduced by default
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

@@ -11,6 +11,7 @@ import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
 import type { GovernanceSeverity, GovernanceStatus } from "../governanceStatus.js";
+import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../projectGenerationCapabilityMap.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
 
@@ -412,7 +413,75 @@ export function renderProjectGenerationReadinessAssessment(assessment: ProjectGe
   ].join("\n");
 }
 
+export function renderProjectGenerationCapabilitySummary(summary: ProjectGenerationCapabilitySummary): string {
+  return [
+    "Project generation capability map summary:",
+    `- total capabilities: ${summary.totalCapabilities}`,
+    `- status distribution: ${renderCapabilityGroups(summary.statusDistribution)}`,
+    `- risk distribution: ${renderCapabilityGroups(summary.riskDistribution)}`,
+    `- blocked capabilities: ${summary.blockedCapabilities.length === 0 ? "none" : summary.blockedCapabilities.join(", ")}`,
+    `- total dependencies: ${summary.totalDependencies}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationCapability(capability: ProjectGenerationCapability): string {
+  return [
+    `Project generation capability: ${capability.title}`,
+    `- id: ${capability.id}`,
+    `- status: ${capability.status}`,
+    `- riskLevel: ${capability.riskLevel}`,
+    `- readiness: ${capability.readiness}`,
+    `- description: ${capability.description}`,
+    `- dependencies: ${capability.dependencies.length === 0 ? "none" : capability.dependencies.join(", ")}`,
+    `- blockedBy: ${capability.blockedBy.length === 0 ? "none" : capability.blockedBy.join(", ")}`,
+    `- requiredGovernanceArtifacts: ${capability.requiredGovernanceArtifacts.length === 0 ? "none" : capability.requiredGovernanceArtifacts.join(", ")}`,
+    `- read-only: ${String(capability.readonly)}`,
+    `- preview-only: ${String(capability.previewOnly)}`,
+    renderWarnings(capability.warnings),
+    "Recommendations:",
+    ...(capability.recommendations.length === 0 ? ["- none"] : capability.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationCapabilityMap(map: ProjectGenerationCapabilityMap): string {
+  const capabilities = map.capabilities.length === 0
+    ? ["Project generation capabilities:", "- none"]
+    : ["Project generation capabilities:", ...map.capabilities.map(renderProjectGenerationCapability)];
+  const dependencies = map.dependencies.length === 0
+    ? ["Capability dependencies:", "- none"]
+    : ["Capability dependencies:", ...map.dependencies.map((dependency) => `- ${dependency.id}: ${dependency.from} ${dependency.dependencyType} ${dependency.to} | planningOnly=${String(dependency.planningOnly)} | ${dependency.reason}`)];
+  return [
+    `Project generation capability map: ${map.title}`,
+    `- schemaVersion: ${map.schemaVersion}`,
+    `- readonly: ${String(map.readonly)}`,
+    `- previewOnly: ${String(map.previewOnly)}`,
+    `- planningOnly: ${String(map.planningOnly)}`,
+    `- stdoutOnly: ${String(map.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(map.fileWriteAllowed)}`,
+    `- runtimeRoutingEnabled: ${String(map.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(map.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(map.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(map.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(map.builderAgentRuntimeEnabled)}`,
+    "Notice: no runtime generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(map.metadata),
+    renderProjectGenerationCapabilitySummary(map.summary),
+    ...capabilities,
+    ...dependencies
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
+}
+
+function renderCapabilityGroups(groups: readonly { key: string; totalCapabilities: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalCapabilities}`).join(", ");
 }

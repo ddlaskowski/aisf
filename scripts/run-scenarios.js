@@ -29810,6 +29810,140 @@ function runProjectGenerationReadinessHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationCapabilityMapConsistencyUnit() {
+  try {
+    const capabilityModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationCapabilityMap.js"));
+    const metadata = { version: "v11.1", source: "capability-map-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = capabilityModule.createProjectGenerationCapabilityMap({ title: "Unit Capability Map", metadata });
+    const second = capabilityModule.createProjectGenerationCapabilityMap({ title: "Unit Capability Map", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("capability map output is not deterministic");
+    if (first.summary.totalCapabilities !== 11 || first.summary.totalDependencies !== 11 || first.summary.blockedCapabilities.length !== 0) throw new Error(`capability map summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.planningOnly !== true || first.fileWriteAllowed !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`capability map invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`capability map introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-capability-map-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-capability-map-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationCapabilityMapSummaryUnit() {
+  try {
+    const capabilityModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationCapabilityMap.js"));
+    const map = capabilityModule.createProjectGenerationCapabilityMap({ title: "Summary Capability Map", metadata: { version: "v11.1", source: "capability-summary", readonly: true, previewOnly: true } });
+    const statuses = map.summary.statusDistribution.map((entry) => `${entry.key}:${entry.totalCapabilities}`).join(",");
+    const risks = map.summary.riskDistribution.map((entry) => `${entry.key}:${entry.totalCapabilities}`).join(",");
+    if (statuses !== "partial:1,planned:6,ready-for-design:3,ready-for-preview:1") throw new Error(`status distribution mismatch: ${statuses}`);
+    if (risks !== "high:4,low:2,medium:5") throw new Error(`risk distribution mismatch: ${risks}`);
+    if (map.summary.readonly !== true || map.summary.previewOnly !== true || map.summary.warnings.length === 0 || map.summary.recommendations.length === 0) throw new Error(`capability summary invariants mismatch: ${JSON.stringify(map.summary)}`);
+    console.log("PASS project-generation-capability-map-summary");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-capability-map-summary");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationCapabilityDependencySortingUnit() {
+  try {
+    const capabilityModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationCapabilityMap.js"));
+    const map = capabilityModule.createProjectGenerationCapabilityMap({ title: "Dependency Capability Map", metadata: { version: "v11.1", source: "capability-dependencies", readonly: true, previewOnly: true } });
+    const order = map.dependencies.map((dependency) => `${dependency.from}->${dependency.to}`).join(",");
+    if (order !== "dependency-plan-preview->project-blueprint-planning,file-plan-preview->project-blueprint-planning,human-approval-workflow->artifact-review-pack-integration,project-blueprint-planning->requirements-normalization,requirements-normalization->project-intent-capture,rollback-plan-preview->file-plan-preview,rollback-plan-preview->validation-plan-preview,safe-patch-integration->human-approval-workflow,task-graph-preview->project-blueprint-planning,validation-plan-preview->file-plan-preview,validation-plan-preview->task-graph-preview") throw new Error(`dependency ordering mismatch: ${order}`);
+    const dependencySummary = capabilityModule.summarizeCapabilityDependencies(map.dependencies);
+    const types = dependencySummary.dependencyTypes.map((entry) => `${entry.key}:${entry.totalDependencies}`).join(",");
+    if (types !== "informs:1,requires:8,reviews:1,validates:1") throw new Error(`dependency type summary mismatch: ${types}`);
+    console.log("PASS project-generation-capability-dependency-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-capability-dependency-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationCapabilityFilteringUnit() {
+  try {
+    const capabilityModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationCapabilityMap.js"));
+    const capabilities = capabilityModule.createDefaultProjectGenerationCapabilities();
+    const byId = capabilityModule.findCapabilityById(capabilities, "file-plan-preview");
+    const planned = capabilityModule.findCapabilitiesByStatus(capabilities, "planned");
+    const highRisk = capabilityModule.findCapabilitiesByRiskLevel(capabilities, "high");
+    const blocked = capabilityModule.findBlockedCapabilities(capabilities);
+    if (!byId || byId.title !== "File Plan Preview") throw new Error(`find by id mismatch: ${JSON.stringify(byId)}`);
+    if (planned.length !== 6 || planned[0].id !== "dependency-plan-preview") throw new Error(`status filtering mismatch: ${JSON.stringify(planned.map((item) => item.id))}`);
+    if (highRisk.length !== 4 || highRisk[0].id !== "file-plan-preview") throw new Error(`risk filtering mismatch: ${JSON.stringify(highRisk.map((item) => item.id))}`);
+    if (blocked.length !== 0) throw new Error(`blocked filtering mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-capability-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-capability-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationCapabilityRenderingUnit() {
+  try {
+    const capabilityModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationCapabilityMap.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const map = capabilityModule.createProjectGenerationCapabilityMap({ title: "Render Capability Map", metadata: { version: "v11.1", source: "capability-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationCapabilityMap(map);
+    if (!rendered.includes("Project generation capability map: Render Capability Map") || !rendered.includes("total capabilities: 11") || !rendered.includes("runtimeRoutingEnabled: false") || !rendered.includes("projectGenerationEnabled: false") || !rendered.includes("builderAgentRuntimeEnabled: false") || !rendered.includes("no runtime generation")) throw new Error(`capability render mismatch: ${rendered}`);
+    console.log("PASS project-generation-capability-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-capability-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationCapabilityCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-capabilities"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation capability map:") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("builderAgentRuntimeEnabled: false") || !human.stdout.includes("fileWriteAllowed: false")) throw new Error(`capability human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-capabilities", "--json"]);
+    if (json.status !== 0) throw new Error(`capability json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.planningOnly !== true || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.runtimeRoutingEnabled !== false || parsed.summary.totalCapabilities !== 11 || parsed.summary.totalDependencies !== 11) throw new Error(`capability json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-capability-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-capability-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationCapabilityHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-capabilities", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-capabilities",
+      "planning-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not generate projects",
+      "builder agents",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-capability-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-capability-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -29922,7 +30056,8 @@ const scenarioSuites = {
     runGovernanceStatusNormalizationUnit,
     runGovernanceRenderNormalizationUnit,
     runReadonlyRenderConsistencyUnit,
-    runProjectGenerationReadinessConsistencyUnit
+    runProjectGenerationReadinessConsistencyUnit,
+    runProjectGenerationCapabilityMapConsistencyUnit
   ],
   cli: [
     runCliRenderConsistencyUnit,
@@ -29935,7 +30070,9 @@ const scenarioSuites = {
     runGovernanceArtifactReviewPackHelpOutputUnit,
     runGovernanceConsolidationAuditHelpOutputUnit,
     runProjectGenerationReadinessCliOutputUnit,
-    runProjectGenerationReadinessHelpOutputUnit
+    runProjectGenerationReadinessHelpOutputUnit,
+    runProjectGenerationCapabilityCliOutputUnit,
+    runProjectGenerationCapabilityHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -29965,6 +30102,7 @@ const scenarioSuites = {
     runGovernanceConsolidationAuditRenderingUnit,
     runCliGovernanceConsolidationAuditRenderingUnit,
     runProjectGenerationReadinessRenderingUnit,
+    runProjectGenerationCapabilityRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -29973,7 +30111,14 @@ const scenarioSuites = {
     runProjectGenerationReadinessScoringUnit,
     runProjectGenerationReadinessRenderingUnit,
     runProjectGenerationReadinessCliOutputUnit,
-    runProjectGenerationReadinessHelpOutputUnit
+    runProjectGenerationReadinessHelpOutputUnit,
+    runProjectGenerationCapabilityMapConsistencyUnit,
+    runProjectGenerationCapabilityMapSummaryUnit,
+    runProjectGenerationCapabilityDependencySortingUnit,
+    runProjectGenerationCapabilityFilteringUnit,
+    runProjectGenerationCapabilityRenderingUnit,
+    runProjectGenerationCapabilityCliOutputUnit,
+    runProjectGenerationCapabilityHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -32842,6 +32987,27 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationReadinessHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationCapabilityMapConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationCapabilityMapSummaryUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationCapabilityDependencySortingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationCapabilityFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationCapabilityRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationCapabilityCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationCapabilityHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

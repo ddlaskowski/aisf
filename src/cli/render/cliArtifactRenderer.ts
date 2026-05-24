@@ -7,6 +7,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSummary 
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
+import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSummary } from "../../governance/projectGenerationReadiness.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
 
@@ -307,7 +308,59 @@ export function renderCliProjectGenerationReadinessAssessment(assessment: Projec
   ].join("\n");
 }
 
+export function renderCliProjectGenerationCapabilitySummary(summary: ProjectGenerationCapabilitySummary): string {
+  return [
+    renderCliSection("Project generation capability map summary", [
+      `total capabilities: ${summary.totalCapabilities}`,
+      `status distribution: ${renderCliCapabilityGroups(summary.statusDistribution)}`,
+      `risk distribution: ${renderCliCapabilityGroups(summary.riskDistribution)}`,
+      `blocked capabilities: ${summary.blockedCapabilities.length === 0 ? "none" : summary.blockedCapabilities.join(", ")}`,
+      `total dependencies: ${summary.totalDependencies}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationCapabilityMap(map: ProjectGenerationCapabilityMap): string {
+  const capabilityLines = map.capabilities.length === 0
+    ? ["none"]
+    : map.capabilities.map((capability) => `${capability.id} | ${capability.title} | status=${capability.status} | risk=${capability.riskLevel} | readiness=${capability.readiness} | readonly=${String(capability.readonly)} | previewOnly=${String(capability.previewOnly)}`);
+  const dependencyLines = map.dependencies.length === 0
+    ? ["none"]
+    : map.dependencies.map((dependency) => `${dependency.id} | ${dependency.from} ${dependency.dependencyType} ${dependency.to} | planningOnly=${String(dependency.planningOnly)}`);
+  return [
+    renderCliSection("Project generation capability map", [
+      `title: ${map.title}`,
+      `schemaVersion: ${map.schemaVersion}`,
+      `readonly: ${String(map.readonly)}`,
+      `previewOnly: ${String(map.previewOnly)}`,
+      `planningOnly: ${String(map.planningOnly)}`,
+      `stdoutOnly: ${String(map.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(map.fileWriteAllowed)}`,
+      `runtimeRoutingEnabled: ${String(map.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(map.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(map.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(map.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(map.builderAgentRuntimeEnabled)}`,
+      "notice: no runtime generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(map.metadata),
+    renderCliProjectGenerationCapabilitySummary(map.summary),
+    renderCliSection("Capabilities", capabilityLines),
+    renderCliSection("Capability dependencies", dependencyLines),
+    renderReadonlyNotice(map.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
+}
+
+function renderCliCapabilityGroups(groups: readonly { key: string; totalCapabilities: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalCapabilities}`).join(", ");
 }

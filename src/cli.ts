@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationReadinessAssessment } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -65,6 +65,10 @@ import {
   createGovernanceConsolidationAudit,
   type GovernanceConsolidationAudit
 } from "./governance/governanceConsolidationAudit.js";
+import {
+  createProjectGenerationCapabilityMap,
+  type ProjectGenerationCapabilityMap
+} from "./governance/projectGenerationCapabilityMap.js";
 import {
   createArtifactPipelineReadinessSection,
   createBuilderAgentReadinessSection,
@@ -440,6 +444,7 @@ import {
   renderGovernanceRuntimeResearchManifestPreviewHelp,
   renderGovernanceRuntimeResearchAttestationPreviewHelp,
   renderGovernanceConsolidationAuditHelp,
+  renderGovernanceProjectGenerationCapabilitiesHelp,
   renderGovernanceProjectGenerationReadinessHelp,
   renderGovernanceArtifactIndexHelp,
   renderGovernanceAutonomyScopePreviewHelp,
@@ -926,6 +931,19 @@ function buildProjectGenerationReadinessAssessmentPreview(): ProjectGenerationRe
   });
 }
 
+function buildProjectGenerationCapabilityMapPreview(): ProjectGenerationCapabilityMap {
+  return createProjectGenerationCapabilityMap({
+    title: "Project Generation Capability Map",
+    metadata: {
+      version: "v11.1",
+      source: "project-generation-capability-map-cli-preview",
+      command: "governance project-generation-capabilities",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -982,6 +1000,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(assessment, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationReadinessAssessment(assessment), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-capabilities") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-capabilities", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationCapabilitiesHelp(), 0);
+    }
+
+    const capabilityMap = buildProjectGenerationCapabilityMapPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(capabilityMap, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationCapabilityMap(capabilityMap), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {
