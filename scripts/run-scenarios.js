@@ -30634,6 +30634,150 @@ function runProjectGenerationApprovalPlanHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationRiskPlanConsistencyUnit() {
+  try {
+    const riskPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRiskPlanPreview.js"));
+    const metadata = { version: "v11.7", source: "risk-plan-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = riskPlanModule.createProjectGenerationRiskPlanPreview({ title: "Unit Risk Plan", metadata });
+    const second = riskPlanModule.createProjectGenerationRiskPlanPreview({ title: "Unit Risk Plan", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("risk plan output is not deterministic");
+    if (first.summary.totalRisks !== 9 || first.summary.humanApprovalRequiredCount !== 8 || first.summary.blockedCount !== 0 || first.summary.exposure.score !== 41 || first.summary.exposure.level !== "medium") throw new Error(`risk plan summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.riskPlanPreviewOnly !== true || first.riskEnforcementAllowed !== false || first.mitigationEnforcementEnabled !== false || first.approvalExecutionAllowed !== false || first.approvalDecisionApplied !== false || first.projectGenerationApproved !== false || first.validationExecutionAllowed !== false || first.generatedProjectValidationAllowed !== false || first.commandExecutionAllowed !== false || first.dependencyInstallationAllowed !== false || first.packageMutationAllowed !== false || first.fileWriteAllowed !== false || first.fileCreationAllowed !== false || first.scaffoldGenerationEnabled !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`risk plan invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`risk plan introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-risk-plan-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-risk-plan-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRiskEntrySortingUnit() {
+  try {
+    const riskPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRiskPlanPreview.js"));
+    const risks = riskPlanModule.createDefaultProjectGenerationRiskEntries().reverse();
+    const sorted = riskPlanModule.sortRiskEntries(risks);
+    const order = sorted.map((risk) => risk.riskId).join(",");
+    if (order !== "approval-risk-preview,blueprint-risk-preview,dependency-risk-preview,file-plan-risk-preview,human-review-risk-preview,runtime-activation-risk-preview,safe-patch-boundary-risk-preview,scope-creep-risk-preview,validation-risk-preview") throw new Error(`risk entry ordering mismatch: ${order}`);
+    console.log("PASS project-generation-risk-entry-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-risk-entry-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRiskEntryFilteringUnit() {
+  try {
+    const riskPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRiskPlanPreview.js"));
+    const risks = riskPlanModule.createDefaultProjectGenerationRiskEntries();
+    const dependency = riskPlanModule.findRiskEntriesByType(risks, "dependency");
+    const critical = riskPlanModule.findRiskEntriesBySeverity(risks, "critical");
+    const blueprint = riskPlanModule.findRiskEntriesByAffectedPlan(risks, "blueprint");
+    const humanRequired = riskPlanModule.findHumanApprovalRequiredRiskEntries(risks);
+    const blocked = riskPlanModule.findBlockedRiskEntries(risks);
+    if (dependency.length !== 1 || dependency[0].riskId !== "dependency-risk-preview") throw new Error(`type filtering mismatch: ${JSON.stringify(dependency)}`);
+    if (critical.length !== 3 || critical[0].riskId !== "dependency-risk-preview") throw new Error(`severity filtering mismatch: ${JSON.stringify(critical.map((risk) => risk.riskId))}`);
+    if (blueprint.length !== 2 || blueprint[0].riskId !== "blueprint-risk-preview") throw new Error(`affected plan filtering mismatch: ${JSON.stringify(blueprint.map((risk) => risk.riskId))}`);
+    if (humanRequired.length !== 8 || humanRequired[0].riskId !== "approval-risk-preview") throw new Error(`human-required filtering mismatch: ${JSON.stringify(humanRequired.map((risk) => risk.riskId))}`);
+    if (blocked.length !== 0) throw new Error(`blocked filtering mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-risk-entry-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-risk-entry-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRiskExposureUnit() {
+  try {
+    const riskPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRiskPlanPreview.js"));
+    const risks = [
+      riskPlanModule.createRiskEntry({ riskId: "a", riskType: "architecture", title: "A", description: "A.", affectedPlan: "blueprint", severity: "low", likelihood: "unlikely", riskStatus: "identified", mitigationPolicy: "preview-only", requiresHumanApproval: false }),
+      riskPlanModule.createRiskEntry({ riskId: "b", riskType: "validation", title: "B", description: "B.", affectedPlan: "validation-plan", severity: "high", likelihood: "possible", riskStatus: "requires-review", mitigationPolicy: "manual-review-required", requiresHumanApproval: true }),
+      riskPlanModule.createRiskEntry({ riskId: "c", riskType: "runtime-activation", title: "C", description: "C.", affectedPlan: "runtime-boundary", severity: "critical", likelihood: "expected", riskStatus: "requires-review", mitigationPolicy: "manual-review-required", requiresHumanApproval: true })
+    ];
+    const exposure = riskPlanModule.calculateProjectGenerationRiskExposure(risks);
+    if (exposure.score !== 41 || exposure.level !== "medium") throw new Error(`risk exposure mismatch: ${JSON.stringify(exposure)}`);
+    const empty = riskPlanModule.calculateProjectGenerationRiskExposure([]);
+    if (empty.score !== 0 || empty.level !== "low") throw new Error(`empty risk exposure mismatch: ${JSON.stringify(empty)}`);
+    const blocked = riskPlanModule.calculateProjectGenerationRiskExposure([riskPlanModule.createRiskEntry({ riskId: "blocked", riskType: "scope-creep", title: "Blocked", description: "Blocked.", affectedPlan: "blueprint", severity: "critical", likelihood: "expected", riskStatus: "blocked", mitigationPolicy: "blocked", requiresHumanApproval: true, blockedReason: "Blocked for test." })]);
+    if (blocked.score !== 100 || blocked.level !== "critical") throw new Error(`blocked risk exposure mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-risk-exposure");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-risk-exposure");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRiskPlanRenderingUnit() {
+  try {
+    const riskPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRiskPlanPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = riskPlanModule.createProjectGenerationRiskPlanPreview({ title: "Render Risk Plan", metadata: { version: "v11.7", source: "risk-plan-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationRiskPlanPreview(preview);
+    if (!rendered.includes("Project generation risk plan preview: Render Risk Plan") || !rendered.includes("risk count: 9") || !rendered.includes("riskEnforcementAllowed: false") || !rendered.includes("mitigationEnforcementEnabled: false") || !rendered.includes("approvalExecutionAllowed: false") || !rendered.includes("no risk enforcement")) throw new Error(`risk plan render mismatch: ${rendered}`);
+    console.log("PASS project-generation-risk-plan-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-risk-plan-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRiskPlanCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-risk-plan"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation risk plan preview:") || !human.stdout.includes("riskEnforcementAllowed: false") || !human.stdout.includes("mitigationEnforcementEnabled: false") || !human.stdout.includes("approvalExecutionAllowed: false")) throw new Error(`risk plan human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-risk-plan", "--json"]);
+    if (json.status !== 0) throw new Error(`risk plan json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.riskPlanPreviewOnly !== true || parsed.riskEnforcementAllowed !== false || parsed.mitigationEnforcementEnabled !== false || parsed.approvalExecutionAllowed !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalRisks !== 9 || parsed.summary.exposure.score !== 41) throw new Error(`risk plan json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-risk-plan-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-risk-plan-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRiskPlanHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-risk-plan", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-risk-plan",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not enforce risks",
+      "execute approvals",
+      "approve project generation",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "modify packages",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-risk-plan-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-risk-plan-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -30773,7 +30917,9 @@ const scenarioSuites = {
     runProjectGenerationValidationPlanCliOutputUnit,
     runProjectGenerationValidationPlanHelpOutputUnit,
     runProjectGenerationApprovalPlanCliOutputUnit,
-    runProjectGenerationApprovalPlanHelpOutputUnit
+    runProjectGenerationApprovalPlanHelpOutputUnit,
+    runProjectGenerationRiskPlanCliOutputUnit,
+    runProjectGenerationRiskPlanHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -30809,6 +30955,7 @@ const scenarioSuites = {
     runProjectGenerationDependencyPlanRenderingUnit,
     runProjectGenerationValidationPlanRenderingUnit,
     runProjectGenerationApprovalPlanRenderingUnit,
+    runProjectGenerationRiskPlanRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -30858,7 +31005,14 @@ const scenarioSuites = {
     runProjectGenerationApprovalPlanCompletenessUnit,
     runProjectGenerationApprovalPlanRenderingUnit,
     runProjectGenerationApprovalPlanCliOutputUnit,
-    runProjectGenerationApprovalPlanHelpOutputUnit
+    runProjectGenerationApprovalPlanHelpOutputUnit,
+    runProjectGenerationRiskPlanConsistencyUnit,
+    runProjectGenerationRiskEntrySortingUnit,
+    runProjectGenerationRiskEntryFilteringUnit,
+    runProjectGenerationRiskExposureUnit,
+    runProjectGenerationRiskPlanRenderingUnit,
+    runProjectGenerationRiskPlanCliOutputUnit,
+    runProjectGenerationRiskPlanHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -33850,6 +34004,27 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationApprovalPlanHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRiskPlanConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRiskEntrySortingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRiskEntryFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRiskExposureUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRiskPlanRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRiskPlanCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRiskPlanHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

@@ -17,6 +17,7 @@ import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, Proje
 import type { ProjectGenerationDependencyPlanEntry, ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanEntry, ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
+import type { ProjectGenerationRiskEntry, ProjectGenerationRiskPlanPreview, ProjectGenerationRiskPlanSummary } from "../projectGenerationRiskPlanPreview.js";
 import type { ProjectGenerationValidationPlanCheck, ProjectGenerationValidationPlanPreview, ProjectGenerationValidationPlanSummary } from "../projectGenerationValidationPlanPreview.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
 
@@ -829,6 +830,82 @@ export function renderProjectGenerationApprovalPlanPreview(preview: ProjectGener
   ].join("\n");
 }
 
+export function renderProjectGenerationRiskPlanSummary(summary: ProjectGenerationRiskPlanSummary): string {
+  return [
+    "Project generation risk plan preview summary:",
+    `- risk count: ${summary.totalRisks}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- human-approval-required count: ${summary.humanApprovalRequiredCount}`,
+    `- severity distribution: ${renderRiskSeverityGroups(summary.severityDistribution)}`,
+    `- affected plan distribution: ${renderAffectedPlanGroups(summary.affectedPlanDistribution)}`,
+    `- exposure score: ${summary.exposure.score}`,
+    `- exposure level: ${summary.exposure.level}`,
+    `- exposure reason: ${summary.exposure.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationRiskEntry(risk: ProjectGenerationRiskEntry): string {
+  return [
+    `Project generation risk entry: ${risk.riskId}`,
+    `- riskType: ${risk.riskType}`,
+    `- title: ${risk.title}`,
+    `- description: ${risk.description}`,
+    `- affectedPlan: ${risk.affectedPlan}`,
+    `- severity: ${risk.severity}`,
+    `- likelihood: ${risk.likelihood}`,
+    `- riskStatus: ${risk.riskStatus}`,
+    `- mitigationPolicy: ${risk.mitigationPolicy}`,
+    `- requiresHumanApproval: ${String(risk.requiresHumanApproval)}`,
+    `- blockedReason: ${risk.blockedReason ?? "none"}`,
+    `- read-only: ${String(risk.readonly)}`,
+    `- preview-only: ${String(risk.previewOnly)}`,
+    renderWarnings(risk.warnings),
+    "Recommendations:",
+    ...(risk.recommendations.length === 0 ? ["- none"] : risk.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationRiskPlanPreview(preview: ProjectGenerationRiskPlanPreview): string {
+  const risks = preview.risks.length === 0
+    ? ["Project generation risks:", "- none"]
+    : ["Project generation risks:", ...preview.risks.map(renderProjectGenerationRiskEntry)];
+  return [
+    `Project generation risk plan preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- riskPlanPreviewOnly: ${String(preview.riskPlanPreviewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- riskEnforcementAllowed: ${String(preview.riskEnforcementAllowed)}`,
+    `- mitigationEnforcementEnabled: ${String(preview.mitigationEnforcementEnabled)}`,
+    `- approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+    `- approvalDecisionApplied: ${String(preview.approvalDecisionApplied)}`,
+    `- projectGenerationApproved: ${String(preview.projectGenerationApproved)}`,
+    `- validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+    `- generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+    `- commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    "Notice: no risk enforcement, mitigation enforcement, approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(preview.metadata),
+    renderProjectGenerationRiskPlanSummary(preview.summary),
+    ...risks
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -852,4 +929,14 @@ function renderValidationRiskGroups(groups: readonly { key: string; totalChecks:
 function renderApprovalRiskGroups(groups: readonly { key: string; totalGates: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalGates}`).join(", ");
+}
+
+function renderRiskSeverityGroups(groups: readonly { key: string; totalRisks: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalRisks}`).join(", ");
+}
+
+function renderAffectedPlanGroups(groups: readonly { key: string; totalRisks: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalRisks}`).join(", ");
 }

@@ -13,6 +13,7 @@ import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary
 import type { ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../../governance/projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../../governance/projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSummary } from "../../governance/projectGenerationReadiness.js";
+import type { ProjectGenerationRiskPlanPreview, ProjectGenerationRiskPlanSummary } from "../../governance/projectGenerationRiskPlanPreview.js";
 import type { ProjectGenerationValidationPlanPreview, ProjectGenerationValidationPlanSummary } from "../../governance/projectGenerationValidationPlanPreview.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
 
@@ -626,6 +627,64 @@ export function renderCliProjectGenerationApprovalPlanPreview(preview: ProjectGe
   ].join("\n");
 }
 
+export function renderCliProjectGenerationRiskPlanSummary(summary: ProjectGenerationRiskPlanSummary): string {
+  return [
+    renderCliSection("Project generation risk plan preview summary", [
+      `risk count: ${summary.totalRisks}`,
+      `blocked count: ${summary.blockedCount}`,
+      `human-approval-required count: ${summary.humanApprovalRequiredCount}`,
+      `severity distribution: ${renderCliRiskSeverityGroups(summary.severityDistribution)}`,
+      `affected plan distribution: ${renderCliAffectedPlanGroups(summary.affectedPlanDistribution)}`,
+      `exposure score: ${summary.exposure.score}`,
+      `exposure level: ${summary.exposure.level}`,
+      `exposure reason: ${summary.exposure.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationRiskPlanPreview(preview: ProjectGenerationRiskPlanPreview): string {
+  const riskLines = preview.risks.length === 0
+    ? ["none"]
+    : preview.risks.map((risk) => `${risk.riskId} | type=${risk.riskType} | affectedPlan=${risk.affectedPlan} | severity=${risk.severity} | likelihood=${risk.likelihood} | mitigationPolicy=${risk.mitigationPolicy}`);
+  return [
+    renderCliSection("Project generation risk plan preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `riskPlanPreviewOnly: ${String(preview.riskPlanPreviewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `riskEnforcementAllowed: ${String(preview.riskEnforcementAllowed)}`,
+      `mitigationEnforcementEnabled: ${String(preview.mitigationEnforcementEnabled)}`,
+      `approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+      `approvalDecisionApplied: ${String(preview.approvalDecisionApplied)}`,
+      `projectGenerationApproved: ${String(preview.projectGenerationApproved)}`,
+      `validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+      `commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      "notice: no risk enforcement, mitigation enforcement, approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliProjectGenerationRiskPlanSummary(preview.summary),
+    renderCliSection("Risk entries", riskLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -649,4 +708,14 @@ function renderCliValidationRiskGroups(groups: readonly { key: string; totalChec
 function renderCliApprovalRiskGroups(groups: readonly { key: string; totalGates: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalGates}`).join(", ");
+}
+
+function renderCliRiskSeverityGroups(groups: readonly { key: string; totalRisks: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalRisks}`).join(", ");
+}
+
+function renderCliAffectedPlanGroups(groups: readonly { key: string; totalRisks: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalRisks}`).join(", ");
 }
