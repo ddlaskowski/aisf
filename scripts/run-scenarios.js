@@ -33398,6 +33398,151 @@ function runControlledRuntimeFlowHelpOutputUnit() {
   }
 }
 
+function runControlledRuntimeStateModelConsistencyUnit() {
+  try {
+    const stateModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeStateModelPreview.js"));
+    const metadata = { version: "v13.3", source: "unit", command: "governance controlled-runtime-state-model", readonly: true, previewOnly: true };
+    const first = stateModule.createControlledRuntimeStateModelPreview({ title: "Unit Runtime State Model", metadata });
+    const second = stateModule.createControlledRuntimeStateModelPreview({ title: "Unit Runtime State Model", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled runtime state model output is not deterministic");
+    if (first.runtimePersistenceAllowed !== false || first.statePersistenceAllowed !== false || first.runtimeExecutionAllowed !== false || first.runtimeOrchestrationAllowed !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false || first.agentExecutionAllowed !== false || first.fileWriteAllowed !== false) throw new Error("controlled runtime state model invariant flags changed");
+    if (first.fields.length !== 10 || first.snapshots.length !== 10 || first.transitions.length !== 9 || first.summary.noPersistence !== true || first.summary.noExecution !== true) throw new Error("controlled runtime state model summary mismatch");
+    console.log("PASS controlled-runtime-state-model-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-model-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeStateFieldOrderingUnit() {
+  try {
+    const stateModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeStateModelPreview.js"));
+    const preview = stateModule.createControlledRuntimeStateModelPreview({ title: "Sort Runtime State", metadata: { version: "v13.3", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.fields.map((field) => field.category).join(",");
+    if (order !== "requestState,contractState,flowState,approvalState,generationState,validationState,reviewState,exportState,auditState,completionState") throw new Error(`state field ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-state-field-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-field-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeStateSnapshotOrderingUnit() {
+  try {
+    const stateModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeStateModelPreview.js"));
+    const preview = stateModule.createControlledRuntimeStateModelPreview({ title: "Sort Runtime State", metadata: { version: "v13.3", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.snapshots.map((snapshot) => snapshot.category).join(",");
+    if (order !== "requestState,contractState,flowState,approvalState,generationState,validationState,reviewState,exportState,auditState,completionState") throw new Error(`state snapshot ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-state-snapshot-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-snapshot-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeStateTransitionOrderingUnit() {
+  try {
+    const stateModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeStateModelPreview.js"));
+    const preview = stateModule.createControlledRuntimeStateModelPreview({ title: "Sort Runtime State", metadata: { version: "v13.3", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.transitions.map((transition) => transition.transitionId).join(",");
+    if (order !== "controlled-runtime-state-transition-001,controlled-runtime-state-transition-002,controlled-runtime-state-transition-003,controlled-runtime-state-transition-004,controlled-runtime-state-transition-005,controlled-runtime-state-transition-006,controlled-runtime-state-transition-007,controlled-runtime-state-transition-008,controlled-runtime-state-transition-009") throw new Error(`state transition ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-state-transition-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-transition-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeStateModelFilteringUnit() {
+  try {
+    const stateModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeStateModelPreview.js"));
+    const preview = stateModule.createControlledRuntimeStateModelPreview({ title: "Filter Runtime State", metadata: { version: "v13.3", source: "filter", readonly: true, previewOnly: true } });
+    if (stateModule.findRuntimeStateFieldsByCategory(preview.fields, "approvalState").length !== 1) throw new Error("state category filter mismatch");
+    if (stateModule.findRuntimeStateFieldsByPersistencePolicy(preview.fields, "no-persistence").length !== 10) throw new Error("state persistence policy filter mismatch");
+    if (stateModule.findBlockedRuntimeStateFields(preview.fields).length !== 0) throw new Error("blocked state filter mismatch");
+    if (stateModule.findPreviewOnlyRuntimeStateFields(preview.fields).length !== 10) throw new Error("preview-only state filter mismatch");
+    console.log("PASS controlled-runtime-state-model-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-model-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeStateModelCompletenessUnit() {
+  try {
+    const stateModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeStateModelPreview.js"));
+    const preview = stateModule.createControlledRuntimeStateModelPreview({ title: "Score Runtime State", metadata: { version: "v13.3", source: "score", readonly: true, previewOnly: true } });
+    const score = stateModule.calculateControlledRuntimeStateModelCompleteness(preview.fields, preview.snapshots, preview.transitions);
+    const empty = stateModule.calculateControlledRuntimeStateModelCompleteness([], [], []);
+    const unsafeScore = stateModule.calculateControlledRuntimeStateModelCompleteness([{ ...preview.fields[0], noPersistence: false }], preview.snapshots, preview.transitions);
+    if (score.score !== 100 || score.level !== "ready-for-persistence-design") throw new Error(`state model score mismatch: ${JSON.stringify(score)}`);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty state model score mismatch: ${JSON.stringify(empty)}`);
+    if (unsafeScore.score !== 0 || unsafeScore.level !== "incomplete") throw new Error(`unsafe state model score mismatch: ${JSON.stringify(unsafeScore)}`);
+    console.log("PASS controlled-runtime-state-model-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-model-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeStateModelRenderingUnit() {
+  try {
+    const stateModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeStateModelPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = stateModule.createControlledRuntimeStateModelPreview({ title: "Render Runtime State", metadata: { version: "v13.3", source: "render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledRuntimeStateModelPreview(preview);
+    if (!rendered.includes("Controlled runtime state model preview: Render Runtime State") || !rendered.includes("No runtime persistence") || !rendered.includes("no state persistence") || !rendered.includes("field count: 10") || !rendered.includes("persistence policies:") || !rendered.includes("allowedReaders")) throw new Error(`state model rendering mismatch: ${rendered}`);
+    console.log("PASS controlled-runtime-state-model-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-model-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeStateModelCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-runtime-state-model"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled runtime state model preview") || !human.stdout.includes("runtimePersistenceAllowed: false") || !human.stdout.includes("statePersistenceAllowed: false") || !human.stdout.includes("runtimeExecutionAllowed: false")) throw new Error(`state model CLI output mismatch: status=${human.status} stdout=${human.stdout} stderr=${human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-runtime-state-model", "--json"]);
+    const parsed = JSON.parse(json.stdout);
+    if (json.status !== 0 || parsed.runtimePersistenceAllowed !== false || parsed.statePersistenceAllowed !== false || parsed.runtimeExecutionAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.fields.length !== 10 || parsed.snapshots.length !== 10 || parsed.transitions.length !== 9 || parsed.summary.completeness.level !== "ready-for-persistence-design") throw new Error(`state model JSON output mismatch: status=${json.status} stdout=${json.stdout} stderr=${json.stderr}`);
+    console.log("PASS controlled-runtime-state-model-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-model-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeStateModelHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-runtime-state-model", "--help"]);
+    if (help.status !== 0) throw new Error(`state model help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, ["governance controlled-runtime-state-model", "read-only", "preview-only", "stdout-only", "no-runtime-execution", "no-runtime-persistence", "no-state-persistence", "no-project-generation", "no-agent-execution", "persist runtime state", "persist approval state", "route runtime behavior", "orchestrate runtime behavior", "generate projects"]);
+    console.log("PASS controlled-runtime-state-model-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-state-model-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -33691,7 +33836,9 @@ const cliScenarioGroups = {
     runControlledRuntimeComponentContractCliOutputUnit,
     runControlledRuntimeComponentContractHelpOutputUnit,
     runControlledRuntimeFlowCliOutputUnit,
-    runControlledRuntimeFlowHelpOutputUnit
+    runControlledRuntimeFlowHelpOutputUnit,
+    runControlledRuntimeStateModelCliOutputUnit,
+    runControlledRuntimeStateModelHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessCliOutputUnit,
@@ -33798,6 +33945,7 @@ const scenarioSuites = {
     runControlledRuntimeArchitectureRenderingUnit,
     runControlledRuntimeComponentContractRenderingUnit,
     runControlledRuntimeFlowRenderingUnit,
+    runControlledRuntimeStateModelRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "runtime-architecture": [
@@ -33822,7 +33970,16 @@ const scenarioSuites = {
     runControlledRuntimeFlowCompletenessUnit,
     runControlledRuntimeFlowRenderingUnit,
     runControlledRuntimeFlowCliOutputUnit,
-    runControlledRuntimeFlowHelpOutputUnit
+    runControlledRuntimeFlowHelpOutputUnit,
+    runControlledRuntimeStateModelConsistencyUnit,
+    runControlledRuntimeStateFieldOrderingUnit,
+    runControlledRuntimeStateSnapshotOrderingUnit,
+    runControlledRuntimeStateTransitionOrderingUnit,
+    runControlledRuntimeStateModelFilteringUnit,
+    runControlledRuntimeStateModelCompletenessUnit,
+    runControlledRuntimeStateModelRenderingUnit,
+    runControlledRuntimeStateModelCliOutputUnit,
+    runControlledRuntimeStateModelHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessConsistencyUnit,
@@ -37398,6 +37555,33 @@ async function main() {
     failed += 1;
   }
   if (!runControlledRuntimeFlowHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateModelConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateFieldOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateSnapshotOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateTransitionOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateModelFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateModelCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateModelRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateModelCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeStateModelHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

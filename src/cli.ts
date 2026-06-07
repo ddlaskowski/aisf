@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliControlledProjectGenerationApprovalBoundaryContract, renderCliControlledProjectGenerationContractAudit, renderCliControlledProjectGenerationContractBundle, renderCliControlledProjectGenerationDesignCompletionAudit, renderCliControlledProjectGenerationDesignContract, renderCliControlledProjectGenerationInputContract, renderCliControlledProjectGenerationMutationBoundaryContract, renderCliControlledProjectGenerationOutputContract, renderCliControlledProjectGenerationRuntimeBoundaryContract, renderCliControlledRuntimeArchitecturePreview, renderCliControlledRuntimeComponentContract, renderCliControlledRuntimeFlowPreview, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliControlledProjectGenerationApprovalBoundaryContract, renderCliControlledProjectGenerationContractAudit, renderCliControlledProjectGenerationContractBundle, renderCliControlledProjectGenerationDesignCompletionAudit, renderCliControlledProjectGenerationDesignContract, renderCliControlledProjectGenerationInputContract, renderCliControlledProjectGenerationMutationBoundaryContract, renderCliControlledProjectGenerationOutputContract, renderCliControlledProjectGenerationRuntimeBoundaryContract, renderCliControlledRuntimeArchitecturePreview, renderCliControlledRuntimeComponentContract, renderCliControlledRuntimeFlowPreview, renderCliControlledRuntimeStateModelPreview, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -141,6 +141,10 @@ import {
   createControlledRuntimeFlowPreview,
   type ControlledRuntimeFlowPreview
 } from "./governance/controlledRuntimeFlowPreview.js";
+import {
+  createControlledRuntimeStateModelPreview,
+  type ControlledRuntimeStateModelPreview
+} from "./governance/controlledRuntimeStateModelPreview.js";
 import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
@@ -547,6 +551,7 @@ import {
   renderGovernanceControlledRuntimeArchitectureHelp,
   renderGovernanceControlledRuntimeComponentsHelp,
   renderGovernanceControlledRuntimeFlowHelp,
+  renderGovernanceControlledRuntimeStateModelHelp,
   renderGovernanceConsolidationAuditHelp,
   renderGovernanceProjectGenerationApprovalPlanHelp,
   renderGovernanceProjectGenerationBlueprintHelp,
@@ -1330,6 +1335,19 @@ function buildControlledRuntimeFlowPreview(): ControlledRuntimeFlowPreview {
   });
 }
 
+function buildControlledRuntimeStateModelPreview(): ControlledRuntimeStateModelPreview {
+  return createControlledRuntimeStateModelPreview({
+    title: "Controlled Runtime State Model Preview",
+    metadata: {
+      version: "v13.3",
+      source: "controlled-runtime-state-model-cli-preview",
+      command: "governance controlled-runtime-state-model",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function buildControlledProjectGenerationContractExportMetadata(format: ControlledProjectGenerationContractExportFormat, commandName: string) {
   return {
     version: "v12.9",
@@ -1939,6 +1957,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderCliControlledRuntimeFlowPreview(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "controlled-runtime-state-model") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance controlled-runtime-state-model", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceControlledRuntimeStateModelHelp(), 0);
+    }
+
+    const preview = buildControlledRuntimeStateModelPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderCliControlledRuntimeStateModelPreview(preview), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

@@ -20,6 +20,7 @@ import type { ControlledProjectGenerationRuntimeBoundaryContract, ControlledProj
 import type { ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../../governance/controlledRuntimeArchitecturePreview.js";
 import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractSummary } from "../../governance/controlledRuntimeComponentContract.js";
 import type { ControlledRuntimeFlowPreview, ControlledRuntimeFlowSummary } from "../../governance/controlledRuntimeFlowPreview.js";
+import type { ControlledRuntimeStateModelPreview, ControlledRuntimeStateModelSummary } from "../../governance/controlledRuntimeStateModelPreview.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
@@ -1808,6 +1809,80 @@ export function renderCliControlledRuntimeFlowPreview(preview: ControlledRuntime
   ].join("\n");
 }
 
+export function renderCliControlledRuntimeStateModelSummary(summary: ControlledRuntimeStateModelSummary): string {
+  return [
+    renderCliSection("Controlled runtime state model summary", [
+      `field count: ${summary.totalFields}`,
+      `snapshot count: ${summary.totalSnapshots}`,
+      `transition count: ${summary.totalTransitions}`,
+      `blocked count: ${summary.blockedCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `persistence policies: ${renderCliRuntimeStatePersistencePolicyGroups(summary.persistencePolicyDistribution)}`,
+      `risk distribution: ${renderCliRuntimeStateRiskGroups(summary.riskDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-persistence: ${String(summary.noPersistence)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledRuntimeStateModelPreview(preview: ControlledRuntimeStateModelPreview): string {
+  const fieldLines = preview.fields.length === 0
+    ? ["none"]
+    : preview.fields.map((field) => `${field.fieldId} | category=${field.category} | policy=${field.persistencePolicy} | visibility=${field.visibility} | noPersistence=${String(field.noPersistence)} | noExecution=${String(field.noExecution)}`);
+  const snapshotLines = preview.snapshots.length === 0
+    ? ["none"]
+    : preview.snapshots.map((snapshot) => `${snapshot.snapshotId} | category=${snapshot.category} | policy=${snapshot.persistencePolicy} | fields=${snapshot.includedFields.length} | noPersistence=${String(snapshot.noPersistence)}`);
+  const transitionLines = preview.transitions.length === 0
+    ? ["none"]
+    : preview.transitions.map((transition) => `${transition.transitionId} | from=${transition.fromState} | to=${transition.toState} | policy=${transition.transitionPolicy} | noPersistence=${String(transition.noPersistence)}`);
+  return [
+    renderCliSection("Controlled runtime state model preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `stateModelPreviewOnly: ${String(preview.stateModelPreviewOnly)}`,
+      `runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+      `runtimeActivationAllowed: ${String(preview.runtimeActivationAllowed)}`,
+      `runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+      `runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+      `runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+      `statePersistenceAllowed: ${String(preview.statePersistenceAllowed)}`,
+      `flowExecutionAllowed: ${String(preview.flowExecutionAllowed)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      `agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+      `approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+      `mutationExecutionAllowed: ${String(preview.mutationExecutionAllowed)}`,
+      `inputExecutionAllowed: ${String(preview.inputExecutionAllowed)}`,
+      `outputExecutionAllowed: ${String(preview.outputExecutionAllowed)}`,
+      `contractExecutionAllowed: ${String(preview.contractExecutionAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `governanceActivationAllowed: ${String(preview.governanceActivationAllowed)}`,
+      "notice: read-only, preview-only runtime state model only. No runtime persistence, no state persistence, no runtime execution, no runtime routing, no runtime orchestration, no runtime activation, no flow execution, no project generation, no builder-agent runtime, no agent execution, no approval execution, no mutation execution, no input execution, no output execution, no contract execution, no file writing, no file creation, no dependency installation, no package mutation, no generated-project validation, no policy enforcement, and no governance activation is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliControlledRuntimeStateModelSummary(preview.summary),
+    renderCliSection("Runtime state fields", fieldLines),
+    renderCliSection("Runtime state snapshots", snapshotLines),
+    renderCliSection("Runtime state transitions", transitionLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1866,6 +1941,16 @@ function renderCliRuntimeFlowRiskGroups(groups: readonly { key: string; totalSte
 function renderCliRuntimeFlowTransitionPolicyGroups(groups: readonly { key: string; totalTransitions: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalTransitions}`).join(", ");
+}
+
+function renderCliRuntimeStatePersistencePolicyGroups(groups: readonly { key: string; totalFields: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
+}
+
+function renderCliRuntimeStateRiskGroups(groups: readonly { key: string; totalFields: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
 }
 
 function renderCliMutationBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {

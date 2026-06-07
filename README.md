@@ -12389,6 +12389,122 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v13.3 - Controlled Runtime State Model Preview Layer
+
+v13.3 adds a deterministic, read-only runtime state model preview for the future Controlled Runtime Architecture. It describes future state fields, snapshots, transitions, metadata, persistence policies, visibility, allowed readers, and allowed writers without implementing runtime persistence, state persistence, runtime execution, runtime routing, runtime orchestration, runtime activation, project generation, builder agents, agent execution, file writing, dependency installation, package mutation, policy enforcement, governance activation, or autonomous behavior.
+
+Controlled runtime state model preview:
+
+* `src/governance/controlledRuntimeStateModelPreview.ts` adds `ControlledRuntimeStateModelPreview`, `ControlledRuntimeStateField`, `ControlledRuntimeStateSnapshot`, `ControlledRuntimeStateTransition`, `ControlledRuntimeStateModelSummary`, `createControlledRuntimeStateModelPreview`, `summarizeControlledRuntimeStateModelPreview`, and `calculateControlledRuntimeStateModelCompleteness`.
+* State model previews explicitly preserve read-only, preview-only, stdout-only, state-model-preview-only, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-state-persistence, no-flow-execution, no-project-generation, no-builder-agent-runtime, no-agent-execution, no-approval-execution, no-mutation-execution, no-input-execution, no-output-execution, no-contract-execution, no-file-writing, no-file-creation, no-dependency-installation, no-package-mutation, no-generated-project-validation, no-policy-enforcement, and no-governance-activation guarantees.
+
+State categories:
+
+* `requestState`
+* `contractState`
+* `flowState`
+* `approvalState`
+* `generationState`
+* `validationState`
+* `reviewState`
+* `exportState`
+* `auditState`
+* `completionState`
+
+State helpers:
+
+* `createRuntimeStateField`
+* `createRuntimeStateSnapshot`
+* `createRuntimeStateTransition`
+* `sortRuntimeStateFields`
+* `sortRuntimeStateSnapshots`
+* `sortRuntimeStateTransitions`
+* `findRuntimeStateFieldsByCategory`
+* `findRuntimeStateFieldsByPersistencePolicy`
+* `findBlockedRuntimeStateFields`
+* `findPreviewOnlyRuntimeStateFields`
+
+State model details:
+
+* State fields include deterministic status, persistence policy, visibility, risk level, allowed writers, allowed readers, blocked reason, warnings, recommendations, read-only, preview-only, no-persistence, and no-execution fields.
+* State snapshots include deterministic included fields, snapshot policy, persistence policy, read-only, preview-only, no-persistence, and no-execution guarantees.
+* State transitions include deterministic from-state, to-state, trigger, transition policy, read-only, preview-only, no-persistence, and no-execution guarantees.
+
+Completeness scoring:
+
+* `calculateControlledRuntimeStateModelCompleteness` deterministically computes a 0-100 advisory state model completeness score.
+* Completeness levels are `incomplete`, `partial`, `state-model-defined`, and `ready-for-persistence-design`.
+* Scoring is advisory only and does not persist state, execute runtime, route runtime behavior, orchestrate runtime behavior, activate runtime, enforce policy, approve, generate projects, run agents, mutate files, write files, install dependencies, or change repair orchestration.
+
+Runtime state model rendering:
+
+* `renderControlledRuntimeStateModelPreview` renders the state model title, invariant flags, metadata, summary, fields, snapshots, transitions, persistence policies, visibility, allowed readers/writers, warnings, and recommendations.
+* `renderControlledRuntimeStateModelSummary` renders deterministic field counts, snapshot counts, transition counts, blocked counts, preview-only counts, persistence policy distribution, risk distribution, completeness score, no-persistence guarantees, and no-execution guarantees.
+* `renderControlledRuntimeStateField`, `renderControlledRuntimeStateSnapshot`, and `renderControlledRuntimeStateTransition` render stable state details.
+* `renderCliControlledRuntimeStateModelPreview` and `renderCliControlledRuntimeStateModelSummary` provide equivalent CLI-safe deterministic output.
+
+CLI runtime state model preview:
+
+```powershell
+node dist\cli.js governance controlled-runtime-state-model
+node dist\cli.js governance controlled-runtime-state-model --json
+```
+
+Controlled runtime state model previews print to stdout only. They do not write files, create files, scaffold files, install dependencies, mutate packages, persist runtime state, persist approval state, route runtime behavior, orchestrate runtime behavior, execute runtime behavior, activate runtime behavior, execute flows, execute contracts, execute inputs, execute outputs, execute generated-project validation, generate projects, implement builder agents, execute agents, execute approvals, execute mutations, enforce policies, activate governance, or change repair orchestration.
+
+v13.3 deterministic checks:
+
+* controlled-runtime-state-model-consistency
+* controlled-runtime-state-field-ordering
+* controlled-runtime-state-snapshot-ordering
+* controlled-runtime-state-transition-ordering
+* controlled-runtime-state-model-filtering
+* controlled-runtime-state-model-completeness
+* controlled-runtime-state-model-rendering
+* controlled-runtime-state-model-cli-output
+* controlled-runtime-state-model-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite runtime-architecture
+node scripts\run-scenarios.js --suite cli --cli-scope governance
+node scripts\run-scenarios.js --suite renderers
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no runtime persistence is introduced
+* no state persistence is introduced
+* no runtime execution is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no project generation is introduced
+* no builder agents are introduced
+* no agent execution is introduced
+* no flow execution is introduced
+* no contract execution is introduced
+* no input or output execution is introduced
+* no approval execution is introduced
+* no mutation execution or expansion is introduced
+* no generated-project validation execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 ## v13.2 - Controlled Runtime Flow Preview Layer
 
 v13.2 adds a deterministic, read-only runtime flow preview for the future Controlled Runtime Architecture. It describes how future runtime components may hand off preview data and responsibility between phases without implementing runtime routing, orchestration, execution, persistence, activation, project generation, builder agents, agent execution, policy enforcement, governance activation, file writing, dependency installation, package mutation, or autonomous behavior.
