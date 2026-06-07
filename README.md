@@ -12053,6 +12053,134 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.8 - Controlled Generation Contract Audit Layer
+
+v12.8 adds a deterministic, read-only audit layer for the full Controlled Project Generation design-era contract stack. The audit verifies and summarizes the v12.x contracts before any controlled generation runtime exists. It does not execute contracts, execute contract bundles, execute runtime behavior, activate runtime behavior, route runtime behavior, persist runtime state, generate projects, scaffold files, create files, install dependencies, mutate packages, execute approvals, persist approvals, enforce risks, execute rollback/recovery, write files by default, or change repair orchestration.
+
+Controlled generation contract audit model:
+
+* `src/governance/controlledProjectGenerationContractAudit.ts` adds `ControlledProjectGenerationContractAudit`, `ControlledProjectGenerationContractAuditSection`, `ControlledProjectGenerationContractAuditSummary`, `ControlledProjectGenerationContractAuditCompleteness`, `createControlledProjectGenerationContractAudit`, and `summarizeControlledProjectGenerationContractAudit`.
+* Contract audits explicitly preserve read-only, preview-only, audit-only, stdout-only, no-contract-audit-execution, no-contract-execution, no-contract-bundle-execution, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-planner-loop, no-builder-agent-loop, no-autonomous-generation, no-approval-execution, no-approval-persistence, no-mutation-execution, no-mutation-expansion, no-generation-runtime, no-generation-execution, no-input-execution, no-output-execution, no-bundle-execution, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-validation-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Contract audit helpers require explicit metadata input and do not generate hidden timestamps.
+
+Audited v12.x chain:
+
+* v12.0 design contract
+* v12.1 input contract
+* v12.2 output contract
+* v12.3 mutation boundary contract
+* v12.4 approval boundary contract
+* v12.5 runtime boundary contract
+* v12.6 contract bundle
+* v12.7 CLI validation segmentation
+* v12.8 contract audit
+
+Contract audit sections:
+
+* `designContract`
+* `inputContract`
+* `outputContract`
+* `mutationBoundaryContract`
+* `approvalBoundaryContract`
+* `runtimeBoundaryContract`
+* `contractBundle`
+* `cliPreviewPaths`
+* `cliScopeFiltering`
+* `scenarioCoverage`
+* `forbiddenActions`
+* `guarantees`
+
+Advisory completeness scoring:
+
+* `calculateControlledProjectGenerationContractAuditCompleteness` deterministically computes a 0-100 advisory audit score.
+* Completeness levels are `incomplete`, `partial`, `audit-complete`, and `ready-for-runtime-design-review`.
+* Scoring is descriptive only and does not execute runtime behavior, persist runtime state, approve anything, mutate anything, activate anything, route runtime behavior, execute contracts, execute contract bundles, execute contract audits, execute validation commands, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Contract audit rendering:
+
+* `renderControlledProjectGenerationContractAuditSummary` renders deterministic section count, blocked count, forbidden count, CLI preview path coverage, CLI scope coverage, scenario coverage, completeness score, warnings, and recommendations.
+* `renderControlledProjectGenerationContractAuditSection` renders stable contract audit section details.
+* `renderControlledProjectGenerationContractAudit` renders audit title, guarantees, metadata, summary, sections, and an explicit no-runtime/no-project-generation/no-contract-execution/no-contract-audit-execution notice.
+* `renderCliControlledProjectGenerationContractAuditSummary` and `renderCliControlledProjectGenerationContractAudit` provide equivalent CLI-safe deterministic output.
+
+CLI contract audit preview:
+
+```powershell
+node dist\cli.js governance controlled-project-generation-contract-audit
+node dist\cli.js governance controlled-project-generation-contract-audit --json
+```
+
+Contract audits print to stdout only. They do not write files, create files, scaffold files, execute runtime behavior, activate runtime behavior, route runtime behavior, persist runtime state, execute contracts, execute contract audits, execute contract bundles, execute approvals, persist approval state, execute mutations, expand mutation capability, execute inputs, execute outputs, execute rollback, execute recovery, enforce risks, execute validation commands, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, or change repair orchestration.
+
+CLI scope coverage:
+
+* `all`
+* `artifact`
+* `controlled-generation`
+* `general`
+* `governance`
+* `project-generation`
+
+v12.8 deterministic checks:
+
+* controlled-project-generation-contract-audit-consistency
+* controlled-project-generation-contract-audit-section-ordering
+* controlled-project-generation-contract-audit-completeness
+* controlled-project-generation-contract-audit-rendering
+* controlled-project-generation-contract-audit-cli-output
+* controlled-project-generation-contract-audit-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite controlled-generation
+node scripts\run-scenarios.js --suite cli --cli-scope controlled-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no runtime execution is introduced
+* no runtime activation is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no runtime persistence is introduced
+* no contract execution is introduced
+* no contract audit execution is introduced
+* no contract bundle execution is introduced
+* no approval execution is introduced
+* no approval persistence is introduced
+* no mutation execution is introduced
+* no output execution is introduced
+* no input execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

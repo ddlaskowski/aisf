@@ -8,6 +8,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSection,
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSection, GovernanceArtifactSnapshotSummary } from "../governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSection, GovernanceConsolidationAuditSummary } from "../governanceConsolidationAudit.js";
 import type { ControlledProjectGenerationApprovalBoundary, ControlledProjectGenerationApprovalBoundaryContract, ControlledProjectGenerationApprovalBoundarySummary } from "../controlledProjectGenerationApprovalBoundaryContract.js";
+import type { ControlledProjectGenerationContractAudit, ControlledProjectGenerationContractAuditSection, ControlledProjectGenerationContractAuditSummary } from "../controlledProjectGenerationContractAudit.js";
 import type { ControlledProjectGenerationContractBundle, ControlledProjectGenerationContractBundleSection, ControlledProjectGenerationContractBundleSummary } from "../controlledProjectGenerationContractBundle.js";
 import type { ControlledProjectGenerationContractSection, ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary, ControlledProjectGenerationInputField } from "../controlledProjectGenerationInputContract.js";
@@ -1765,6 +1766,103 @@ export function renderControlledProjectGenerationContractBundle(bundle: Controll
     "Notice: no runtime, no project generation, no contract bundle execution, no runtime execution, no runtime activation, no runtime routing, no runtime persistence, no approval execution, no approval persistence, no mutation execution, no mutation expansion, no input execution, no output execution, no bundle execution, rollback execution, recovery execution, risk enforcement, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, policy enforcement, or file writing is enabled.",
     renderMetadata(bundle.metadata),
     renderControlledProjectGenerationContractBundleSummary(bundle.summary),
+    ...sections
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationContractAuditSummary(summary: ControlledProjectGenerationContractAuditSummary): string {
+  return [
+    "Controlled project generation contract audit summary:",
+    `- section count: ${summary.totalSections}`,
+    `- complete sections: ${summary.completeSections}`,
+    `- defined sections: ${summary.definedSections}`,
+    `- blocked sections: ${summary.blockedSections}`,
+    `- total entries: ${summary.totalEntries}`,
+    `- total blocked: ${summary.totalBlocked}`,
+    `- total forbidden: ${summary.totalForbidden}`,
+    `- CLI preview path coverage: ${summary.cliPreviewPathCount}`,
+    `- CLI scope coverage: ${summary.cliScopeCoverageCount}`,
+    `- scenario coverage: ${summary.scenarioCoverageCount}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationContractAuditSection(section: ControlledProjectGenerationContractAuditSection): string {
+  return [
+    `Controlled project generation contract audit section: ${section.sectionType}`,
+    `- title: ${section.title}`,
+    `- summary: ${section.summary}`,
+    `- status: ${section.status}`,
+    `- score: ${section.score}`,
+    `- level: ${section.level}`,
+    `- entryCount: ${section.entryCount}`,
+    `- blockedCount: ${section.blockedCount}`,
+    `- forbiddenCount: ${section.forbiddenCount}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    `- no-execution: ${String(section.noExecution)}`,
+    renderWarnings(section.warnings),
+    "Recommendations:",
+    ...(section.recommendations.length === 0 ? ["- none"] : section.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationContractAudit(audit: ControlledProjectGenerationContractAudit): string {
+  const sections = audit.sections.length === 0
+    ? ["Controlled project generation contract audit sections:", "- none"]
+    : ["Controlled project generation contract audit sections:", ...audit.sections.map(renderControlledProjectGenerationContractAuditSection)];
+  return [
+    `Controlled project generation contract audit: ${audit.title}`,
+    `- schemaVersion: ${audit.schemaVersion}`,
+    `- readonly: ${String(audit.readonly)}`,
+    `- previewOnly: ${String(audit.previewOnly)}`,
+    `- contractAuditOnly: ${String(audit.contractAuditOnly)}`,
+    `- stdoutOnly: ${String(audit.stdoutOnly)}`,
+    `- contractAuditExecutionAllowed: ${String(audit.contractAuditExecutionAllowed)}`,
+    `- contractExecutionAllowed: ${String(audit.contractExecutionAllowed)}`,
+    `- contractBundleExecutionAllowed: ${String(audit.contractBundleExecutionAllowed)}`,
+    `- runtimeExecutionAllowed: ${String(audit.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(audit.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(audit.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(audit.runtimeOrchestrationAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(audit.runtimePersistenceAllowed)}`,
+    `- approvalExecutionAllowed: ${String(audit.approvalExecutionAllowed)}`,
+    `- approvalPersistenceAllowed: ${String(audit.approvalPersistenceAllowed)}`,
+    `- mutationExecutionAllowed: ${String(audit.mutationExecutionAllowed)}`,
+    `- mutationExpansionAllowed: ${String(audit.mutationExpansionAllowed)}`,
+    `- generationRuntimeImplemented: ${String(audit.generationRuntimeImplemented)}`,
+    `- generationExecutionAllowed: ${String(audit.generationExecutionAllowed)}`,
+    `- outputExecutionAllowed: ${String(audit.outputExecutionAllowed)}`,
+    `- inputExecutionAllowed: ${String(audit.inputExecutionAllowed)}`,
+    `- bundleExecutionAllowed: ${String(audit.bundleExecutionAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(audit.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(audit.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(audit.riskEnforcementAllowed)}`,
+    `- validationExecutionAllowed: ${String(audit.validationExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(audit.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(audit.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(audit.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(audit.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(audit.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(audit.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(audit.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(audit.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(audit.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(audit.builderAgentRuntimeEnabled)}`,
+    `- CLI preview paths: ${audit.cliPreviewPaths.length}`,
+    `- CLI scope coverage: ${audit.cliScopeCoverage.length}`,
+    `- scenario coverage: ${audit.scenarioCoverage.length}`,
+    "Notice: no runtime, no project generation, no contract execution, no contract audit execution, no contract bundle execution, no runtime execution, no runtime activation, no runtime routing, no runtime orchestration, no runtime persistence, no approval execution, no approval persistence, no mutation execution, no mutation expansion, no input execution, no output execution, no bundle execution, rollback execution, recovery execution, risk enforcement, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, policy enforcement, or file writing is enabled.",
+    renderMetadata(audit.metadata),
+    renderControlledProjectGenerationContractAuditSummary(audit.summary),
     ...sections
   ].join("\n");
 }
