@@ -11846,6 +11846,127 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.6 - Controlled Project Generation Contract Bundle Layer
+
+v12.6 continues the Controlled Project Generation Design Era by adding a deterministic, read-only contract bundle for future controlled project generation. The bundle aggregates the v12.0 design contract, v12.1 input contract, v12.2 output contract, v12.3 mutation boundary contract, v12.4 approval boundary contract, and v12.5 runtime boundary contract into one stable review artifact. It does not execute runtime behavior, activate runtime behavior, route runtime behavior, orchestrate runtime behavior, persist runtime state, execute contract bundles, execute approvals, persist approval state, execute mutations, expand mutation capability, execute inputs, execute outputs, execute rollback, execute recovery, enforce risks, execute validation commands, install dependencies, mutate package files, create files, scaffold files, implement builder agents, activate governance, enforce policy, generate projects, or change repair orchestration.
+
+Controlled project generation contract bundle model:
+
+* `src/governance/controlledProjectGenerationContractBundle.ts` adds `ControlledProjectGenerationContractBundle`, `ControlledProjectGenerationContractBundleSection`, `ControlledProjectGenerationContractBundleSummary`, `ControlledProjectGenerationContractBundleCompleteness`, `createControlledProjectGenerationContractBundle`, and `summarizeControlledProjectGenerationContractBundle`.
+* Contract bundles explicitly preserve read-only, preview-only, contract-bundle-only, stdout-only, no-contract-bundle-execution, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-planner-loop, no-builder-agent-loop, no-autonomous-generation, no-approval-execution, no-approval-persistence, no-mutation-execution, no-mutation-expansion, no-generation-runtime, no-generation-execution, no-input-execution, no-output-execution, no-bundle-execution, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-validation-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Contract bundle helpers require explicit metadata input and do not generate hidden timestamps.
+
+Aggregated contracts:
+
+* `designContract`
+* `inputContract`
+* `outputContract`
+* `mutationBoundaryContract`
+* `approvalBoundaryContract`
+* `runtimeBoundaryContract`
+* `forbiddenActions`
+* `readonlyGuarantees`
+* `previewOnlyGuarantees`
+* `noExecutionGuarantees`
+* `cliPreviewPaths`
+* `scenarioCoverage`
+
+Contract bundle section helpers:
+
+* `createContractBundleDesignSection`
+* `createContractBundleInputSection`
+* `createContractBundleOutputSection`
+* `createContractBundleMutationBoundarySection`
+* `createContractBundleApprovalBoundarySection`
+* `createContractBundleRuntimeBoundarySection`
+* `createContractBundleForbiddenActionsSection`
+* `createContractBundleGuaranteesSection`
+* `createContractBundleCliPreviewSection`
+* `createContractBundleScenarioCoverageSection`
+
+Each section records section type, title, summary, status, score, level, entry count, blocked count, forbidden count, warnings, recommendations, read-only state, preview-only state, and no-execution state.
+
+Advisory completeness scoring:
+
+* `calculateControlledProjectGenerationContractBundleCompleteness` deterministically computes a 0-100 advisory completeness score.
+* Completeness levels are `incomplete`, `partial`, `bundle-defined`, and `ready-for-design-audit`.
+* Scoring is descriptive only and does not execute runtime behavior, persist runtime state, approve anything, mutate anything, activate anything, route runtime behavior, execute contract bundles, execute validation commands, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Contract bundle rendering:
+
+* `renderControlledProjectGenerationContractBundleSummary` renders deterministic section count, blocked count, forbidden count, read-only/no-execution guarantees, CLI preview path coverage, scenario coverage, completeness score, warnings, and recommendations.
+* `renderControlledProjectGenerationContractBundleSection` renders stable contract bundle section details.
+* `renderControlledProjectGenerationContractBundle` renders bundle title, guarantees, metadata, summary, sections, and an explicit no-runtime/no-project-generation/no-contract-bundle-execution notice.
+* `renderCliControlledProjectGenerationContractBundleSummary` and `renderCliControlledProjectGenerationContractBundle` provide equivalent CLI-safe deterministic output.
+
+CLI contract bundle preview:
+
+```powershell
+node dist\cli.js governance controlled-project-generation-contract-bundle
+node dist\cli.js governance controlled-project-generation-contract-bundle --json
+```
+
+Contract bundles print to stdout only. They do not write files, create files, scaffold files, execute runtime behavior, activate runtime behavior, route runtime behavior, persist runtime state, execute contract bundles, execute approvals, persist approval state, execute mutations, expand mutation capability, execute inputs, execute outputs, execute rollback, execute recovery, enforce risks, execute validation commands, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, or change repair orchestration.
+
+v12.6 deterministic checks:
+
+* controlled-project-generation-contract-bundle-consistency
+* controlled-project-generation-contract-bundle-section-ordering
+* controlled-project-generation-contract-bundle-completeness
+* controlled-project-generation-contract-bundle-rendering
+* controlled-project-generation-contract-bundle-cli-output
+* controlled-project-generation-contract-bundle-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite controlled-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no runtime execution is introduced
+* no runtime activation is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no runtime persistence is introduced
+* no contract bundle execution is introduced
+* no approval execution is introduced
+* no approval persistence is introduced
+* no mutation execution is introduced
+* no output execution is introduced
+* no input execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* forbidden actions remain explicit
+* read-only, preview-only, and no-execution guarantees remain explicit
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliControlledProjectGenerationApprovalBoundaryContract, renderCliControlledProjectGenerationDesignContract, renderCliControlledProjectGenerationInputContract, renderCliControlledProjectGenerationMutationBoundaryContract, renderCliControlledProjectGenerationOutputContract, renderCliControlledProjectGenerationRuntimeBoundaryContract, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliControlledProjectGenerationApprovalBoundaryContract, renderCliControlledProjectGenerationContractBundle, renderCliControlledProjectGenerationDesignContract, renderCliControlledProjectGenerationInputContract, renderCliControlledProjectGenerationMutationBoundaryContract, renderCliControlledProjectGenerationOutputContract, renderCliControlledProjectGenerationRuntimeBoundaryContract, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -109,6 +109,10 @@ import {
   createControlledProjectGenerationRuntimeBoundaryContract,
   type ControlledProjectGenerationRuntimeBoundaryContract
 } from "./governance/controlledProjectGenerationRuntimeBoundaryContract.js";
+import {
+  createControlledProjectGenerationContractBundle,
+  type ControlledProjectGenerationContractBundle
+} from "./governance/controlledProjectGenerationContractBundle.js";
 import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
@@ -505,6 +509,7 @@ import {
   renderGovernanceRuntimeResearchAttestationPreviewHelp,
   renderGovernanceControlledProjectGenerationContractHelp,
   renderGovernanceControlledProjectGenerationApprovalBoundaryHelp,
+  renderGovernanceControlledProjectGenerationContractBundleHelp,
   renderGovernanceControlledProjectGenerationInputContractHelp,
   renderGovernanceControlledProjectGenerationMutationBoundaryHelp,
   renderGovernanceControlledProjectGenerationOutputContractHelp,
@@ -1214,6 +1219,19 @@ function buildControlledProjectGenerationRuntimeBoundaryContractPreview(): Contr
   });
 }
 
+function buildControlledProjectGenerationContractBundlePreview(): ControlledProjectGenerationContractBundle {
+  return createControlledProjectGenerationContractBundle({
+    title: "Controlled Project Generation Contract Bundle",
+    metadata: {
+      version: "v12.6",
+      source: "controlled-project-generation-contract-bundle-cli-preview",
+      command: "governance controlled-project-generation-contract-bundle",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1638,6 +1656,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(contract, null, 2), 0);
     }
     printAndExit(renderCliControlledProjectGenerationRuntimeBoundaryContract(contract), 0);
+  }
+
+  if (command === "governance" && args[1] === "controlled-project-generation-contract-bundle") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance controlled-project-generation-contract-bundle", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceControlledProjectGenerationContractBundleHelp(), 0);
+    }
+
+    const bundle = buildControlledProjectGenerationContractBundlePreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(bundle, null, 2), 0);
+    }
+    printAndExit(renderCliControlledProjectGenerationContractBundle(bundle), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

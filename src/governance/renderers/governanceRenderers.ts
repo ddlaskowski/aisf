@@ -8,6 +8,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSection,
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSection, GovernanceArtifactSnapshotSummary } from "../governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSection, GovernanceConsolidationAuditSummary } from "../governanceConsolidationAudit.js";
 import type { ControlledProjectGenerationApprovalBoundary, ControlledProjectGenerationApprovalBoundaryContract, ControlledProjectGenerationApprovalBoundarySummary } from "../controlledProjectGenerationApprovalBoundaryContract.js";
+import type { ControlledProjectGenerationContractBundle, ControlledProjectGenerationContractBundleSection, ControlledProjectGenerationContractBundleSummary } from "../controlledProjectGenerationContractBundle.js";
 import type { ControlledProjectGenerationContractSection, ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary, ControlledProjectGenerationInputField } from "../controlledProjectGenerationInputContract.js";
 import type { ControlledProjectGenerationMutationBoundary, ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../controlledProjectGenerationMutationBoundaryContract.js";
@@ -1673,6 +1674,98 @@ export function renderControlledProjectGenerationRuntimeBoundaryContract(contrac
     renderMetadata(contract.metadata),
     renderControlledProjectGenerationRuntimeBoundarySummary(contract.summary),
     ...boundaries
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationContractBundleSummary(summary: ControlledProjectGenerationContractBundleSummary): string {
+  return [
+    "Controlled project generation contract bundle summary:",
+    `- section count: ${summary.totalSections}`,
+    `- defined sections: ${summary.definedSections}`,
+    `- blocked sections: ${summary.blockedSections}`,
+    `- total entries: ${summary.totalEntries}`,
+    `- total blocked: ${summary.totalBlocked}`,
+    `- total forbidden: ${summary.totalForbidden}`,
+    `- CLI preview path coverage: ${summary.cliPreviewPathCount}`,
+    `- scenario coverage: ${summary.scenarioCoverageCount}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationContractBundleSection(section: ControlledProjectGenerationContractBundleSection): string {
+  return [
+    `Controlled project generation contract bundle section: ${section.sectionType}`,
+    `- title: ${section.title}`,
+    `- summary: ${section.summary}`,
+    `- status: ${section.status}`,
+    `- score: ${section.score}`,
+    `- level: ${section.level}`,
+    `- entryCount: ${section.entryCount}`,
+    `- blockedCount: ${section.blockedCount}`,
+    `- forbiddenCount: ${section.forbiddenCount}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    `- no-execution: ${String(section.noExecution)}`,
+    renderWarnings(section.warnings),
+    "Recommendations:",
+    ...(section.recommendations.length === 0 ? ["- none"] : section.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationContractBundle(bundle: ControlledProjectGenerationContractBundle): string {
+  const sections = bundle.sections.length === 0
+    ? ["Controlled project generation contract bundle sections:", "- none"]
+    : ["Controlled project generation contract bundle sections:", ...bundle.sections.map(renderControlledProjectGenerationContractBundleSection)];
+  return [
+    `Controlled project generation contract bundle: ${bundle.title}`,
+    `- schemaVersion: ${bundle.schemaVersion}`,
+    `- readonly: ${String(bundle.readonly)}`,
+    `- previewOnly: ${String(bundle.previewOnly)}`,
+    `- contractBundleOnly: ${String(bundle.contractBundleOnly)}`,
+    `- stdoutOnly: ${String(bundle.stdoutOnly)}`,
+    `- contractBundleExecutionAllowed: ${String(bundle.contractBundleExecutionAllowed)}`,
+    `- runtimeExecutionAllowed: ${String(bundle.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(bundle.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(bundle.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(bundle.runtimeOrchestrationAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(bundle.runtimePersistenceAllowed)}`,
+    `- approvalExecutionAllowed: ${String(bundle.approvalExecutionAllowed)}`,
+    `- approvalPersistenceAllowed: ${String(bundle.approvalPersistenceAllowed)}`,
+    `- mutationExecutionAllowed: ${String(bundle.mutationExecutionAllowed)}`,
+    `- mutationExpansionAllowed: ${String(bundle.mutationExpansionAllowed)}`,
+    `- generationRuntimeImplemented: ${String(bundle.generationRuntimeImplemented)}`,
+    `- generationExecutionAllowed: ${String(bundle.generationExecutionAllowed)}`,
+    `- outputExecutionAllowed: ${String(bundle.outputExecutionAllowed)}`,
+    `- inputExecutionAllowed: ${String(bundle.inputExecutionAllowed)}`,
+    `- bundleExecutionAllowed: ${String(bundle.bundleExecutionAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(bundle.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(bundle.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(bundle.riskEnforcementAllowed)}`,
+    `- validationExecutionAllowed: ${String(bundle.validationExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(bundle.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(bundle.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(bundle.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(bundle.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(bundle.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(bundle.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(bundle.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(bundle.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(bundle.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(bundle.builderAgentRuntimeEnabled)}`,
+    `- CLI preview paths: ${bundle.cliPreviewPaths.length}`,
+    `- scenario coverage: ${bundle.scenarioCoverage.length}`,
+    "Notice: no runtime, no project generation, no contract bundle execution, no runtime execution, no runtime activation, no runtime routing, no runtime persistence, no approval execution, no approval persistence, no mutation execution, no mutation expansion, no input execution, no output execution, no bundle execution, rollback execution, recovery execution, risk enforcement, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, policy enforcement, or file writing is enabled.",
+    renderMetadata(bundle.metadata),
+    renderControlledProjectGenerationContractBundleSummary(bundle.summary),
+    ...sections
   ].join("\n");
 }
 
