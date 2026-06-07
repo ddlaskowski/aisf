@@ -30778,6 +30778,152 @@ function runProjectGenerationRiskPlanHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationRollbackPlanConsistencyUnit() {
+  try {
+    const rollbackPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRollbackPlanPreview.js"));
+    const metadata = { version: "v11.8", source: "rollback-plan-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = rollbackPlanModule.createProjectGenerationRollbackPlanPreview({ title: "Unit Rollback Plan", metadata });
+    const second = rollbackPlanModule.createProjectGenerationRollbackPlanPreview({ title: "Unit Rollback Plan", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("rollback plan output is not deterministic");
+    if (first.summary.totalSteps !== 7 || first.summary.humanApprovalRequiredCount !== 7 || first.summary.blockedCount !== 0 || first.summary.readiness.score !== 63 || first.summary.readiness.level !== "partial") throw new Error(`rollback plan summary mismatch: ${JSON.stringify(first.summary)}`);
+    if (first.readonly !== true || first.previewOnly !== true || first.rollbackPlanPreviewOnly !== true || first.rollbackExecutionAllowed !== false || first.recoveryExecutionAllowed !== false || first.riskEnforcementAllowed !== false || first.approvalExecutionAllowed !== false || first.validationExecutionAllowed !== false || first.generatedProjectValidationAllowed !== false || first.commandExecutionAllowed !== false || first.dependencyInstallationAllowed !== false || first.packageMutationAllowed !== false || first.fileWriteAllowed !== false || first.fileCreationAllowed !== false || first.scaffoldGenerationEnabled !== false || first.runtimeRoutingEnabled !== false || first.runtimeActivationEnabled !== false || first.policyEnforcementEnabled !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error(`rollback plan invariant mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`rollback plan introduced runtime activation flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-rollback-plan-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-rollback-plan-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRollbackStepSortingUnit() {
+  try {
+    const rollbackPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRollbackPlanPreview.js"));
+    const steps = rollbackPlanModule.createDefaultProjectGenerationRollbackSteps().reverse();
+    const sorted = rollbackPlanModule.sortRollbackSteps(steps);
+    const order = sorted.map((step) => step.stepId).join(",");
+    if (order !== "configuration-revert-preview,dependency-revert-preview,file-removal-preview,file-restore-preview,manual-recovery-review-preview,safe-patch-boundary-review-preview,validation-retry-preview") throw new Error(`rollback step ordering mismatch: ${order}`);
+    console.log("PASS project-generation-rollback-step-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-rollback-step-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRollbackStepFilteringUnit() {
+  try {
+    const rollbackPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRollbackPlanPreview.js"));
+    const steps = rollbackPlanModule.createDefaultProjectGenerationRollbackSteps();
+    const dependency = rollbackPlanModule.findRollbackStepsByType(steps, "dependency-revert-preview");
+    const critical = rollbackPlanModule.findRollbackStepsByRiskLevel(steps, "critical");
+    const filePlan = rollbackPlanModule.findRollbackStepsByAppliesTo(steps, "file-plan");
+    const humanRequired = rollbackPlanModule.findHumanApprovalRequiredRollbackSteps(steps);
+    const blocked = rollbackPlanModule.findBlockedRollbackSteps(steps);
+    if (dependency.length !== 1 || dependency[0].stepId !== "dependency-revert-preview") throw new Error(`type filtering mismatch: ${JSON.stringify(dependency)}`);
+    if (critical.length !== 3 || critical[0].stepId !== "dependency-revert-preview") throw new Error(`risk filtering mismatch: ${JSON.stringify(critical.map((step) => step.stepId))}`);
+    if (filePlan.length !== 2 || filePlan[0].stepId !== "file-removal-preview") throw new Error(`applies-to filtering mismatch: ${JSON.stringify(filePlan.map((step) => step.stepId))}`);
+    if (humanRequired.length !== 7 || humanRequired[0].stepId !== "configuration-revert-preview") throw new Error(`human-required filtering mismatch: ${JSON.stringify(humanRequired.map((step) => step.stepId))}`);
+    if (blocked.length !== 0) throw new Error(`blocked filtering mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-rollback-step-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-rollback-step-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRollbackReadinessUnit() {
+  try {
+    const rollbackPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRollbackPlanPreview.js"));
+    const steps = [
+      rollbackPlanModule.createRollbackStep({ stepId: "a", stepType: "file-removal-preview", title: "A", description: "A.", appliesTo: "file-plan", rollbackPolicy: "preview-only", recoveryPolicy: "preview-only", executionStatus: "preview-only", riskLevel: "low", requiresHumanApproval: false }),
+      rollbackPlanModule.createRollbackStep({ stepId: "b", stepType: "validation-retry-preview", title: "B", description: "B.", appliesTo: "validation-plan", rollbackPolicy: "not-applicable", recoveryPolicy: "manual-review-required", executionStatus: "not-executed", riskLevel: "medium", requiresHumanApproval: true }),
+      rollbackPlanModule.createRollbackStep({ stepId: "c", stepType: "manual-recovery-review", title: "C", description: "C.", appliesTo: "approval-plan", rollbackPolicy: "manual-approval-required", recoveryPolicy: "manual-review-required", executionStatus: "requires-approval", riskLevel: "high", requiresHumanApproval: true })
+    ];
+    const readiness = rollbackPlanModule.calculateProjectGenerationRollbackReadiness(steps);
+    if (readiness.score !== 67 || readiness.level !== "partial") throw new Error(`rollback readiness mismatch: ${JSON.stringify(readiness)}`);
+    const empty = rollbackPlanModule.calculateProjectGenerationRollbackReadiness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty rollback readiness mismatch: ${JSON.stringify(empty)}`);
+    const blocked = rollbackPlanModule.calculateProjectGenerationRollbackReadiness([rollbackPlanModule.createRollbackStep({ stepId: "blocked", stepType: "dependency-revert-preview", title: "Blocked", description: "Blocked.", appliesTo: "dependency-plan", rollbackPolicy: "blocked", recoveryPolicy: "blocked", executionStatus: "blocked", riskLevel: "critical", requiresHumanApproval: true, blockedReason: "Blocked for test." })]);
+    if (blocked.score !== 0 || blocked.level !== "incomplete") throw new Error(`blocked rollback readiness mismatch: ${JSON.stringify(blocked)}`);
+    console.log("PASS project-generation-rollback-readiness");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-rollback-readiness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRollbackPlanRenderingUnit() {
+  try {
+    const rollbackPlanModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationRollbackPlanPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = rollbackPlanModule.createProjectGenerationRollbackPlanPreview({ title: "Render Rollback Plan", metadata: { version: "v11.8", source: "rollback-plan-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationRollbackPlanPreview(preview);
+    if (!rendered.includes("Project generation rollback plan preview: Render Rollback Plan") || !rendered.includes("rollback step count: 7") || !rendered.includes("rollbackExecutionAllowed: false") || !rendered.includes("recoveryExecutionAllowed: false") || !rendered.includes("approvalExecutionAllowed: false") || !rendered.includes("no rollback execution")) throw new Error(`rollback plan render mismatch: ${rendered}`);
+    console.log("PASS project-generation-rollback-plan-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-rollback-plan-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRollbackPlanCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-rollback-plan"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation rollback plan preview:") || !human.stdout.includes("rollbackExecutionAllowed: false") || !human.stdout.includes("recoveryExecutionAllowed: false") || !human.stdout.includes("approvalExecutionAllowed: false")) throw new Error(`rollback plan human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-rollback-plan", "--json"]);
+    if (json.status !== 0) throw new Error(`rollback plan json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.rollbackPlanPreviewOnly !== true || parsed.rollbackExecutionAllowed !== false || parsed.recoveryExecutionAllowed !== false || parsed.riskEnforcementAllowed !== false || parsed.approvalExecutionAllowed !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalSteps !== 7 || parsed.summary.readiness.score !== 63) throw new Error(`rollback plan json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-rollback-plan-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-rollback-plan-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationRollbackPlanHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-rollback-plan", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-rollback-plan",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not execute rollback",
+      "execute recovery",
+      "enforce risks",
+      "execute approvals",
+      "approve project generation",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "modify packages",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-rollback-plan-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-rollback-plan-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -30919,7 +31065,9 @@ const scenarioSuites = {
     runProjectGenerationApprovalPlanCliOutputUnit,
     runProjectGenerationApprovalPlanHelpOutputUnit,
     runProjectGenerationRiskPlanCliOutputUnit,
-    runProjectGenerationRiskPlanHelpOutputUnit
+    runProjectGenerationRiskPlanHelpOutputUnit,
+    runProjectGenerationRollbackPlanCliOutputUnit,
+    runProjectGenerationRollbackPlanHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -30956,6 +31104,7 @@ const scenarioSuites = {
     runProjectGenerationValidationPlanRenderingUnit,
     runProjectGenerationApprovalPlanRenderingUnit,
     runProjectGenerationRiskPlanRenderingUnit,
+    runProjectGenerationRollbackPlanRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -31012,7 +31161,14 @@ const scenarioSuites = {
     runProjectGenerationRiskExposureUnit,
     runProjectGenerationRiskPlanRenderingUnit,
     runProjectGenerationRiskPlanCliOutputUnit,
-    runProjectGenerationRiskPlanHelpOutputUnit
+    runProjectGenerationRiskPlanHelpOutputUnit,
+    runProjectGenerationRollbackPlanConsistencyUnit,
+    runProjectGenerationRollbackStepSortingUnit,
+    runProjectGenerationRollbackStepFilteringUnit,
+    runProjectGenerationRollbackReadinessUnit,
+    runProjectGenerationRollbackPlanRenderingUnit,
+    runProjectGenerationRollbackPlanCliOutputUnit,
+    runProjectGenerationRollbackPlanHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -34025,6 +34181,27 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationRiskPlanHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRollbackPlanConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRollbackStepSortingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRollbackStepFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRollbackReadinessUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRollbackPlanRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRollbackPlanCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationRollbackPlanHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

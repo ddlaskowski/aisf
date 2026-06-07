@@ -17,6 +17,7 @@ import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, Proje
 import type { ProjectGenerationDependencyPlanEntry, ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanEntry, ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
+import type { ProjectGenerationRollbackPlanPreview, ProjectGenerationRollbackPlanSummary, ProjectGenerationRollbackStep } from "../projectGenerationRollbackPlanPreview.js";
 import type { ProjectGenerationRiskEntry, ProjectGenerationRiskPlanPreview, ProjectGenerationRiskPlanSummary } from "../projectGenerationRiskPlanPreview.js";
 import type { ProjectGenerationValidationPlanCheck, ProjectGenerationValidationPlanPreview, ProjectGenerationValidationPlanSummary } from "../projectGenerationValidationPlanPreview.js";
 import { normalizeRecommendations, normalizeWarnings, sortDeterministically } from "../utils/governanceUtils.js";
@@ -906,6 +907,87 @@ export function renderProjectGenerationRiskPlanPreview(preview: ProjectGeneratio
   ].join("\n");
 }
 
+export function renderProjectGenerationRollbackPlanSummary(summary: ProjectGenerationRollbackPlanSummary): string {
+  return [
+    "Project generation rollback plan preview summary:",
+    `- rollback step count: ${summary.totalSteps}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- human-approval-required count: ${summary.humanApprovalRequiredCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+    `- not-applicable count: ${summary.notApplicableCount}`,
+    `- risk distribution: ${renderRollbackRiskGroups(summary.riskDistribution)}`,
+    `- applies-to distribution: ${renderRollbackAppliesToGroups(summary.appliesToDistribution)}`,
+    `- readiness score: ${summary.readiness.score}`,
+    `- readiness level: ${summary.readiness.level}`,
+    `- readiness reason: ${summary.readiness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationRollbackStep(step: ProjectGenerationRollbackStep): string {
+  return [
+    `Project generation rollback step: ${step.stepId}`,
+    `- stepType: ${step.stepType}`,
+    `- title: ${step.title}`,
+    `- description: ${step.description}`,
+    `- appliesTo: ${step.appliesTo}`,
+    `- rollbackPolicy: ${step.rollbackPolicy}`,
+    `- recoveryPolicy: ${step.recoveryPolicy}`,
+    `- executionStatus: ${step.executionStatus}`,
+    `- riskLevel: ${step.riskLevel}`,
+    `- requiresHumanApproval: ${String(step.requiresHumanApproval)}`,
+    `- blockedReason: ${step.blockedReason ?? "none"}`,
+    `- read-only: ${String(step.readonly)}`,
+    `- preview-only: ${String(step.previewOnly)}`,
+    renderWarnings(step.warnings),
+    "Recommendations:",
+    ...(step.recommendations.length === 0 ? ["- none"] : step.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationRollbackPlanPreview(preview: ProjectGenerationRollbackPlanPreview): string {
+  const steps = preview.steps.length === 0
+    ? ["Project generation rollback steps:", "- none"]
+    : ["Project generation rollback steps:", ...preview.steps.map(renderProjectGenerationRollbackStep)];
+  return [
+    `Project generation rollback plan preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- rollbackPlanPreviewOnly: ${String(preview.rollbackPlanPreviewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- rollbackExecutionAllowed: ${String(preview.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(preview.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(preview.riskEnforcementAllowed)}`,
+    `- mitigationEnforcementEnabled: ${String(preview.mitigationEnforcementEnabled)}`,
+    `- approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+    `- approvalDecisionApplied: ${String(preview.approvalDecisionApplied)}`,
+    `- projectGenerationApproved: ${String(preview.projectGenerationApproved)}`,
+    `- validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+    `- generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+    `- commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    "Notice: no rollback execution, recovery execution, risk enforcement, mitigation enforcement, approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(preview.metadata),
+    renderProjectGenerationRollbackPlanSummary(preview.summary),
+    ...steps
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -939,4 +1021,14 @@ function renderRiskSeverityGroups(groups: readonly { key: string; totalRisks: nu
 function renderAffectedPlanGroups(groups: readonly { key: string; totalRisks: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalRisks}`).join(", ");
+}
+
+function renderRollbackRiskGroups(groups: readonly { key: string; totalSteps: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
+}
+
+function renderRollbackAppliesToGroups(groups: readonly { key: string; totalSteps: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
 }

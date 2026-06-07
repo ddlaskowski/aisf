@@ -13,6 +13,7 @@ import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary
 import type { ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../../governance/projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../../governance/projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSummary } from "../../governance/projectGenerationReadiness.js";
+import type { ProjectGenerationRollbackPlanPreview, ProjectGenerationRollbackPlanSummary } from "../../governance/projectGenerationRollbackPlanPreview.js";
 import type { ProjectGenerationRiskPlanPreview, ProjectGenerationRiskPlanSummary } from "../../governance/projectGenerationRiskPlanPreview.js";
 import type { ProjectGenerationValidationPlanPreview, ProjectGenerationValidationPlanSummary } from "../../governance/projectGenerationValidationPlanPreview.js";
 import { renderCliMetadata, renderCliSection, renderCliStatusBlock, renderCliWarnings, renderReadonlyNotice } from "./cliRenderers.js";
@@ -685,6 +686,69 @@ export function renderCliProjectGenerationRiskPlanPreview(preview: ProjectGenera
   ].join("\n");
 }
 
+export function renderCliProjectGenerationRollbackPlanSummary(summary: ProjectGenerationRollbackPlanSummary): string {
+  return [
+    renderCliSection("Project generation rollback plan preview summary", [
+      `rollback step count: ${summary.totalSteps}`,
+      `blocked count: ${summary.blockedCount}`,
+      `human-approval-required count: ${summary.humanApprovalRequiredCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+      `not-applicable count: ${summary.notApplicableCount}`,
+      `risk distribution: ${renderCliRollbackRiskGroups(summary.riskDistribution)}`,
+      `applies-to distribution: ${renderCliRollbackAppliesToGroups(summary.appliesToDistribution)}`,
+      `readiness score: ${summary.readiness.score}`,
+      `readiness level: ${summary.readiness.level}`,
+      `readiness reason: ${summary.readiness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationRollbackPlanPreview(preview: ProjectGenerationRollbackPlanPreview): string {
+  const stepLines = preview.steps.length === 0
+    ? ["none"]
+    : preview.steps.map((step) => `${step.stepId} | type=${step.stepType} | appliesTo=${step.appliesTo} | rollbackPolicy=${step.rollbackPolicy} | recoveryPolicy=${step.recoveryPolicy} | risk=${step.riskLevel}`);
+  return [
+    renderCliSection("Project generation rollback plan preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `rollbackPlanPreviewOnly: ${String(preview.rollbackPlanPreviewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `rollbackExecutionAllowed: ${String(preview.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(preview.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(preview.riskEnforcementAllowed)}`,
+      `mitigationEnforcementEnabled: ${String(preview.mitigationEnforcementEnabled)}`,
+      `approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+      `approvalDecisionApplied: ${String(preview.approvalDecisionApplied)}`,
+      `projectGenerationApproved: ${String(preview.projectGenerationApproved)}`,
+      `validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+      `commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      "notice: no rollback execution, recovery execution, risk enforcement, mitigation enforcement, approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliProjectGenerationRollbackPlanSummary(preview.summary),
+    renderCliSection("Rollback steps", stepLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -718,4 +782,14 @@ function renderCliRiskSeverityGroups(groups: readonly { key: string; totalRisks:
 function renderCliAffectedPlanGroups(groups: readonly { key: string; totalRisks: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalRisks}`).join(", ");
+}
+
+function renderCliRollbackRiskGroups(groups: readonly { key: string; totalSteps: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
+}
+
+function renderCliRollbackAppliesToGroups(groups: readonly { key: string; totalSteps: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
 }

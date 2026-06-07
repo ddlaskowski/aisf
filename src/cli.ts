@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -73,6 +73,10 @@ import {
   createProjectGenerationRiskPlanPreview,
   type ProjectGenerationRiskPlanPreview
 } from "./governance/projectGenerationRiskPlanPreview.js";
+import {
+  createProjectGenerationRollbackPlanPreview,
+  type ProjectGenerationRollbackPlanPreview
+} from "./governance/projectGenerationRollbackPlanPreview.js";
 import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
@@ -475,6 +479,7 @@ import {
   renderGovernanceProjectGenerationFilePlanHelp,
   renderGovernanceProjectGenerationReadinessHelp,
   renderGovernanceProjectGenerationRiskPlanHelp,
+  renderGovernanceProjectGenerationRollbackPlanHelp,
   renderGovernanceProjectGenerationValidationPlanHelp,
   renderGovernanceArtifactIndexHelp,
   renderGovernanceAutonomyScopePreviewHelp,
@@ -1052,6 +1057,19 @@ function buildProjectGenerationRiskPlanPreview(): ProjectGenerationRiskPlanPrevi
   });
 }
 
+function buildProjectGenerationRollbackPlanPreview(): ProjectGenerationRollbackPlanPreview {
+  return createProjectGenerationRollbackPlanPreview({
+    title: "Project Generation Rollback Plan Preview",
+    metadata: {
+      version: "v11.8",
+      source: "project-generation-rollback-plan-cli-preview",
+      command: "governance project-generation-rollback-plan",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1269,6 +1287,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(riskPlan, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationRiskPlanPreview(riskPlan), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-rollback-plan") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-rollback-plan", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationRollbackPlanHelp(), 0);
+    }
+
+    const rollbackPlan = buildProjectGenerationRollbackPlanPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(rollbackPlan, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationRollbackPlanPreview(rollbackPlan), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {
