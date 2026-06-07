@@ -83,6 +83,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance project-generation-risk-plan",
     "  node dist/cli.js governance project-generation-rollback-plan",
     "  node dist/cli.js governance project-generation-plan-bundle",
+    "  node dist/cli.js governance project-generation-readiness-audit",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -175,6 +176,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance project-generation-risk-plan",
     "  node dist/cli.js governance project-generation-rollback-plan",
     "  node dist/cli.js governance project-generation-plan-bundle",
+    "  node dist/cli.js governance project-generation-readiness-audit",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1274,6 +1276,32 @@ export function renderGovernanceProjectGenerationPlanBundleHelp(): string {
     "  This is preview-only and does not execute bundle workflows, write bundle files, execute rollback, execute recovery, enforce risks, execute mitigations, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, install dependencies, mutate package.json, edit lockfiles, implement builder agents, scaffold files, create files, or generate projects.",
     "  Plan bundle previews are stdout-only and do not write files by default.",
     "  This is a read-only / preview-only planning command.",
+    "  It does not execute bundles, execute rollback, execute recovery, enforce risks, execute approvals, approve project generation, execute validation commands, run generated-project validation, install dependencies, modify packages, mutate package.json, generate projects, scaffold files, create files, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceProjectGenerationReadinessAuditHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance project-generation-readiness-audit",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance project-generation-readiness-audit [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic readiness completion audit output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance project-generation-readiness-audit",
+    "  node dist/cli.js governance project-generation-readiness-audit --json",
+    "",
+    "Project generation readiness completion audit:",
+    "  This command audits the full v11.x readiness chain as descriptive data only: readiness assessment, capability map, blueprint preview, file plan preview, dependency plan preview, validation plan preview, approval plan preview, risk plan preview, rollback plan preview, plan bundle preview, CLI preview paths, scenario coverage, read-only guarantees, and no-execution guarantees.",
+    "  This is preview-only and does not execute bundle workflows, execute rollback, execute recovery, enforce risks, execute mitigations, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, install dependencies, mutate package.json, edit lockfiles, implement builder agents, scaffold files, create files, or generate projects.",
+    "  Readiness completion audits are stdout-only and do not write files by default.",
+    "  This is a read-only / preview-only / no-execution audit command.",
     "  It does not execute bundles, execute rollback, execute recovery, enforce risks, execute approvals, approve project generation, execute validation commands, run generated-project validation, install dependencies, modify packages, mutate package.json, generate projects, scaffold files, create files, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])

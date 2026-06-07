@@ -18,6 +18,7 @@ import type { ProjectGenerationDependencyPlanEntry, ProjectGenerationDependencyP
 import type { ProjectGenerationFilePlanEntry, ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../projectGenerationFilePlanPreview.js";
 import type { ProjectGenerationPlanBundlePreview, ProjectGenerationPlanBundleSection, ProjectGenerationPlanBundleSummary } from "../projectGenerationPlanBundlePreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
+import type { ProjectGenerationReadinessCompletionAudit, ProjectGenerationReadinessCompletionAuditSection, ProjectGenerationReadinessCompletionAuditSummary } from "../projectGenerationReadinessCompletionAudit.js";
 import type { ProjectGenerationRollbackPlanPreview, ProjectGenerationRollbackPlanSummary, ProjectGenerationRollbackStep } from "../projectGenerationRollbackPlanPreview.js";
 import type { ProjectGenerationRiskEntry, ProjectGenerationRiskPlanPreview, ProjectGenerationRiskPlanSummary } from "../projectGenerationRiskPlanPreview.js";
 import type { ProjectGenerationValidationPlanCheck, ProjectGenerationValidationPlanPreview, ProjectGenerationValidationPlanSummary } from "../projectGenerationValidationPlanPreview.js";
@@ -1062,6 +1063,87 @@ export function renderProjectGenerationPlanBundlePreview(preview: ProjectGenerat
     "Notice: no bundle execution, bundle writing, rollback execution, recovery execution, risk enforcement, mitigation enforcement, approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
     renderMetadata(preview.metadata),
     renderProjectGenerationPlanBundleSummary(preview.summary),
+    ...sections
+  ].join("\n");
+}
+
+export function renderProjectGenerationReadinessCompletionAuditSummary(summary: ProjectGenerationReadinessCompletionAuditSummary): string {
+  return [
+    "Project generation readiness completion audit summary:",
+    `- section count: ${summary.totalSections}`,
+    `- total entries: ${summary.totalEntries}`,
+    `- complete sections: ${summary.completeSections}`,
+    `- partial sections: ${summary.partialSections}`,
+    `- blocked sections: ${summary.blockedSections}`,
+    `- not-started sections: ${summary.notStartedSections}`,
+    `- preview-only sections: ${summary.previewOnlySections}`,
+    `- CLI preview path coverage: ${summary.cliPreviewPathCount}`,
+    `- scenario coverage: ${summary.scenarioCoverageCount}`,
+    `- completion score: ${summary.completion.score}`,
+    `- completion level: ${summary.completion.level}`,
+    `- completion reason: ${summary.completion.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationReadinessCompletionAuditSection(section: ProjectGenerationReadinessCompletionAuditSection): string {
+  return [
+    `Project generation readiness completion audit section: ${section.sectionType}`,
+    `- title: ${section.title}`,
+    `- summary: ${section.summary}`,
+    `- status: ${section.status}`,
+    `- score: ${section.score}`,
+    `- level: ${section.level}`,
+    `- entryCount: ${section.entryCount}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    `- no-execution: ${String(section.noExecution)}`,
+    renderWarnings(section.warnings),
+    "Recommendations:",
+    ...(section.recommendations.length === 0 ? ["- none"] : section.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationReadinessCompletionAudit(audit: ProjectGenerationReadinessCompletionAudit): string {
+  const sections = audit.sections.length === 0
+    ? ["Project generation readiness completion audit sections:", "- none"]
+    : ["Project generation readiness completion audit sections:", ...audit.sections.map(renderProjectGenerationReadinessCompletionAuditSection)];
+  return [
+    `Project generation readiness completion audit: ${audit.title}`,
+    `- schemaVersion: ${audit.schemaVersion}`,
+    `- readonly: ${String(audit.readonly)}`,
+    `- previewOnly: ${String(audit.previewOnly)}`,
+    `- completionAuditOnly: ${String(audit.completionAuditOnly)}`,
+    `- stdoutOnly: ${String(audit.stdoutOnly)}`,
+    `- bundleExecutionAllowed: ${String(audit.bundleExecutionAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(audit.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(audit.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(audit.riskEnforcementAllowed)}`,
+    `- mitigationEnforcementEnabled: ${String(audit.mitigationEnforcementEnabled)}`,
+    `- approvalExecutionAllowed: ${String(audit.approvalExecutionAllowed)}`,
+    `- approvalDecisionApplied: ${String(audit.approvalDecisionApplied)}`,
+    `- projectGenerationApproved: ${String(audit.projectGenerationApproved)}`,
+    `- validationExecutionAllowed: ${String(audit.validationExecutionAllowed)}`,
+    `- generatedProjectValidationAllowed: ${String(audit.generatedProjectValidationAllowed)}`,
+    `- commandExecutionAllowed: ${String(audit.commandExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(audit.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(audit.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(audit.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(audit.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(audit.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(audit.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(audit.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(audit.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(audit.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(audit.builderAgentRuntimeEnabled)}`,
+    "Notice: no project generation, no execution, no bundle execution, rollback execution, recovery execution, risk enforcement, mitigation enforcement, approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(audit.metadata),
+    renderProjectGenerationReadinessCompletionAuditSummary(audit.summary),
     ...sections
   ].join("\n");
 }

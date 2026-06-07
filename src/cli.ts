@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -81,6 +81,10 @@ import {
   createProjectGenerationPlanBundlePreview,
   type ProjectGenerationPlanBundlePreview
 } from "./governance/projectGenerationPlanBundlePreview.js";
+import {
+  createProjectGenerationReadinessCompletionAudit,
+  type ProjectGenerationReadinessCompletionAudit
+} from "./governance/projectGenerationReadinessCompletionAudit.js";
 import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
@@ -485,6 +489,7 @@ import {
   renderGovernanceProjectGenerationRiskPlanHelp,
   renderGovernanceProjectGenerationRollbackPlanHelp,
   renderGovernanceProjectGenerationPlanBundleHelp,
+  renderGovernanceProjectGenerationReadinessAuditHelp,
   renderGovernanceProjectGenerationValidationPlanHelp,
   renderGovernanceArtifactIndexHelp,
   renderGovernanceAutonomyScopePreviewHelp,
@@ -1088,6 +1093,19 @@ function buildProjectGenerationPlanBundlePreview(): ProjectGenerationPlanBundleP
   });
 }
 
+function buildProjectGenerationReadinessCompletionAuditPreview(): ProjectGenerationReadinessCompletionAudit {
+  return createProjectGenerationReadinessCompletionAudit({
+    title: "Project Generation Readiness Completion Audit",
+    metadata: {
+      version: "v11.10",
+      source: "project-generation-readiness-completion-audit-cli-preview",
+      command: "governance project-generation-readiness-audit",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1351,6 +1369,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(planBundle, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationPlanBundlePreview(planBundle), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-readiness-audit") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-readiness-audit", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationReadinessAuditHelp(), 0);
+    }
+
+    const audit = buildProjectGenerationReadinessCompletionAuditPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(audit, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationReadinessCompletionAudit(audit), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {
