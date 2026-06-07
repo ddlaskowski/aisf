@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliControlledProjectGenerationDesignContract, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -85,6 +85,10 @@ import {
   createProjectGenerationReadinessCompletionAudit,
   type ProjectGenerationReadinessCompletionAudit
 } from "./governance/projectGenerationReadinessCompletionAudit.js";
+import {
+  createControlledProjectGenerationDesignContract,
+  type ControlledProjectGenerationDesignContract
+} from "./governance/controlledProjectGenerationDesignContract.js";
 import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
@@ -479,6 +483,7 @@ import {
   renderGovernanceRuntimeResearchRegistryPreviewHelp,
   renderGovernanceRuntimeResearchManifestPreviewHelp,
   renderGovernanceRuntimeResearchAttestationPreviewHelp,
+  renderGovernanceControlledProjectGenerationContractHelp,
   renderGovernanceConsolidationAuditHelp,
   renderGovernanceProjectGenerationApprovalPlanHelp,
   renderGovernanceProjectGenerationBlueprintHelp,
@@ -1106,6 +1111,19 @@ function buildProjectGenerationReadinessCompletionAuditPreview(): ProjectGenerat
   });
 }
 
+function buildControlledProjectGenerationDesignContractPreview(): ControlledProjectGenerationDesignContract {
+  return createControlledProjectGenerationDesignContract({
+    title: "Controlled Project Generation Design Contract",
+    metadata: {
+      version: "v12.0",
+      source: "controlled-project-generation-design-contract-cli-preview",
+      command: "governance controlled-project-generation-contract",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1392,6 +1410,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(audit, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationReadinessCompletionAudit(audit), 0);
+  }
+
+  if (command === "governance" && args[1] === "controlled-project-generation-contract") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance controlled-project-generation-contract", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceControlledProjectGenerationContractHelp(), 0);
+    }
+
+    const contract = buildControlledProjectGenerationDesignContractPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(contract, null, 2), 0);
+    }
+    printAndExit(renderCliControlledProjectGenerationDesignContract(contract), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

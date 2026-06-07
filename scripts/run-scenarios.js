@@ -31251,6 +31251,180 @@ function runProjectGenerationReadinessAuditHelpOutputUnit() {
   }
 }
 
+function runControlledProjectGenerationContractConsistencyUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationDesignContract.js"));
+    const metadata = { version: "v12.0", source: "controlled-contract-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = contractModule.createControlledProjectGenerationDesignContract({ title: "Unit Contract", metadata });
+    const second = contractModule.createControlledProjectGenerationDesignContract({ title: "Unit Contract", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled contract output is not deterministic");
+    if (first.summary.totalSections !== 16 || first.summary.totalRequirements !== 84 || first.summary.totalAllowed !== 22 || first.summary.totalForbidden !== 53 || first.summary.totalRisks !== 16 || first.summary.definedSections !== 16 || first.summary.completeness.score !== 89 || first.summary.completeness.level !== "contract-defined") throw new Error(`controlled contract summary mismatch: ${JSON.stringify(first.summary)}`);
+    const falseFlags = [
+      "generationRuntimeImplemented",
+      "generationExecutionAllowed",
+      "bundleExecutionAllowed",
+      "rollbackExecutionAllowed",
+      "recoveryExecutionAllowed",
+      "riskEnforcementAllowed",
+      "mitigationEnforcementEnabled",
+      "approvalExecutionAllowed",
+      "approvalDecisionApplied",
+      "projectGenerationApproved",
+      "validationExecutionAllowed",
+      "generatedProjectValidationAllowed",
+      "commandExecutionAllowed",
+      "dependencyInstallationAllowed",
+      "packageMutationAllowed",
+      "fileWriteAllowed",
+      "fileCreationAllowed",
+      "scaffoldGenerationEnabled",
+      "runtimeRoutingEnabled",
+      "runtimeActivationEnabled",
+      "policyEnforcementEnabled",
+      "projectGenerationEnabled",
+      "builderAgentRuntimeEnabled"
+    ];
+    for (const flag of falseFlags) {
+      if (first[flag] !== false) throw new Error(`controlled contract flag ${flag} was not false`);
+    }
+    if (first.readonly !== true || first.previewOnly !== true || first.designContractOnly !== true || first.stdoutOnly !== true) throw new Error(`controlled contract readonly flags mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`controlled contract introduced runtime activation/governance flags: ${JSON.stringify(first)}`);
+    console.log("PASS controlled-project-generation-contract-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractSectionOrderingUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationDesignContract.js"));
+    const sections = [
+      contractModule.createContractScenarioSuitesSection(),
+      contractModule.createContractIntentInputSection(),
+      contractModule.createContractRuntimeBoundarySection(),
+      contractModule.createContractBlueprintInputSection(),
+      contractModule.createContractCliPreviewPathsSection(),
+      contractModule.createContractFilePlanInputSection(),
+      contractModule.createContractMutationBoundarySection(),
+      contractModule.createContractDependencyPlanInputSection(),
+      contractModule.createContractAllowedOutputsSection(),
+      contractModule.createContractValidationPlanInputSection(),
+      contractModule.createContractApprovalBoundarySection(),
+      contractModule.createContractApprovalPlanInputSection(),
+      contractModule.createContractForbiddenActionsSection(),
+      contractModule.createContractRiskPlanInputSection(),
+      contractModule.createContractRequiredGovernanceArtifactsSection(),
+      contractModule.createContractRollbackPlanInputSection()
+    ];
+    const order = contractModule.sortControlledProjectGenerationContractSections(sections).map((section) => section.sectionType).join(",");
+    if (order !== "intentInputs,blueprintInputs,filePlanInputs,dependencyPlanInputs,validationPlanInputs,approvalPlanInputs,riskPlanInputs,rollbackPlanInputs,requiredGovernanceArtifacts,allowedOutputs,forbiddenActions,mutationBoundaries,approvalBoundaries,runtimeBoundaries,cliPreviewPaths,scenarioSuites") throw new Error(`controlled contract section ordering mismatch: ${order}`);
+    console.log("PASS controlled-project-generation-contract-section-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-section-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractCompletenessUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationDesignContract.js"));
+    const sections = [
+      contractModule.createContractIntentInputSection(),
+      contractModule.createContractAllowedOutputsSection(),
+      contractModule.createContractRuntimeBoundarySection()
+    ];
+    const completeness = contractModule.calculateControlledProjectGenerationDesignContractCompleteness(sections);
+    if (completeness.score !== 90 || completeness.level !== "ready-for-architecture-preview") throw new Error(`controlled contract completeness mismatch: ${JSON.stringify(completeness)}`);
+    const empty = contractModule.calculateControlledProjectGenerationDesignContractCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty controlled contract completeness mismatch: ${JSON.stringify(empty)}`);
+    const blocked = { ...contractModule.createContractIntentInputSection(), status: "blocked", score: 0 };
+    const blockedCompleteness = contractModule.calculateControlledProjectGenerationDesignContractCompleteness([blocked]);
+    if (blockedCompleteness.score !== 0 || blockedCompleteness.level !== "incomplete") throw new Error(`blocked controlled contract completeness mismatch: ${JSON.stringify(blockedCompleteness)}`);
+    console.log("PASS controlled-project-generation-contract-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractRenderingUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationDesignContract.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const contract = contractModule.createControlledProjectGenerationDesignContract({ title: "Render Controlled Contract", metadata: { version: "v12.0", source: "controlled-contract-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledProjectGenerationDesignContract(contract);
+    if (!rendered.includes("Controlled project generation design contract: Render Controlled Contract") || !rendered.includes("section count: 16") || !rendered.includes("total forbidden actions: 53") || !rendered.includes("completeness score: 89") || !rendered.includes("generationRuntimeImplemented: false") || !rendered.includes("runtimeRoutingEnabled: false") || !rendered.includes("no runtime, no project generation")) throw new Error(`controlled contract render mismatch: ${rendered}`);
+    console.log("PASS controlled-project-generation-contract-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-project-generation-contract"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled project generation design contract:") || !human.stdout.includes("generationRuntimeImplemented: false") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("completeness score: 89")) throw new Error(`controlled contract human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-project-generation-contract", "--json"]);
+    if (json.status !== 0) throw new Error(`controlled contract json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.designContractOnly !== true || parsed.generationRuntimeImplemented !== false || parsed.generationExecutionAllowed !== false || parsed.bundleExecutionAllowed !== false || parsed.rollbackExecutionAllowed !== false || parsed.recoveryExecutionAllowed !== false || parsed.riskEnforcementAllowed !== false || parsed.approvalExecutionAllowed !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalSections !== 16 || parsed.summary.totalForbidden !== 53 || parsed.summary.completeness.score !== 89) throw new Error(`controlled contract json output mismatch: ${json.stdout}`);
+    console.log("PASS controlled-project-generation-contract-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-project-generation-contract", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance controlled-project-generation-contract",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "no runtime",
+      "does not execute generation",
+      "do not write files by default",
+      "allowed outputs",
+      "forbidden actions",
+      "mutation boundaries",
+      "approval boundaries",
+      "runtime boundaries",
+      "execute bundle",
+      "execute rollback",
+      "execute recovery",
+      "enforce risks",
+      "execute approvals",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS controlled-project-generation-contract-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -31398,7 +31572,9 @@ const scenarioSuites = {
     runProjectGenerationPlanBundleCliOutputUnit,
     runProjectGenerationPlanBundleHelpOutputUnit,
     runProjectGenerationReadinessAuditCliOutputUnit,
-    runProjectGenerationReadinessAuditHelpOutputUnit
+    runProjectGenerationReadinessAuditHelpOutputUnit,
+    runControlledProjectGenerationContractCliOutputUnit,
+    runControlledProjectGenerationContractHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -31438,6 +31614,7 @@ const scenarioSuites = {
     runProjectGenerationRollbackPlanRenderingUnit,
     runProjectGenerationPlanBundleRenderingUnit,
     runProjectGenerationReadinessAuditRenderingUnit,
+    runControlledProjectGenerationContractRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -31513,7 +31690,21 @@ const scenarioSuites = {
     runProjectGenerationReadinessAuditCompletionScoreUnit,
     runProjectGenerationReadinessAuditRenderingUnit,
     runProjectGenerationReadinessAuditCliOutputUnit,
-    runProjectGenerationReadinessAuditHelpOutputUnit
+    runProjectGenerationReadinessAuditHelpOutputUnit,
+    runControlledProjectGenerationContractConsistencyUnit,
+    runControlledProjectGenerationContractSectionOrderingUnit,
+    runControlledProjectGenerationContractCompletenessUnit,
+    runControlledProjectGenerationContractRenderingUnit,
+    runControlledProjectGenerationContractCliOutputUnit,
+    runControlledProjectGenerationContractHelpOutputUnit
+  ],
+  "controlled-generation": [
+    runControlledProjectGenerationContractConsistencyUnit,
+    runControlledProjectGenerationContractSectionOrderingUnit,
+    runControlledProjectGenerationContractCompletenessUnit,
+    runControlledProjectGenerationContractRenderingUnit,
+    runControlledProjectGenerationContractCliOutputUnit,
+    runControlledProjectGenerationContractHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -34583,6 +34774,24 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationReadinessAuditHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractSectionOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

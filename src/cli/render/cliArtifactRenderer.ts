@@ -7,6 +7,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSummary 
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
+import type { ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../../governance/controlledProjectGenerationDesignContract.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
@@ -875,6 +876,75 @@ export function renderCliProjectGenerationReadinessCompletionAudit(audit: Projec
     renderCliProjectGenerationReadinessCompletionAuditSummary(audit.summary),
     renderCliSection("Readiness completion audit sections", sectionLines),
     renderReadonlyNotice(audit.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationDesignContractSummary(summary: ControlledProjectGenerationContractSummary): string {
+  return [
+    renderCliSection("Controlled project generation design contract summary", [
+      `section count: ${summary.totalSections}`,
+      `total requirements: ${summary.totalRequirements}`,
+      `total allowed outputs: ${summary.totalAllowed}`,
+      `total forbidden actions: ${summary.totalForbidden}`,
+      `total risks: ${summary.totalRisks}`,
+      `defined sections: ${summary.definedSections}`,
+      `partial sections: ${summary.partialSections}`,
+      `blocked sections: ${summary.blockedSections}`,
+      `not-started sections: ${summary.notStartedSections}`,
+      `preview-only sections: ${summary.previewOnlySections}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationDesignContract(contract: ControlledProjectGenerationDesignContract): string {
+  const sectionLines = contract.sections.length === 0
+    ? ["none"]
+    : contract.sections.map((section) => `${section.sectionType} | status=${section.status} | score=${section.score} | requirements=${section.requirements.length} | forbidden=${section.forbidden.length} | noExecution=${String(section.noExecution)}`);
+  return [
+    renderCliSection("Controlled project generation design contract", [
+      `title: ${contract.title}`,
+      `schemaVersion: ${contract.schemaVersion}`,
+      `readonly: ${String(contract.readonly)}`,
+      `previewOnly: ${String(contract.previewOnly)}`,
+      `designContractOnly: ${String(contract.designContractOnly)}`,
+      `stdoutOnly: ${String(contract.stdoutOnly)}`,
+      `generationRuntimeImplemented: ${String(contract.generationRuntimeImplemented)}`,
+      `generationExecutionAllowed: ${String(contract.generationExecutionAllowed)}`,
+      `bundleExecutionAllowed: ${String(contract.bundleExecutionAllowed)}`,
+      `rollbackExecutionAllowed: ${String(contract.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(contract.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(contract.riskEnforcementAllowed)}`,
+      `mitigationEnforcementEnabled: ${String(contract.mitigationEnforcementEnabled)}`,
+      `approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+      `approvalDecisionApplied: ${String(contract.approvalDecisionApplied)}`,
+      `projectGenerationApproved: ${String(contract.projectGenerationApproved)}`,
+      `validationExecutionAllowed: ${String(contract.validationExecutionAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(contract.generatedProjectValidationAllowed)}`,
+      `commandExecutionAllowed: ${String(contract.commandExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(contract.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+      "notice: no runtime, no project generation, no generation execution, no bundle execution, rollback execution, recovery execution, risk enforcement, mitigation enforcement, approval execution, approval decision application, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(contract.metadata),
+    renderCliControlledProjectGenerationDesignContractSummary(contract.summary),
+    renderCliSection("Contract sections", sectionLines),
+    renderReadonlyNotice(contract.previewOnly)
   ].join("\n");
 }
 

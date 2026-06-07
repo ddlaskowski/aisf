@@ -11115,6 +11115,118 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.0 - Controlled Project Generation Design Contract Layer
+
+v12.0 begins the Controlled Project Generation Design Era by adding a deterministic, read-only design contract for a future controlled project generation runtime. The contract is descriptive design data only. It does not implement a generation runtime, execute generation, execute bundles, execute rollback, execute recovery, enforce risks, execute mitigations, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, install dependencies, mutate package files, create files, scaffold files, write files, implement builder agents, route runtime behavior, activate governance, enforce policy, expand mutation scope, or change repair orchestration.
+
+Era transition:
+
+* v10.x = Governance Consolidation Era
+* v11.x = Project Generation Readiness Era
+* v12.x = Controlled Project Generation Design Era
+
+Controlled project generation design contract model:
+
+* `src/governance/controlledProjectGenerationDesignContract.ts` adds `ControlledProjectGenerationDesignContract`, `ControlledProjectGenerationContractSection`, `ControlledProjectGenerationContractSummary`, `ControlledProjectGenerationContractCompleteness`, `createControlledProjectGenerationDesignContract`, and `summarizeControlledProjectGenerationDesignContract`.
+* Design contracts explicitly preserve read-only, preview-only, design-contract-only, stdout-only, no-generation-runtime, no-generation-execution, no-bundle-execution, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-mitigation-enforcement, no-approval-execution, no-approval-decision-application, no-project-generation-approval, no-validation-execution, no-generated-project-validation, no-command-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Contract helpers require explicit metadata input and do not generate hidden timestamps.
+
+Contract section helpers:
+
+* `createContractIntentInputSection`
+* `createContractBlueprintInputSection`
+* `createContractFilePlanInputSection`
+* `createContractDependencyPlanInputSection`
+* `createContractValidationPlanInputSection`
+* `createContractApprovalPlanInputSection`
+* `createContractRiskPlanInputSection`
+* `createContractRollbackPlanInputSection`
+* `createContractRequiredGovernanceArtifactsSection`
+* `createContractAllowedOutputsSection`
+* `createContractForbiddenActionsSection`
+* `createContractMutationBoundarySection`
+* `createContractApprovalBoundarySection`
+* `createContractRuntimeBoundarySection`
+* `createContractCliPreviewPathsSection`
+* `createContractScenarioSuitesSection`
+* `sortControlledProjectGenerationContractSections`
+
+Each contract section records section type, title, summary, status, requirements, allowed outputs, forbidden actions, risks, warnings, recommendations, read-only state, preview-only state, no-execution state, and advisory score.
+
+Advisory completeness scoring:
+
+* `calculateControlledProjectGenerationDesignContractCompleteness` deterministically computes a 0-100 advisory completeness score.
+* Completeness levels are `incomplete`, `partial`, `contract-defined`, and `ready-for-architecture-preview`.
+* Scoring is descriptive only and does not execute generation, execute bundles, execute rollback, execute recovery, enforce risks, approve anything, activate governance, route runtime behavior, execute validation commands, run generated-project validation, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Design contract rendering:
+
+* `renderControlledProjectGenerationDesignContractSummary` renders deterministic section count, requirement count, allowed output count, forbidden action count, risk count, completeness score, warnings, and recommendations.
+* `renderControlledProjectGenerationDesignContractSection` renders stable contract section details.
+* `renderControlledProjectGenerationDesignContract` renders contract title, guarantees, metadata, summary, section details, and an explicit no-runtime/no-project-generation notice.
+* `renderCliControlledProjectGenerationDesignContractSummary` and `renderCliControlledProjectGenerationDesignContract` provide equivalent CLI-safe deterministic output.
+
+CLI contract preview:
+
+```powershell
+node dist\cli.js governance controlled-project-generation-contract
+node dist\cli.js governance controlled-project-generation-contract --json
+```
+
+Design contracts print to stdout only. They do not write files, create files, scaffold files, execute generation, execute bundles, execute rollback, execute recovery, enforce risks, execute mitigations, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v12.0 deterministic checks:
+
+* controlled-project-generation-contract-consistency
+* controlled-project-generation-contract-section-ordering
+* controlled-project-generation-contract-completeness
+* controlled-project-generation-contract-rendering
+* controlled-project-generation-contract-cli-output
+* controlled-project-generation-contract-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite controlled-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no project generation runtime is introduced
+* no builder agents are introduced
+* no bundle execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no approval execution is introduced
+* no approval decision application is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 
