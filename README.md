@@ -11227,6 +11227,124 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.1 - Controlled Project Generation Input Contract Layer
+
+v12.1 continues the Controlled Project Generation Design Era by adding a deterministic, read-only input contract for a future controlled project generation runtime. The input contract is descriptive design data only. It does not execute inputs, validate live runtime inputs, implement a generation runtime, execute generation, execute bundles, execute rollback, execute recovery, enforce risks, execute approvals, execute validation commands, install dependencies, mutate package files, create files, scaffold files, write files, implement builder agents, route runtime behavior, activate governance, enforce policy, expand mutation scope, or change repair orchestration.
+
+Controlled project generation input contract model:
+
+* `src/governance/controlledProjectGenerationInputContract.ts` adds `ControlledProjectGenerationInputContract`, `ControlledProjectGenerationInputField`, `ControlledProjectGenerationInputContractSummary`, `ControlledProjectGenerationInputCompleteness`, `createControlledProjectGenerationInputContract`, and `summarizeControlledProjectGenerationInputContract`.
+* Input contracts explicitly preserve read-only, preview-only, input-contract-only, stdout-only, no-live-input-validation, no-input-execution, no-generation-runtime, no-generation-execution, no-bundle-execution, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-approval-execution, no-validation-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Input contract helpers require explicit metadata input and do not generate hidden timestamps.
+
+Input groups:
+
+* `projectIntent`
+* `projectType`
+* `targetStack`
+* `runtimeEnvironment`
+* `filePlanPreferences`
+* `dependencyPreferences`
+* `validationPreferences`
+* `approvalPreferences`
+* `riskPreferences`
+* `rollbackPreferences`
+* `humanInstructions`
+* `governanceContext`
+
+Input field helpers:
+
+* `createInputContractField`
+* `sortInputContractFields`
+* `findInputFieldsByGroup`
+* `findInputFieldsByRequirement`
+* `findInputFieldsByRiskLevel`
+* `findBlockedInputFields`
+
+Each input field records field ID, group, label, description, required state, status, risk level, allowed values, default value, validation policy, blocked reason, warnings, recommendations, read-only state, and preview-only state.
+
+Validation policies:
+
+* `structural-preview-only`
+* `manual-review-required`
+* `blocked`
+* `not-applicable`
+
+Advisory completeness scoring:
+
+* `calculateControlledProjectGenerationInputContractCompleteness` deterministically computes a 0-100 advisory completeness score.
+* Completeness levels are `incomplete`, `partial`, `contract-defined`, and `ready-for-design`.
+* Scoring is descriptive only and does not validate live runtime inputs, execute inputs, execute generation, execute bundles, execute rollback, enforce risks, approve anything, activate governance, route runtime behavior, execute validation commands, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Input contract rendering:
+
+* `renderControlledProjectGenerationInputContractSummary` renders deterministic field count, required field count, blocked field count, group distribution, risk distribution, validation policy distribution, completeness score, warnings, and recommendations.
+* `renderControlledProjectGenerationInputField` renders stable input field details.
+* `renderControlledProjectGenerationInputContract` renders contract title, guarantees, metadata, summary, fields, and an explicit no-input-execution/no-project-generation notice.
+* `renderCliControlledProjectGenerationInputContractSummary` and `renderCliControlledProjectGenerationInputContract` provide equivalent CLI-safe deterministic output.
+
+CLI input contract preview:
+
+```powershell
+node dist\cli.js governance controlled-project-generation-input-contract
+node dist\cli.js governance controlled-project-generation-input-contract --json
+```
+
+Input contracts print to stdout only. They do not write files, create files, scaffold files, execute inputs, validate live runtime inputs, execute generation, execute bundles, execute rollback, execute recovery, enforce risks, execute approvals, execute validation commands, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v12.1 deterministic checks:
+
+* controlled-project-generation-input-contract-consistency
+* controlled-project-generation-input-field-sorting
+* controlled-project-generation-input-field-filtering
+* controlled-project-generation-input-contract-completeness
+* controlled-project-generation-input-contract-rendering
+* controlled-project-generation-input-contract-cli-output
+* controlled-project-generation-input-contract-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite controlled-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no input execution is introduced
+* no project generation runtime is introduced
+* no builder agents are introduced
+* no bundle execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no approval execution is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

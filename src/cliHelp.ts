@@ -85,6 +85,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance project-generation-plan-bundle",
     "  node dist/cli.js governance project-generation-readiness-audit",
     "  node dist/cli.js governance controlled-project-generation-contract",
+    "  node dist/cli.js governance controlled-project-generation-input-contract",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -179,6 +180,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance project-generation-plan-bundle",
     "  node dist/cli.js governance project-generation-readiness-audit",
     "  node dist/cli.js governance controlled-project-generation-contract",
+    "  node dist/cli.js governance controlled-project-generation-input-contract",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1330,6 +1332,31 @@ export function renderGovernanceControlledProjectGenerationContractHelp(): strin
     "  This is preview-only and read-only. It has no runtime and does not execute generation, execute bundle workflows, execute rollback, execute recovery, enforce risks, execute mitigations, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, install dependencies, mutate package.json, edit lockfiles, implement builder agents, scaffold files, create files, or generate projects.",
     "  The contract documents allowed outputs, forbidden actions, mutation boundaries, approval boundaries, runtime boundaries, CLI preview paths, and scenario suites.",
     "  Controlled project generation design contracts are stdout-only and do not write files by default.",
+    "  It does not activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceControlledProjectGenerationInputContractHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance controlled-project-generation-input-contract",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance controlled-project-generation-input-contract [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic controlled project generation input contract output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance controlled-project-generation-input-contract",
+    "  node dist/cli.js governance controlled-project-generation-input-contract --json",
+    "",
+    "Controlled project generation input contract:",
+    "  This command defines future controlled generation input groups, input fields, allowed values, validation policies, risk levels, and conceptual rejection states as descriptive data only.",
+    "  This is preview-only and read-only. It has no input execution, no live input validation, no runtime, and no project generation. It does not execute generation, execute bundle workflows, execute rollback, execute recovery, enforce risks, execute approvals, execute validation commands, install dependencies, mutate package.json, scaffold files, create files, or generate projects.",
+    "  Input contract previews are stdout-only and do not write files by default.",
     "  It does not activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])

@@ -8,6 +8,7 @@ import type { GovernanceReadonlyContract } from "../../governance/governanceRead
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
 import type { ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../../governance/controlledProjectGenerationDesignContract.js";
+import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary } from "../../governance/controlledProjectGenerationInputContract.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
@@ -948,6 +949,68 @@ export function renderCliControlledProjectGenerationDesignContract(contract: Con
   ].join("\n");
 }
 
+export function renderCliControlledProjectGenerationInputContractSummary(summary: ControlledProjectGenerationInputContractSummary): string {
+  return [
+    renderCliSection("Controlled project generation input contract summary", [
+      `field count: ${summary.totalFields}`,
+      `required field count: ${summary.requiredFieldCount}`,
+      `optional field count: ${summary.optionalFieldCount}`,
+      `blocked field count: ${summary.blockedFieldCount}`,
+      `group distribution: ${renderCliInputFieldGroups(summary.groupDistribution)}`,
+      `risk distribution: ${renderCliInputFieldGroups(summary.riskDistribution)}`,
+      `validation policy distribution: ${renderCliInputFieldGroups(summary.validationPolicyDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationInputContract(contract: ControlledProjectGenerationInputContract): string {
+  const fieldLines = contract.fields.length === 0
+    ? ["none"]
+    : contract.fields.map((field) => `${field.fieldId} | group=${field.group} | required=${String(field.required)} | policy=${field.validationPolicy} | risk=${field.riskLevel}`);
+  return [
+    renderCliSection("Controlled project generation input contract", [
+      `title: ${contract.title}`,
+      `schemaVersion: ${contract.schemaVersion}`,
+      `readonly: ${String(contract.readonly)}`,
+      `previewOnly: ${String(contract.previewOnly)}`,
+      `inputContractOnly: ${String(contract.inputContractOnly)}`,
+      `stdoutOnly: ${String(contract.stdoutOnly)}`,
+      `liveInputValidationAllowed: ${String(contract.liveInputValidationAllowed)}`,
+      `inputExecutionAllowed: ${String(contract.inputExecutionAllowed)}`,
+      `generationRuntimeImplemented: ${String(contract.generationRuntimeImplemented)}`,
+      `generationExecutionAllowed: ${String(contract.generationExecutionAllowed)}`,
+      `bundleExecutionAllowed: ${String(contract.bundleExecutionAllowed)}`,
+      `rollbackExecutionAllowed: ${String(contract.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(contract.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(contract.riskEnforcementAllowed)}`,
+      `approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+      `validationExecutionAllowed: ${String(contract.validationExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(contract.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+      "notice: no input execution, no live input validation, no runtime, no project generation, no generation execution, no bundle execution, rollback execution, recovery execution, risk enforcement, approval execution, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(contract.metadata),
+    renderCliControlledProjectGenerationInputContractSummary(contract.summary),
+    renderCliSection("Input fields", fieldLines),
+    renderReadonlyNotice(contract.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -991,4 +1054,9 @@ function renderCliRollbackRiskGroups(groups: readonly { key: string; totalSteps:
 function renderCliRollbackAppliesToGroups(groups: readonly { key: string; totalSteps: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
+}
+
+function renderCliInputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
 }

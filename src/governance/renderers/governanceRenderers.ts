@@ -8,6 +8,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSection,
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSection, GovernanceArtifactSnapshotSummary } from "../governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSection, GovernanceConsolidationAuditSummary } from "../governanceConsolidationAudit.js";
 import type { ControlledProjectGenerationContractSection, ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../controlledProjectGenerationDesignContract.js";
+import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary, ControlledProjectGenerationInputField } from "../controlledProjectGenerationInputContract.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -1235,6 +1236,86 @@ export function renderControlledProjectGenerationDesignContract(contract: Contro
   ].join("\n");
 }
 
+export function renderControlledProjectGenerationInputContractSummary(summary: ControlledProjectGenerationInputContractSummary): string {
+  return [
+    "Controlled project generation input contract summary:",
+    `- field count: ${summary.totalFields}`,
+    `- required field count: ${summary.requiredFieldCount}`,
+    `- optional field count: ${summary.optionalFieldCount}`,
+    `- blocked field count: ${summary.blockedFieldCount}`,
+    `- group distribution: ${renderInputFieldGroups(summary.groupDistribution)}`,
+    `- risk distribution: ${renderInputFieldGroups(summary.riskDistribution)}`,
+    `- validation policy distribution: ${renderInputFieldGroups(summary.validationPolicyDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationInputField(field: ControlledProjectGenerationInputField): string {
+  return [
+    `Controlled project generation input field: ${field.fieldId}`,
+    `- group: ${field.group}`,
+    `- label: ${field.label}`,
+    `- description: ${field.description}`,
+    `- required: ${String(field.required)}`,
+    `- status: ${field.status}`,
+    `- riskLevel: ${field.riskLevel}`,
+    `- allowedValues: ${field.allowedValues.length === 0 ? "none" : field.allowedValues.join(", ")}`,
+    `- defaultValue: ${field.defaultValue ?? "none"}`,
+    `- validationPolicy: ${field.validationPolicy}`,
+    `- blockedReason: ${field.blockedReason ?? "none"}`,
+    `- read-only: ${String(field.readonly)}`,
+    `- preview-only: ${String(field.previewOnly)}`,
+    renderWarnings(field.warnings),
+    "Recommendations:",
+    ...(field.recommendations.length === 0 ? ["- none"] : field.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationInputContract(contract: ControlledProjectGenerationInputContract): string {
+  const fields = contract.fields.length === 0
+    ? ["Controlled project generation input fields:", "- none"]
+    : ["Controlled project generation input fields:", ...contract.fields.map(renderControlledProjectGenerationInputField)];
+  return [
+    `Controlled project generation input contract: ${contract.title}`,
+    `- schemaVersion: ${contract.schemaVersion}`,
+    `- readonly: ${String(contract.readonly)}`,
+    `- previewOnly: ${String(contract.previewOnly)}`,
+    `- inputContractOnly: ${String(contract.inputContractOnly)}`,
+    `- stdoutOnly: ${String(contract.stdoutOnly)}`,
+    `- liveInputValidationAllowed: ${String(contract.liveInputValidationAllowed)}`,
+    `- inputExecutionAllowed: ${String(contract.inputExecutionAllowed)}`,
+    `- generationRuntimeImplemented: ${String(contract.generationRuntimeImplemented)}`,
+    `- generationExecutionAllowed: ${String(contract.generationExecutionAllowed)}`,
+    `- bundleExecutionAllowed: ${String(contract.bundleExecutionAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(contract.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(contract.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(contract.riskEnforcementAllowed)}`,
+    `- approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+    `- validationExecutionAllowed: ${String(contract.validationExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(contract.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+    "Notice: no input execution, no live input validation, no runtime, no project generation, no generation execution, no bundle execution, rollback execution, recovery execution, risk enforcement, approval execution, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(contract.metadata),
+    renderControlledProjectGenerationInputContractSummary(contract.summary),
+    ...fields
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1278,4 +1359,9 @@ function renderRollbackRiskGroups(groups: readonly { key: string; totalSteps: nu
 function renderRollbackAppliesToGroups(groups: readonly { key: string; totalSteps: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
+}
+
+function renderInputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
 }
