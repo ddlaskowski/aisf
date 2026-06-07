@@ -33101,6 +33101,173 @@ function runControlledRuntimeArchitectureHelpOutputUnit() {
   }
 }
 
+function runControlledRuntimeComponentContractConsistencyUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeComponentContract.js"));
+    const metadata = { version: "v13.1", source: "unit", command: "governance controlled-runtime-components", readonly: true, previewOnly: true };
+    const first = contractModule.createControlledRuntimeComponentContract({ title: "Unit Runtime Component Contract", metadata });
+    const second = contractModule.createControlledRuntimeComponentContract({ title: "Unit Runtime Component Contract", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled runtime component contract output is not deterministic");
+    if (
+      first.readonly !== true ||
+      first.previewOnly !== true ||
+      first.stdoutOnly !== true ||
+      first.componentContractOnly !== true ||
+      first.runtimeExecutionAllowed !== false ||
+      first.runtimeActivationAllowed !== false ||
+      first.runtimeRoutingAllowed !== false ||
+      first.runtimeOrchestrationAllowed !== false ||
+      first.runtimePersistenceAllowed !== false ||
+      first.projectGenerationEnabled !== false ||
+      first.builderAgentRuntimeEnabled !== false ||
+      first.agentExecutionAllowed !== false ||
+      first.approvalExecutionAllowed !== false ||
+      first.mutationExecutionAllowed !== false ||
+      first.inputExecutionAllowed !== false ||
+      first.outputExecutionAllowed !== false ||
+      first.contractExecutionAllowed !== false ||
+      first.fileWriteAllowed !== false ||
+      first.fileCreationAllowed !== false ||
+      first.dependencyInstallationAllowed !== false ||
+      first.packageMutationAllowed !== false ||
+      first.generatedProjectValidationAllowed !== false ||
+      first.policyEnforcementEnabled !== false ||
+      first.governanceActivationAllowed !== false
+    ) {
+      throw new Error("controlled runtime component contract invariant flags changed");
+    }
+    if (first.entries.length !== 10 || first.summary.totalForbiddenActions === 0 || first.summary.totalDependencies === 0 || first.summary.noExecution !== true) {
+      throw new Error("controlled runtime component contract summary mismatch");
+    }
+    console.log("PASS controlled-runtime-component-contract-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-component-contract-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeComponentContractOrderingUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeComponentContract.js"));
+    const contract = contractModule.createControlledRuntimeComponentContract({ title: "Sort Runtime Components", metadata: { version: "v13.1", source: "sort", readonly: true, previewOnly: true } });
+    const order = contract.entries.map((entry) => entry.role).join(",");
+    if (order !== "input-intake,contract-validation,governance-review,planning,approval,generation-preview,validation-preview,review,export,audit") throw new Error(`controlled runtime component contract ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-component-contract-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-component-contract-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeComponentContractFilteringUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeComponentContract.js"));
+    const contract = contractModule.createControlledRuntimeComponentContract({ title: "Filter Runtime Components", metadata: { version: "v13.1", source: "filter", readonly: true, previewOnly: true } });
+    const generation = contractModule.findRuntimeComponentContractsByRole(contract.entries, "generation-preview");
+    const critical = contractModule.findRuntimeComponentContractsByRiskLevel(contract.entries, "critical");
+    const blocked = contractModule.findBlockedRuntimeComponentContracts(contract.entries);
+    const previewOnly = contractModule.findPreviewOnlyRuntimeComponentContracts(contract.entries);
+    if (generation.length !== 1 || generation[0].role !== "generation-preview") throw new Error("role filter mismatch");
+    if (critical.length < 1 || blocked.length !== 0 || previewOnly.length !== contract.entries.length) throw new Error("risk, blocked, or preview-only filter mismatch");
+    console.log("PASS controlled-runtime-component-contract-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-component-contract-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeComponentContractCompletenessUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeComponentContract.js"));
+    const contract = contractModule.createControlledRuntimeComponentContract({ title: "Score Runtime Components", metadata: { version: "v13.1", source: "score", readonly: true, previewOnly: true } });
+    const score = contractModule.calculateControlledRuntimeComponentContractCompleteness(contract.entries);
+    const empty = contractModule.calculateControlledRuntimeComponentContractCompleteness([]);
+    const unsafe = [{ ...contract.entries[0], noExecution: false }];
+    const unsafeScore = contractModule.calculateControlledRuntimeComponentContractCompleteness(unsafe);
+    if (score.score !== 100 || score.level !== "ready-for-runtime-flow-design") throw new Error(`component contract score mismatch: ${JSON.stringify(score)}`);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty component contract score mismatch: ${JSON.stringify(empty)}`);
+    if (unsafeScore.score !== 0 || unsafeScore.level !== "incomplete") throw new Error(`unsafe component contract score mismatch: ${JSON.stringify(unsafeScore)}`);
+    console.log("PASS controlled-runtime-component-contract-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-component-contract-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeComponentContractRenderingUnit() {
+  try {
+    const contractModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeComponentContract.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const contract = contractModule.createControlledRuntimeComponentContract({ title: "Render Runtime Components", metadata: { version: "v13.1", source: "render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledRuntimeComponentContract(contract);
+    if (!rendered.includes("Controlled runtime component contract: Render Runtime Components") || !rendered.includes("No runtime execution") || !rendered.includes("no project generation") || !rendered.includes("component contract count: 10") || !rendered.includes("dependencies:") || !rendered.includes("forbidden actions:")) throw new Error(`component contract rendering mismatch: ${rendered}`);
+    console.log("PASS controlled-runtime-component-contract-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-component-contract-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeComponentContractCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-runtime-components"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled runtime component contract") || !human.stdout.includes("runtimeExecutionAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("agentExecutionAllowed: false")) throw new Error(`component contract CLI output mismatch: status=${human.status} stdout=${human.stdout} stderr=${human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-runtime-components", "--json"]);
+    const parsed = JSON.parse(json.stdout);
+    if (json.status !== 0 || parsed.runtimeExecutionAllowed !== false || parsed.runtimeActivationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.agentExecutionAllowed !== false || parsed.entries.length !== 10 || parsed.summary.completeness.level !== "ready-for-runtime-flow-design") throw new Error(`component contract JSON output mismatch: status=${json.status} stdout=${json.stdout} stderr=${json.stderr}`);
+    console.log("PASS controlled-runtime-component-contract-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-component-contract-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeComponentContractHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-runtime-components", "--help"]);
+    if (help.status !== 0) throw new Error(`component contract help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance controlled-runtime-components",
+      "read-only",
+      "preview-only",
+      "stdout-only",
+      "no-runtime-execution",
+      "no-runtime-activation",
+      "no-project-generation",
+      "no-agent-execution",
+      "execute contracts",
+      "execute inputs",
+      "execute outputs",
+      "generate projects",
+      "run builder agents",
+      "execute agents",
+      "write files",
+      "install dependencies",
+      "mutate package.json",
+      "enforce policy",
+      "activate governance"
+    ]);
+    console.log("PASS controlled-runtime-component-contract-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-component-contract-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -33390,7 +33557,9 @@ const cliScenarioGroups = {
   governance: [
     runGovernanceReadonlyRenderingUnit,
     runControlledRuntimeArchitectureCliOutputUnit,
-    runControlledRuntimeArchitectureHelpOutputUnit
+    runControlledRuntimeArchitectureHelpOutputUnit,
+    runControlledRuntimeComponentContractCliOutputUnit,
+    runControlledRuntimeComponentContractHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessCliOutputUnit,
@@ -33495,6 +33664,7 @@ const scenarioSuites = {
     runControlledProjectGenerationContractExportRenderingUnit,
     runControlledProjectGenerationDesignCompletionAuditRenderingUnit,
     runControlledRuntimeArchitectureRenderingUnit,
+    runControlledRuntimeComponentContractRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "runtime-architecture": [
@@ -33504,7 +33674,14 @@ const scenarioSuites = {
     runControlledRuntimeArchitectureCompletenessUnit,
     runControlledRuntimeArchitectureRenderingUnit,
     runControlledRuntimeArchitectureCliOutputUnit,
-    runControlledRuntimeArchitectureHelpOutputUnit
+    runControlledRuntimeArchitectureHelpOutputUnit,
+    runControlledRuntimeComponentContractConsistencyUnit,
+    runControlledRuntimeComponentContractOrderingUnit,
+    runControlledRuntimeComponentContractFilteringUnit,
+    runControlledRuntimeComponentContractCompletenessUnit,
+    runControlledRuntimeComponentContractRenderingUnit,
+    runControlledRuntimeComponentContractCliOutputUnit,
+    runControlledRuntimeComponentContractHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessConsistencyUnit,
@@ -37035,6 +37212,27 @@ async function main() {
     failed += 1;
   }
   if (!runControlledRuntimeArchitectureHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeComponentContractConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeComponentContractOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeComponentContractFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeComponentContractCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeComponentContractRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeComponentContractCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeComponentContractHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

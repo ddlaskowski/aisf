@@ -18,6 +18,7 @@ import type { ControlledProjectGenerationMutationBoundaryContract, ControlledPro
 import type { ControlledProjectGenerationOutputContract, ControlledProjectGenerationOutputContractSummary } from "../../governance/controlledProjectGenerationOutputContract.js";
 import type { ControlledProjectGenerationRuntimeBoundaryContract, ControlledProjectGenerationRuntimeBoundarySummary } from "../../governance/controlledProjectGenerationRuntimeBoundaryContract.js";
 import type { ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../../governance/controlledRuntimeArchitecturePreview.js";
+import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractSummary } from "../../governance/controlledRuntimeComponentContract.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
@@ -1675,6 +1676,68 @@ export function renderCliControlledRuntimeArchitecturePreview(preview: Controlle
   ].join("\n");
 }
 
+export function renderCliControlledRuntimeComponentContractSummary(summary: ControlledRuntimeComponentContractSummary): string {
+  return [
+    renderCliSection("Controlled runtime component contract summary", [
+      `component contract count: ${summary.totalContracts}`,
+      `blocked count: ${summary.blockedCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `forbidden actions: ${summary.totalForbiddenActions}`,
+      `dependencies: ${summary.totalDependencies}`,
+      `risk distribution: ${renderCliRuntimeComponentRiskGroups(summary.riskDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledRuntimeComponentContract(contract: ControlledRuntimeComponentContract): string {
+  const entryLines = contract.entries.length === 0
+    ? ["none"]
+    : contract.entries.map((entry) => `${entry.role} | status=${entry.status} | risk=${entry.riskLevel} | dependencies=${entry.dependencies.length} | forbiddenActions=${entry.forbiddenActions.length} | noExecution=${String(entry.noExecution)}`);
+  return [
+    renderCliSection("Controlled runtime component contract", [
+      `title: ${contract.title}`,
+      `schemaVersion: ${contract.schemaVersion}`,
+      `readonly: ${String(contract.readonly)}`,
+      `previewOnly: ${String(contract.previewOnly)}`,
+      `stdoutOnly: ${String(contract.stdoutOnly)}`,
+      `componentContractOnly: ${String(contract.componentContractOnly)}`,
+      `runtimeExecutionAllowed: ${String(contract.runtimeExecutionAllowed)}`,
+      `runtimeActivationAllowed: ${String(contract.runtimeActivationAllowed)}`,
+      `runtimeRoutingAllowed: ${String(contract.runtimeRoutingAllowed)}`,
+      `runtimeOrchestrationAllowed: ${String(contract.runtimeOrchestrationAllowed)}`,
+      `runtimePersistenceAllowed: ${String(contract.runtimePersistenceAllowed)}`,
+      `projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+      `agentExecutionAllowed: ${String(contract.agentExecutionAllowed)}`,
+      `approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+      `mutationExecutionAllowed: ${String(contract.mutationExecutionAllowed)}`,
+      `inputExecutionAllowed: ${String(contract.inputExecutionAllowed)}`,
+      `outputExecutionAllowed: ${String(contract.outputExecutionAllowed)}`,
+      `contractExecutionAllowed: ${String(contract.contractExecutionAllowed)}`,
+      `fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+      `dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(contract.generatedProjectValidationAllowed)}`,
+      `policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+      `governanceActivationAllowed: ${String(contract.governanceActivationAllowed)}`,
+      "notice: read-only, preview-only component contracts only. No runtime execution, no runtime activation, no runtime routing, no runtime orchestration, no runtime persistence, no project generation, no builder-agent runtime, no agent execution, no approval execution, no mutation execution, no input execution, no output execution, no contract execution, no file writing, no file creation, no dependency installation, no package mutation, no generated-project validation, no policy enforcement, and no governance activation is enabled"
+    ]),
+    renderCliMetadata(contract.metadata),
+    renderCliControlledRuntimeComponentContractSummary(contract.summary),
+    renderCliSection("Component contract entries", entryLines),
+    renderReadonlyNotice(contract.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1718,6 +1781,11 @@ function renderCliRollbackRiskGroups(groups: readonly { key: string; totalSteps:
 function renderCliRollbackAppliesToGroups(groups: readonly { key: string; totalSteps: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
+}
+
+function renderCliRuntimeComponentRiskGroups(groups: readonly { key: string; totalContracts: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalContracts}`).join(", ");
 }
 
 function renderCliMutationBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {

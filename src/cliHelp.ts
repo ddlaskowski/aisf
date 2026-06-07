@@ -94,6 +94,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance controlled-project-generation-contract-audit",
     "  node dist/cli.js governance controlled-project-generation-design-completion-audit",
     "  node dist/cli.js governance controlled-runtime-architecture",
+    "  node dist/cli.js governance controlled-runtime-components",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -197,6 +198,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance controlled-project-generation-contract-audit",
     "  node dist/cli.js governance controlled-project-generation-design-completion-audit",
     "  node dist/cli.js governance controlled-runtime-architecture",
+    "  node dist/cli.js governance controlled-runtime-components",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1589,6 +1591,32 @@ export function renderGovernanceControlledRuntimeArchitectureHelp(): string {
     "  It has no-runtime-execution, no-project-generation, and no-agent-execution.",
     "  It does not execute runtime, activate runtime, route runtime behavior, orchestrate runtime behavior, persist runtime state, generate projects, run builder agents, execute agents, run agent loops, enable multi-agent systems, execute approvals, execute mutations, create files, write files, install dependencies, mutate package.json, enforce policy, activate governance, enable autonomy, self-improve, self-modify, or change repair orchestration.",
     "  Controlled runtime architecture previews do not write files by default.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceControlledRuntimeComponentsHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance controlled-runtime-components",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance controlled-runtime-components [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic controlled runtime component contract output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance controlled-runtime-components",
+    "  node dist/cli.js governance controlled-runtime-components --json",
+    "",
+    "Controlled runtime component contracts:",
+    "  This command describes future controlled runtime component responsibilities, allowed inputs, allowed outputs, dependencies, forbidden actions, and safety boundaries as deterministic data only.",
+    "  This is read-only, preview-only, and stdout-only.",
+    "  It has no-runtime-execution, no-runtime-activation, no-project-generation, and no-agent-execution.",
+    "  It does not execute runtime, activate runtime, route runtime behavior, orchestrate runtime behavior, persist runtime state, execute contracts, execute inputs, execute outputs, generate projects, run builder agents, execute agents, execute approvals, execute mutations, create files, write files, install dependencies, mutate package.json, execute generated-project validation, enforce policy, activate governance, or change repair orchestration.",
+    "  Controlled runtime component contract previews do not write files by default.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";

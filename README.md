@@ -12389,6 +12389,109 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v13.1 - Controlled Runtime Component Contract Layer
+
+v13.1 adds deterministic, read-only component contracts for the future Controlled Runtime Architecture. It defines future component responsibilities, allowed inputs, allowed outputs, dependencies, forbidden actions, risk levels, and safety boundaries before any runtime execution exists. It does not add runtime execution, runtime activation, runtime routing, runtime orchestration, runtime persistence, project generation, builder agents, agent execution, approval execution, mutation execution, file writing, dependency installation, package mutation, policy enforcement, governance activation, or autonomous behavior.
+
+Controlled runtime component contract model:
+
+* `src/governance/controlledRuntimeComponentContract.ts` adds `ControlledRuntimeComponentContract`, `ControlledRuntimeComponentContractEntry`, `ControlledRuntimeComponentContractSummary`, `createControlledRuntimeComponentContract`, `summarizeControlledRuntimeComponentContract`, and `calculateControlledRuntimeComponentContractCompleteness`.
+* Component contracts explicitly preserve read-only, preview-only, stdout-only, component-contract-only, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-project-generation, no-builder-agent-runtime, no-agent-execution, no-approval-execution, no-mutation-execution, no-input-execution, no-output-execution, no-contract-execution, no-file-writing, no-file-creation, no-dependency-installation, no-package-mutation, no-generated-project-validation, no-policy-enforcement, and no-governance-activation guarantees.
+
+Component contract entries cover:
+
+* `input-intake`
+* `contract-validation`
+* `governance-review`
+* `planning`
+* `approval`
+* `generation-preview`
+* `validation-preview`
+* `review`
+* `export`
+* `audit`
+
+Component entry helpers:
+
+* `createRuntimeComponentContractEntry`
+* `sortRuntimeComponentContractEntries`
+* `findRuntimeComponentContractsByRole`
+* `findRuntimeComponentContractsByRiskLevel`
+* `findBlockedRuntimeComponentContracts`
+* `findPreviewOnlyRuntimeComponentContracts`
+
+Completeness scoring:
+
+* `calculateControlledRuntimeComponentContractCompleteness` deterministically computes a 0-100 advisory component contract completeness score.
+* Completeness levels are `incomplete`, `partial`, `component-contracts-defined`, and `ready-for-runtime-flow-design`.
+* Scoring is advisory only and does not execute, route, activate, enforce, approve, generate projects, run agents, mutate files, write files, install dependencies, or change runtime behavior.
+
+Component contract rendering:
+
+* `renderControlledRuntimeComponentContract` renders the contract title, invariant flags, metadata, summary, entries, dependencies, forbidden actions, warnings, and recommendations.
+* `renderControlledRuntimeComponentContractSummary` renders deterministic contract counts, blocked counts, preview-only counts, risk distribution, dependencies, forbidden actions, completeness score, and no-execution guarantees.
+* `renderControlledRuntimeComponentContractEntry` renders stable entry details.
+* `renderCliControlledRuntimeComponentContract` and `renderCliControlledRuntimeComponentContractSummary` provide equivalent CLI-safe deterministic output.
+
+CLI component contract preview:
+
+```powershell
+node dist\cli.js governance controlled-runtime-components
+node dist\cli.js governance controlled-runtime-components --json
+```
+
+Controlled runtime component contract previews print to stdout only. They do not write files, create files, scaffold files, install dependencies, mutate packages, execute runtime behavior, activate runtime behavior, route runtime behavior, orchestrate runtime behavior, persist runtime state, execute contracts, execute inputs, execute outputs, execute generated-project validation, generate projects, implement builder agents, execute agents, execute approvals, execute mutations, enforce policies, activate governance, or change repair orchestration.
+
+v13.1 deterministic checks:
+
+* controlled-runtime-component-contract-consistency
+* controlled-runtime-component-contract-ordering
+* controlled-runtime-component-contract-filtering
+* controlled-runtime-component-contract-completeness
+* controlled-runtime-component-contract-rendering
+* controlled-runtime-component-contract-cli-output
+* controlled-runtime-component-contract-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite runtime-architecture
+node scripts\run-scenarios.js --suite cli --cli-scope governance
+node scripts\run-scenarios.js --suite renderers
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no project generation is introduced
+* no builder agents are introduced
+* no agent execution is introduced
+* no runtime execution is introduced
+* no runtime activation is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no runtime persistence is introduced
+* no contract execution is introduced
+* no input or output execution is introduced
+* no approval execution is introduced
+* no mutation execution or expansion is introduced
+* no generated-project validation execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 ## v13.0 - Controlled Runtime Architecture Preview Layer
 
 v13.0 begins the Runtime Architecture Era with a deterministic, read-only controlled runtime architecture preview. It describes future controlled project-generation runtime architecture components and lifecycle phases without implementing runtime execution, project generation, builder agents, agent execution, routing, orchestration, activation, governance enforcement, file writing, dependency installation, or mutation expansion.

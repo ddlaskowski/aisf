@@ -18,6 +18,7 @@ import type { ControlledProjectGenerationMutationBoundary, ControlledProjectGene
 import type { ControlledProjectGenerationOutputContract, ControlledProjectGenerationOutputContractSummary, ControlledProjectGenerationOutputField } from "../controlledProjectGenerationOutputContract.js";
 import type { ControlledProjectGenerationRuntimeBoundary, ControlledProjectGenerationRuntimeBoundaryContract, ControlledProjectGenerationRuntimeBoundarySummary } from "../controlledProjectGenerationRuntimeBoundaryContract.js";
 import type { ControlledRuntimeArchitectureComponent, ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../controlledRuntimeArchitecturePreview.js";
+import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractEntry, ControlledRuntimeComponentContractSummary } from "../controlledRuntimeComponentContract.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -2123,6 +2124,87 @@ export function renderControlledRuntimeArchitecturePreview(preview: ControlledRu
   ].join("\n");
 }
 
+export function renderControlledRuntimeComponentContractSummary(summary: ControlledRuntimeComponentContractSummary): string {
+  return [
+    "Controlled runtime component contract summary:",
+    `- component contract count: ${summary.totalContracts}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- forbidden actions: ${summary.totalForbiddenActions}`,
+    `- dependencies: ${summary.totalDependencies}`,
+    `- risk distribution: ${renderRuntimeComponentRiskGroups(summary.riskDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledRuntimeComponentContractEntry(entry: ControlledRuntimeComponentContractEntry): string {
+  return [
+    `Controlled runtime component contract entry: ${entry.role}`,
+    `- componentId: ${entry.componentId}`,
+    `- title: ${entry.title}`,
+    `- status: ${entry.status}`,
+    `- riskLevel: ${entry.riskLevel}`,
+    `- blockedReason: ${entry.blockedReason ?? "none"}`,
+    `- responsibilities: ${entry.responsibilities.length === 0 ? "none" : entry.responsibilities.join(", ")}`,
+    `- allowed inputs: ${entry.allowedInputs.length === 0 ? "none" : entry.allowedInputs.join(", ")}`,
+    `- allowed outputs: ${entry.allowedOutputs.length === 0 ? "none" : entry.allowedOutputs.join(", ")}`,
+    `- dependencies: ${entry.dependencies.length === 0 ? "none" : entry.dependencies.join(", ")}`,
+    `- forbidden actions: ${entry.forbiddenActions.length === 0 ? "none" : entry.forbiddenActions.join(", ")}`,
+    `- read-only: ${String(entry.readonly)}`,
+    `- preview-only: ${String(entry.previewOnly)}`,
+    `- no-execution: ${String(entry.noExecution)}`,
+    renderWarnings(entry.warnings),
+    "Recommendations:",
+    ...(entry.recommendations.length === 0 ? ["- none"] : entry.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledRuntimeComponentContract(contract: ControlledRuntimeComponentContract): string {
+  const entries = contract.entries.length === 0
+    ? ["Controlled runtime component contract entries:", "- none"]
+    : ["Controlled runtime component contract entries:", ...contract.entries.map(renderControlledRuntimeComponentContractEntry)];
+  return [
+    `Controlled runtime component contract: ${contract.title}`,
+    `- schemaVersion: ${contract.schemaVersion}`,
+    `- readonly: ${String(contract.readonly)}`,
+    `- previewOnly: ${String(contract.previewOnly)}`,
+    `- stdoutOnly: ${String(contract.stdoutOnly)}`,
+    `- componentContractOnly: ${String(contract.componentContractOnly)}`,
+    `- runtimeExecutionAllowed: ${String(contract.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(contract.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(contract.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(contract.runtimeOrchestrationAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(contract.runtimePersistenceAllowed)}`,
+    `- projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+    `- agentExecutionAllowed: ${String(contract.agentExecutionAllowed)}`,
+    `- approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+    `- mutationExecutionAllowed: ${String(contract.mutationExecutionAllowed)}`,
+    `- inputExecutionAllowed: ${String(contract.inputExecutionAllowed)}`,
+    `- outputExecutionAllowed: ${String(contract.outputExecutionAllowed)}`,
+    `- contractExecutionAllowed: ${String(contract.contractExecutionAllowed)}`,
+    `- fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+    `- generatedProjectValidationAllowed: ${String(contract.generatedProjectValidationAllowed)}`,
+    `- policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+    `- governanceActivationAllowed: ${String(contract.governanceActivationAllowed)}`,
+    "Notice: read-only, preview-only component contracts only. No runtime execution, no runtime activation, no runtime routing, no runtime orchestration, no runtime persistence, no project generation, no builder-agent runtime, no agent execution, no approval execution, no mutation execution, no input execution, no output execution, no contract execution, no file writing, no file creation, no dependency installation, no package mutation, no generated-project validation, no policy enforcement, and no governance activation is enabled.",
+    renderMetadata(contract.metadata),
+    renderControlledRuntimeComponentContractSummary(contract.summary),
+    ...entries
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -2166,6 +2248,11 @@ function renderRollbackRiskGroups(groups: readonly { key: string; totalSteps: nu
 function renderRollbackAppliesToGroups(groups: readonly { key: string; totalSteps: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
+}
+
+function renderRuntimeComponentRiskGroups(groups: readonly { key: string; totalContracts: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalContracts}`).join(", ");
 }
 
 function renderInputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {
