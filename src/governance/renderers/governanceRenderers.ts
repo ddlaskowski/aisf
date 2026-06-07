@@ -11,6 +11,7 @@ import type { ControlledProjectGenerationApprovalBoundary, ControlledProjectGene
 import type { ControlledProjectGenerationContractAudit, ControlledProjectGenerationContractAuditSection, ControlledProjectGenerationContractAuditSummary } from "../controlledProjectGenerationContractAudit.js";
 import type { ControlledProjectGenerationContractBundle, ControlledProjectGenerationContractBundleSection, ControlledProjectGenerationContractBundleSummary } from "../controlledProjectGenerationContractBundle.js";
 import type { ControlledProjectGenerationContractExportPayload, ControlledProjectGenerationContractExportSummary } from "../controlledProjectGenerationContractExport.js";
+import type { ControlledProjectGenerationDesignCompletionAudit, ControlledProjectGenerationDesignCompletionAuditSection, ControlledProjectGenerationDesignCompletionAuditSummary } from "../controlledProjectGenerationDesignCompletionAudit.js";
 import type { ControlledProjectGenerationContractSection, ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary, ControlledProjectGenerationInputField } from "../controlledProjectGenerationInputContract.js";
 import type { ControlledProjectGenerationMutationBoundary, ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../controlledProjectGenerationMutationBoundaryContract.js";
@@ -1928,6 +1929,110 @@ export function renderControlledProjectGenerationContractExportPayload(payload: 
     "Notice: stdout-only export preview; no file writes, no contract execution, no contract bundle execution, no contract audit execution, no runtime execution, no project generation, no approval execution, no mutation execution, no dependency installation, no package mutation, no file creation, and no scaffold generation is enabled.",
     renderMetadata(payload.metadata),
     renderControlledProjectGenerationContractExportSummary(payload.summary)
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationDesignCompletionAuditSummary(summary: ControlledProjectGenerationDesignCompletionAuditSummary): string {
+  return [
+    "Controlled project generation design completion audit summary:",
+    `- section count: ${summary.totalSections}`,
+    `- complete sections: ${summary.completeSections}`,
+    `- defined sections: ${summary.definedSections}`,
+    `- blocked sections: ${summary.blockedSections}`,
+    `- total entries: ${summary.totalEntries}`,
+    `- total blocked: ${summary.totalBlocked}`,
+    `- total forbidden: ${summary.totalForbidden}`,
+    `- CLI scope coverage: ${summary.cliScopeCoverageCount}`,
+    `- scenario coverage: ${summary.scenarioCoverageCount}`,
+    `- export coverage: ${summary.exportCoverageCount}`,
+    `- forbidden actions: ${summary.forbiddenActionCount}`,
+    `- readonly guarantees: ${summary.readonlyGuaranteeCount}`,
+    `- preview-only guarantees: ${summary.previewOnlyGuaranteeCount}`,
+    `- no-execution guarantees: ${summary.noExecutionGuaranteeCount}`,
+    `- completion score: ${summary.completionScore.score}`,
+    `- completion level: ${summary.completionScore.level}`,
+    `- completion reason: ${summary.completionScore.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationDesignCompletionAuditSection(section: ControlledProjectGenerationDesignCompletionAuditSection): string {
+  return [
+    `Controlled project generation design completion audit section: ${section.sectionType}`,
+    `- title: ${section.title}`,
+    `- status: ${section.status}`,
+    `- score: ${section.score}`,
+    `- level: ${section.level}`,
+    `- entryCount: ${section.entryCount}`,
+    `- blockedCount: ${section.blockedCount}`,
+    `- forbiddenCount: ${section.forbiddenCount}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    `- no-execution: ${String(section.noExecution)}`,
+    renderWarnings(section.warnings),
+    "Recommendations:",
+    ...(section.recommendations.length === 0 ? ["- none"] : section.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationDesignCompletionAudit(audit: ControlledProjectGenerationDesignCompletionAudit): string {
+  const sections = audit.sections.length === 0
+    ? ["Controlled project generation design completion audit sections:", "- none"]
+    : ["Controlled project generation design completion audit sections:", ...audit.sections.map(renderControlledProjectGenerationDesignCompletionAuditSection)];
+  return [
+    `Controlled project generation design completion audit: ${audit.title}`,
+    `- schemaVersion: ${audit.schemaVersion}`,
+    `- readonly: ${String(audit.readonly)}`,
+    `- previewOnly: ${String(audit.previewOnly)}`,
+    `- stdoutOnly: ${String(audit.stdoutOnly)}`,
+    `- completionAuditOnly: ${String(audit.completionAuditOnly)}`,
+    `- fileWriteAllowed: ${String(audit.fileWriteAllowed)}`,
+    `- runtimeExecutionAllowed: ${String(audit.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(audit.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(audit.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(audit.runtimeOrchestrationAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(audit.runtimePersistenceAllowed)}`,
+    `- plannerLoopAllowed: ${String(audit.plannerLoopAllowed)}`,
+    `- builderAgentLoopAllowed: ${String(audit.builderAgentLoopAllowed)}`,
+    `- approvalExecutionAllowed: ${String(audit.approvalExecutionAllowed)}`,
+    `- approvalPersistenceAllowed: ${String(audit.approvalPersistenceAllowed)}`,
+    `- mutationExecutionAllowed: ${String(audit.mutationExecutionAllowed)}`,
+    `- mutationExpansionAllowed: ${String(audit.mutationExpansionAllowed)}`,
+    `- contractExecutionAllowed: ${String(audit.contractExecutionAllowed)}`,
+    `- contractBundleExecutionAllowed: ${String(audit.contractBundleExecutionAllowed)}`,
+    `- contractAuditExecutionAllowed: ${String(audit.contractAuditExecutionAllowed)}`,
+    `- contractExportExecutionAllowed: ${String(audit.contractExportExecutionAllowed)}`,
+    `- outputExecutionAllowed: ${String(audit.outputExecutionAllowed)}`,
+    `- inputExecutionAllowed: ${String(audit.inputExecutionAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(audit.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(audit.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(audit.riskEnforcementAllowed)}`,
+    `- validationExecutionAllowed: ${String(audit.validationExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(audit.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(audit.packageMutationAllowed)}`,
+    `- fileCreationAllowed: ${String(audit.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(audit.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(audit.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(audit.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(audit.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(audit.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(audit.builderAgentRuntimeEnabled)}`,
+    `- CLI scope coverage: ${audit.cliScopeCoverage.length}`,
+    `- scenario coverage: ${audit.scenarioCoverage.length}`,
+    `- export coverage: ${audit.exportCoverage.length}`,
+    `- forbidden actions: ${audit.forbiddenActions.length}`,
+    `- readonly guarantees: ${audit.readonlyGuarantees.length}`,
+    `- preview-only guarantees: ${audit.previewOnlyGuarantees.length}`,
+    `- no-execution guarantees: ${audit.noExecutionGuarantees.length}`,
+    "Notice: No Runtime. No Project Generation. No Contract Execution. No runtime execution, runtime activation, runtime routing, runtime orchestration, runtime persistence, approval execution, approval persistence, mutation execution, mutation expansion, contract bundle execution, contract audit execution, contract export execution, input execution, output execution, rollback execution, recovery execution, risk enforcement, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, governance activation, policy enforcement, or file writing is enabled.",
+    renderMetadata(audit.metadata),
+    renderControlledProjectGenerationDesignCompletionAuditSummary(audit.summary),
+    ...sections
   ].join("\n");
 }
 

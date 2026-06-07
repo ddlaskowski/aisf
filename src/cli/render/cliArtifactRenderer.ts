@@ -11,6 +11,7 @@ import type { ControlledProjectGenerationApprovalBoundaryContract, ControlledPro
 import type { ControlledProjectGenerationContractAudit, ControlledProjectGenerationContractAuditSummary } from "../../governance/controlledProjectGenerationContractAudit.js";
 import type { ControlledProjectGenerationContractBundle, ControlledProjectGenerationContractBundleSummary } from "../../governance/controlledProjectGenerationContractBundle.js";
 import type { ControlledProjectGenerationContractExportPayload, ControlledProjectGenerationContractExportSummary } from "../../governance/controlledProjectGenerationContractExport.js";
+import type { ControlledProjectGenerationDesignCompletionAudit, ControlledProjectGenerationDesignCompletionAuditSummary } from "../../governance/controlledProjectGenerationDesignCompletionAudit.js";
 import type { ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../../governance/controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary } from "../../governance/controlledProjectGenerationInputContract.js";
 import type { ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../../governance/controlledProjectGenerationMutationBoundaryContract.js";
@@ -1516,6 +1517,94 @@ export function renderCliControlledProjectGenerationContractExportPayload(payloa
     renderCliControlledProjectGenerationContractExportSummary(payload.summary),
     renderCliSection("Included contract sections", payload.includedContractSections),
     renderReadonlyNotice(payload.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationDesignCompletionAuditSummary(summary: ControlledProjectGenerationDesignCompletionAuditSummary): string {
+  return [
+    renderCliSection("Controlled project generation design completion audit summary", [
+      `section count: ${summary.totalSections}`,
+      `complete sections: ${summary.completeSections}`,
+      `defined sections: ${summary.definedSections}`,
+      `blocked sections: ${summary.blockedSections}`,
+      `total entries: ${summary.totalEntries}`,
+      `total blocked: ${summary.totalBlocked}`,
+      `total forbidden: ${summary.totalForbidden}`,
+      `CLI scope coverage: ${summary.cliScopeCoverageCount}`,
+      `scenario coverage: ${summary.scenarioCoverageCount}`,
+      `export coverage: ${summary.exportCoverageCount}`,
+      `forbidden actions: ${summary.forbiddenActionCount}`,
+      `readonly guarantees: ${summary.readonlyGuaranteeCount}`,
+      `preview-only guarantees: ${summary.previewOnlyGuaranteeCount}`,
+      `no-execution guarantees: ${summary.noExecutionGuaranteeCount}`,
+      `completion score: ${summary.completionScore.score}`,
+      `completion level: ${summary.completionScore.level}`,
+      `completion reason: ${summary.completionScore.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationDesignCompletionAudit(audit: ControlledProjectGenerationDesignCompletionAudit): string {
+  const sectionLines = audit.sections.length === 0
+    ? ["none"]
+    : audit.sections.map((section) => `${section.sectionType} | status=${section.status} | score=${section.score} | entries=${section.entryCount} | noExecution=${String(section.noExecution)}`);
+  return [
+    renderCliSection("Controlled project generation design completion audit", [
+      `title: ${audit.title}`,
+      `schemaVersion: ${audit.schemaVersion}`,
+      `readonly: ${String(audit.readonly)}`,
+      `previewOnly: ${String(audit.previewOnly)}`,
+      `stdoutOnly: ${String(audit.stdoutOnly)}`,
+      `completionAuditOnly: ${String(audit.completionAuditOnly)}`,
+      `fileWriteAllowed: ${String(audit.fileWriteAllowed)}`,
+      `runtimeExecutionAllowed: ${String(audit.runtimeExecutionAllowed)}`,
+      `runtimeActivationAllowed: ${String(audit.runtimeActivationAllowed)}`,
+      `runtimeRoutingAllowed: ${String(audit.runtimeRoutingAllowed)}`,
+      `runtimeOrchestrationAllowed: ${String(audit.runtimeOrchestrationAllowed)}`,
+      `runtimePersistenceAllowed: ${String(audit.runtimePersistenceAllowed)}`,
+      `plannerLoopAllowed: ${String(audit.plannerLoopAllowed)}`,
+      `builderAgentLoopAllowed: ${String(audit.builderAgentLoopAllowed)}`,
+      `approvalExecutionAllowed: ${String(audit.approvalExecutionAllowed)}`,
+      `approvalPersistenceAllowed: ${String(audit.approvalPersistenceAllowed)}`,
+      `mutationExecutionAllowed: ${String(audit.mutationExecutionAllowed)}`,
+      `mutationExpansionAllowed: ${String(audit.mutationExpansionAllowed)}`,
+      `contractExecutionAllowed: ${String(audit.contractExecutionAllowed)}`,
+      `contractBundleExecutionAllowed: ${String(audit.contractBundleExecutionAllowed)}`,
+      `contractAuditExecutionAllowed: ${String(audit.contractAuditExecutionAllowed)}`,
+      `contractExportExecutionAllowed: ${String(audit.contractExportExecutionAllowed)}`,
+      `outputExecutionAllowed: ${String(audit.outputExecutionAllowed)}`,
+      `inputExecutionAllowed: ${String(audit.inputExecutionAllowed)}`,
+      `rollbackExecutionAllowed: ${String(audit.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(audit.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(audit.riskEnforcementAllowed)}`,
+      `validationExecutionAllowed: ${String(audit.validationExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(audit.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(audit.packageMutationAllowed)}`,
+      `fileCreationAllowed: ${String(audit.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(audit.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(audit.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(audit.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(audit.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(audit.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(audit.builderAgentRuntimeEnabled)}`,
+      "notice: No Runtime. No Project Generation. No Contract Execution. No runtime execution, runtime activation, runtime routing, runtime orchestration, runtime persistence, approval execution, approval persistence, mutation execution, mutation expansion, contract bundle execution, contract audit execution, contract export execution, input execution, output execution, rollback execution, recovery execution, risk enforcement, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, governance activation, policy enforcement, or file writing is enabled"
+    ]),
+    renderCliMetadata(audit.metadata),
+    renderCliControlledProjectGenerationDesignCompletionAuditSummary(audit.summary),
+    renderCliSection("Design completion sections", sectionLines),
+    renderCliSection("CLI scope coverage", audit.cliScopeCoverage),
+    renderCliSection("Scenario coverage", audit.scenarioCoverage),
+    renderCliSection("Export coverage", audit.exportCoverage),
+    renderCliSection("Forbidden actions", audit.forbiddenActions),
+    renderCliSection("Readonly guarantees", audit.readonlyGuarantees),
+    renderCliSection("Preview-only guarantees", audit.previewOnlyGuarantees),
+    renderCliSection("No-execution guarantees", audit.noExecutionGuarantees),
+    renderReadonlyNotice(audit.previewOnly)
   ].join("\n");
 }
 

@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliControlledProjectGenerationApprovalBoundaryContract, renderCliControlledProjectGenerationContractAudit, renderCliControlledProjectGenerationContractBundle, renderCliControlledProjectGenerationDesignContract, renderCliControlledProjectGenerationInputContract, renderCliControlledProjectGenerationMutationBoundaryContract, renderCliControlledProjectGenerationOutputContract, renderCliControlledProjectGenerationRuntimeBoundaryContract, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliControlledProjectGenerationApprovalBoundaryContract, renderCliControlledProjectGenerationContractAudit, renderCliControlledProjectGenerationContractBundle, renderCliControlledProjectGenerationDesignCompletionAudit, renderCliControlledProjectGenerationDesignContract, renderCliControlledProjectGenerationInputContract, renderCliControlledProjectGenerationMutationBoundaryContract, renderCliControlledProjectGenerationOutputContract, renderCliControlledProjectGenerationRuntimeBoundaryContract, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -125,6 +125,10 @@ import {
   exportControlledProjectGenerationContractBundleAsMarkdown,
   type ControlledProjectGenerationContractExportFormat
 } from "./governance/controlledProjectGenerationContractExport.js";
+import {
+  createControlledProjectGenerationDesignCompletionAudit,
+  type ControlledProjectGenerationDesignCompletionAudit
+} from "./governance/controlledProjectGenerationDesignCompletionAudit.js";
 import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
@@ -523,6 +527,7 @@ import {
   renderGovernanceControlledProjectGenerationApprovalBoundaryHelp,
   renderGovernanceControlledProjectGenerationContractAuditHelp,
   renderGovernanceControlledProjectGenerationContractBundleHelp,
+  renderGovernanceControlledProjectGenerationDesignCompletionAuditHelp,
   renderGovernanceControlledProjectGenerationInputContractHelp,
   renderGovernanceControlledProjectGenerationMutationBoundaryHelp,
   renderGovernanceControlledProjectGenerationOutputContractHelp,
@@ -1258,6 +1263,19 @@ function buildControlledProjectGenerationContractAuditPreview(): ControlledProje
   });
 }
 
+function buildControlledProjectGenerationDesignCompletionAuditPreview(): ControlledProjectGenerationDesignCompletionAudit {
+  return createControlledProjectGenerationDesignCompletionAudit({
+    title: "Controlled Project Generation Design Completion Audit",
+    metadata: {
+      version: "v12.10",
+      source: "controlled-project-generation-design-completion-audit-cli-preview",
+      command: "governance controlled-project-generation-design-completion-audit",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function buildControlledProjectGenerationContractExportMetadata(format: ControlledProjectGenerationContractExportFormat, commandName: string) {
   return {
     version: "v12.9",
@@ -1775,6 +1793,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(audit, null, 2), 0);
     }
     printAndExit(renderCliControlledProjectGenerationContractAudit(audit), 0);
+  }
+
+  if (command === "governance" && args[1] === "controlled-project-generation-design-completion-audit") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance controlled-project-generation-design-completion-audit", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceControlledProjectGenerationDesignCompletionAuditHelp(), 0);
+    }
+
+    const audit = buildControlledProjectGenerationDesignCompletionAuditPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(audit, null, 2), 0);
+    }
+    printAndExit(renderCliControlledProjectGenerationDesignCompletionAudit(audit), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

@@ -32786,6 +32786,160 @@ function runControlledProjectGenerationContractExportHelpOutputUnit() {
   }
 }
 
+function runControlledProjectGenerationDesignCompletionAuditConsistencyUnit() {
+  try {
+    const completionModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationDesignCompletionAudit.js"));
+    const metadata = { version: "v12.10", source: "unit", command: "governance controlled-project-generation-design-completion-audit", readonly: true, previewOnly: true };
+    const first = completionModule.createControlledProjectGenerationDesignCompletionAudit({ title: "Unit Design Completion Audit", metadata });
+    const second = completionModule.createControlledProjectGenerationDesignCompletionAudit({ title: "Unit Design Completion Audit", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("design completion audit output is not deterministic");
+    if (
+      first.readonly !== true ||
+      first.previewOnly !== true ||
+      first.stdoutOnly !== true ||
+      first.completionAuditOnly !== true ||
+      first.fileWriteAllowed !== false ||
+      first.runtimeExecutionAllowed !== false ||
+      first.runtimeActivationAllowed !== false ||
+      first.runtimeRoutingAllowed !== false ||
+      first.runtimePersistenceAllowed !== false ||
+      first.builderAgentLoopAllowed !== false ||
+      first.approvalExecutionAllowed !== false ||
+      first.approvalPersistenceAllowed !== false ||
+      first.mutationExecutionAllowed !== false ||
+      first.mutationExpansionAllowed !== false ||
+      first.contractExecutionAllowed !== false ||
+      first.contractBundleExecutionAllowed !== false ||
+      first.contractAuditExecutionAllowed !== false ||
+      first.contractExportExecutionAllowed !== false ||
+      first.outputExecutionAllowed !== false ||
+      first.inputExecutionAllowed !== false ||
+      first.rollbackExecutionAllowed !== false ||
+      first.recoveryExecutionAllowed !== false ||
+      first.riskEnforcementAllowed !== false ||
+      first.validationExecutionAllowed !== false ||
+      first.dependencyInstallationAllowed !== false ||
+      first.packageMutationAllowed !== false ||
+      first.fileCreationAllowed !== false ||
+      first.scaffoldGenerationEnabled !== false ||
+      first.projectGenerationEnabled !== false ||
+      first.builderAgentRuntimeEnabled !== false
+    ) {
+      throw new Error("design completion audit invariant flags changed");
+    }
+    if (!first.cliScopeCoverage.includes("controlled-generation") || !first.scenarioCoverage.includes("controlled-project-generation-design-completion-audit-consistency") || !first.exportCoverage.includes("contract-stack markdown")) {
+      throw new Error("design completion audit missing CLI scope, scenario, or export coverage");
+    }
+    if (first.forbiddenActions.length === 0 || first.readonlyGuarantees.length === 0 || first.previewOnlyGuarantees.length === 0 || first.noExecutionGuarantees.length === 0) {
+      throw new Error("design completion audit missing guarantee coverage");
+    }
+    console.log("PASS controlled-project-generation-design-completion-audit-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-design-completion-audit-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationDesignCompletionAuditSectionOrderingUnit() {
+  try {
+    const completionModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationDesignCompletionAudit.js"));
+    const audit = completionModule.createControlledProjectGenerationDesignCompletionAudit({ title: "Sort Design Completion Audit", metadata: { version: "v12.10", source: "sort", readonly: true, previewOnly: true } });
+    const order = audit.sections.map((section) => section.sectionType).join(",");
+    if (order !== "designContract,inputContract,outputContract,mutationBoundaryContract,approvalBoundaryContract,runtimeBoundaryContract,contractBundle,cliValidationSegmentation,contractAudit,contractExportPreview,scenarioCoverage,guarantees") throw new Error(`design completion audit section ordering mismatch: ${order}`);
+    console.log("PASS controlled-project-generation-design-completion-audit-section-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-design-completion-audit-section-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationDesignCompletionAuditScoreUnit() {
+  try {
+    const completionModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationDesignCompletionAudit.js"));
+    const audit = completionModule.createControlledProjectGenerationDesignCompletionAudit({ title: "Score Design Completion Audit", metadata: { version: "v12.10", source: "score", readonly: true, previewOnly: true } });
+    const score = completionModule.calculateControlledProjectGenerationDesignCompletionScore(audit.sections);
+    const empty = completionModule.calculateControlledProjectGenerationDesignCompletionScore([]);
+    const unsafe = [{ ...audit.sections[0], noExecution: false }];
+    const unsafeScore = completionModule.calculateControlledProjectGenerationDesignCompletionScore(unsafe);
+    if (score.score !== audit.summary.completionScore.score || score.level !== "ready-for-runtime-architecture-design") throw new Error(`design completion score mismatch: ${JSON.stringify(score)}`);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty design completion score mismatch: ${JSON.stringify(empty)}`);
+    if (unsafeScore.score !== 0 || unsafeScore.level !== "incomplete") throw new Error(`unsafe design completion score mismatch: ${JSON.stringify(unsafeScore)}`);
+    console.log("PASS controlled-project-generation-design-completion-audit-score");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-design-completion-audit-score");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationDesignCompletionAuditRenderingUnit() {
+  try {
+    const completionModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationDesignCompletionAudit.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const audit = completionModule.createControlledProjectGenerationDesignCompletionAudit({ title: "Render Design Completion Audit", metadata: { version: "v12.10", source: "render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledProjectGenerationDesignCompletionAudit(audit);
+    if (!rendered.includes("Controlled project generation design completion audit: Render Design Completion Audit") || !rendered.includes("No Runtime. No Project Generation. No Contract Execution.") || !rendered.includes("CLI scope coverage") || !rendered.includes("scenario coverage") || !rendered.includes("export coverage") || !rendered.includes("forbidden actions") || !rendered.includes("no-execution guarantees")) throw new Error(`design completion rendering mismatch: ${rendered}`);
+    console.log("PASS controlled-project-generation-design-completion-audit-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-design-completion-audit-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationDesignCompletionAuditCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-project-generation-design-completion-audit"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled project generation design completion audit") || !human.stdout.includes("No Runtime. No Project Generation. No Contract Execution.") || !human.stdout.includes("contractExecutionAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false")) throw new Error(`design completion CLI output mismatch: status=${human.status} stdout=${human.stdout} stderr=${human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-project-generation-design-completion-audit", "--json"]);
+    const parsed = JSON.parse(json.stdout);
+    if (json.status !== 0 || parsed.runtimeExecutionAllowed !== false || parsed.runtimeActivationAllowed !== false || parsed.runtimeRoutingAllowed !== false || parsed.runtimePersistenceAllowed !== false || parsed.contractExecutionAllowed !== false || parsed.contractExportExecutionAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.summary.cliScopeCoverageCount < 1 || parsed.summary.exportCoverageCount < 1) throw new Error(`design completion JSON output mismatch: status=${json.status} stdout=${json.stdout} stderr=${json.stderr}`);
+    console.log("PASS controlled-project-generation-design-completion-audit-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-design-completion-audit-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationDesignCompletionAuditHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-project-generation-design-completion-audit", "--help"]);
+    if (help.status !== 0) throw new Error(`design completion help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance controlled-project-generation-design-completion-audit",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "no runtime execution",
+      "no project generation",
+      "no contract execution",
+      "no runtime activation",
+      "no runtime routing",
+      "no runtime persistence",
+      "execute contract exports",
+      "install dependencies",
+      "mutate package.json",
+      "activate governance",
+      "enforce policy",
+      "builder-agent runtime loops"
+    ]);
+    console.log("PASS controlled-project-generation-design-completion-audit-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-design-completion-audit-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -32934,13 +33088,15 @@ function runCliScopeFilteringConsistencyUnit() {
 function runCliScopeControlledGenerationSelectionUnit() {
   try {
     const names = getCheckNames(selectCliScenarioChecks("controlled-generation"));
-    if (names.length !== 18) throw new Error(`controlled-generation CLI scope expected 18 checks, got ${names.length}`);
+    if (names.length !== 20) throw new Error(`controlled-generation CLI scope expected 20 checks, got ${names.length}`);
     if (!names.includes("runControlledProjectGenerationContractBundleCliOutputUnit")) throw new Error("controlled-generation CLI scope missing bundle CLI output check");
     if (!names.includes("runControlledProjectGenerationContractBundleHelpOutputUnit")) throw new Error("controlled-generation CLI scope missing bundle help check");
     if (!names.includes("runControlledProjectGenerationContractAuditCliOutputUnit")) throw new Error("controlled-generation CLI scope missing audit CLI output check");
     if (!names.includes("runControlledProjectGenerationContractAuditHelpOutputUnit")) throw new Error("controlled-generation CLI scope missing audit help check");
     if (!names.includes("runControlledProjectGenerationContractExportCliOutputUnit")) throw new Error("controlled-generation CLI scope missing export CLI output check");
     if (!names.includes("runControlledProjectGenerationContractExportHelpOutputUnit")) throw new Error("controlled-generation CLI scope missing export help check");
+    if (!names.includes("runControlledProjectGenerationDesignCompletionAuditCliOutputUnit")) throw new Error("controlled-generation CLI scope missing design completion CLI output check");
+    if (!names.includes("runControlledProjectGenerationDesignCompletionAuditHelpOutputUnit")) throw new Error("controlled-generation CLI scope missing design completion help check");
     if (names.some((name) => name.startsWith("runProjectGeneration") && !name.startsWith("runControlledProjectGeneration"))) throw new Error(`controlled-generation CLI scope included project-generation checks: ${names.join(", ")}`);
     console.log("PASS cli-scope-controlled-generation-selection");
     return true;
@@ -33055,7 +33211,9 @@ const cliScenarioGroups = {
     runControlledProjectGenerationContractAuditCliOutputUnit,
     runControlledProjectGenerationContractAuditHelpOutputUnit,
     runControlledProjectGenerationContractExportCliOutputUnit,
-    runControlledProjectGenerationContractExportHelpOutputUnit
+    runControlledProjectGenerationContractExportHelpOutputUnit,
+    runControlledProjectGenerationDesignCompletionAuditCliOutputUnit,
+    runControlledProjectGenerationDesignCompletionAuditHelpOutputUnit
   ],
   general: [
     runCliRenderConsistencyUnit,
@@ -33172,6 +33330,7 @@ const scenarioSuites = {
     runControlledProjectGenerationContractBundleRenderingUnit,
     runControlledProjectGenerationContractAuditRenderingUnit,
     runControlledProjectGenerationContractExportRenderingUnit,
+    runControlledProjectGenerationDesignCompletionAuditRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -33306,7 +33465,13 @@ const scenarioSuites = {
     runControlledProjectGenerationContractExportMarkdownUnit,
     runControlledProjectGenerationContractExportRenderingUnit,
     runControlledProjectGenerationContractExportCliOutputUnit,
-    runControlledProjectGenerationContractExportHelpOutputUnit
+    runControlledProjectGenerationContractExportHelpOutputUnit,
+    runControlledProjectGenerationDesignCompletionAuditConsistencyUnit,
+    runControlledProjectGenerationDesignCompletionAuditSectionOrderingUnit,
+    runControlledProjectGenerationDesignCompletionAuditScoreUnit,
+    runControlledProjectGenerationDesignCompletionAuditRenderingUnit,
+    runControlledProjectGenerationDesignCompletionAuditCliOutputUnit,
+    runControlledProjectGenerationDesignCompletionAuditHelpOutputUnit
   ],
   "controlled-generation": [
     runControlledProjectGenerationContractConsistencyUnit,
@@ -33367,7 +33532,13 @@ const scenarioSuites = {
     runControlledProjectGenerationContractExportMarkdownUnit,
     runControlledProjectGenerationContractExportRenderingUnit,
     runControlledProjectGenerationContractExportCliOutputUnit,
-    runControlledProjectGenerationContractExportHelpOutputUnit
+    runControlledProjectGenerationContractExportHelpOutputUnit,
+    runControlledProjectGenerationDesignCompletionAuditConsistencyUnit,
+    runControlledProjectGenerationDesignCompletionAuditSectionOrderingUnit,
+    runControlledProjectGenerationDesignCompletionAuditScoreUnit,
+    runControlledProjectGenerationDesignCompletionAuditRenderingUnit,
+    runControlledProjectGenerationDesignCompletionAuditCliOutputUnit,
+    runControlledProjectGenerationDesignCompletionAuditHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -36652,6 +36823,24 @@ async function main() {
     failed += 1;
   }
   if (!runControlledProjectGenerationContractExportHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationDesignCompletionAuditConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationDesignCompletionAuditSectionOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationDesignCompletionAuditScoreUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationDesignCompletionAuditRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationDesignCompletionAuditCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationDesignCompletionAuditHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

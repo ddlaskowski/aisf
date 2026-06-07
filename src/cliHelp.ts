@@ -92,6 +92,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance controlled-project-generation-runtime-boundary",
     "  node dist/cli.js governance controlled-project-generation-contract-bundle",
     "  node dist/cli.js governance controlled-project-generation-contract-audit",
+    "  node dist/cli.js governance controlled-project-generation-design-completion-audit",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -193,6 +194,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance controlled-project-generation-runtime-boundary",
     "  node dist/cli.js governance controlled-project-generation-contract-bundle",
     "  node dist/cli.js governance controlled-project-generation-contract-audit",
+    "  node dist/cli.js governance controlled-project-generation-design-completion-audit",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1533,6 +1535,32 @@ export function renderGovernanceControlledProjectGenerationContractAuditHelp(): 
     "  Export previews are stdout-only, preview-only, read-only, and do not write files by default.",
     "  It does not execute contract audits, execute contracts, execute contract bundles, execute input contracts, execute output contracts, execute mutation contracts, execute approval contracts, execute runtime contracts, execute runtime, activate runtime, route runtime behavior, persist runtime state, execute approvals, persist approval state, execute mutations, execute rollback, execute recovery, enforce risks, execute validation commands, install dependencies, mutate package.json, scaffold files, create files, write files, or generate projects.",
     "  It does not activate governance, enforce policy, execute runtime activation, enable runtime autonomy, implement planner-agent runtime loops, implement builder-agent runtime loops, mutate files, expand mutation scope, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceControlledProjectGenerationDesignCompletionAuditHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance controlled-project-generation-design-completion-audit",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance controlled-project-generation-design-completion-audit [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic controlled project generation design completion audit output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance controlled-project-generation-design-completion-audit",
+    "  node dist/cli.js governance controlled-project-generation-design-completion-audit --json",
+    "",
+    "Controlled project generation design completion audit:",
+    "  This command audits the v12.0-v12.9 controlled generation design chain, including contracts, boundaries, bundle, CLI validation segmentation, contract audit, contract export preview, scenario coverage, CLI scope coverage, forbidden actions, and guarantees.",
+    "  This is preview-only, read-only, and stdout-only. It has no runtime execution, no project generation, no contract execution, no runtime activation, no runtime routing, no runtime orchestration, no runtime persistence, no approval execution, no mutation execution, and no file writing.",
+    "  Design completion audits do not write files by default.",
+    "  It does not execute contracts, execute contract bundles, execute contract audits, execute contract exports, execute runtime, activate runtime, route runtime behavior, persist runtime state, execute approvals, persist approval state, execute mutations, execute rollback, execute recovery, enforce risks, execute validation commands, install dependencies, mutate package.json, scaffold files, create files, write files, or generate projects.",
+    "  It does not activate governance, enforce policy, implement planner-agent runtime loops, implement builder-agent runtime loops, mutate files, expand mutation scope, or change repair orchestration.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";
