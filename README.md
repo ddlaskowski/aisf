@@ -11967,6 +11967,92 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.7 - CLI Validation Segmentation Layer
+
+v12.7 adds deterministic CLI validation segmentation to `scripts/run-scenarios.js`. It does not change CLI command behavior, remove existing CLI checks, alter runtime behavior, execute project generation, activate governance, enforce policy, route runtime behavior, mutate files, install dependencies, scaffold files, or change repair orchestration.
+
+CLI scope filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite cli --cli-scope governance
+node scripts\run-scenarios.js --suite cli --cli-scope artifact
+node scripts\run-scenarios.js --suite cli --cli-scope project-generation
+node scripts\run-scenarios.js --suite cli --cli-scope controlled-generation
+node scripts\run-scenarios.js --suite cli
+```
+
+Supported CLI scopes:
+
+* `general`
+* `governance`
+* `artifact`
+* `project-generation`
+* `controlled-generation`
+* `all`
+
+Default behavior:
+
+* `node scripts\run-scenarios.js --suite cli` still runs all CLI checks.
+* `--cli-scope all` is equivalent to the default full CLI suite.
+* Unknown CLI scopes fail deterministically and list supported scopes.
+* `--cli-scope` is valid only with `--suite cli`.
+
+CLI scoped summary output:
+
+```txt
+CLI validation scope summary:
+  suite: cli
+  scope: artifact
+  checks selected: 5
+  checks passed: 5
+  checks failed: 0
+```
+
+v12.7 deterministic checks:
+
+* cli-scope-filtering-consistency
+* cli-scope-controlled-generation-selection
+* cli-scope-project-generation-selection
+* cli-scope-artifact-selection
+* cli-scope-summary-rendering
+* cli-scope-unknown-scope-handling
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no project generation is introduced
+* no builder-agent runtime is introduced
+* no runtime execution is introduced
+* no runtime activation is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no approval execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no existing CLI validation coverage is removed
+* no CLI command semantics are changed
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

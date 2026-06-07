@@ -32534,6 +32534,9 @@ function runScenarioSuiteFilteringUnit() {
     if (parseRequestedSuite(["node", "scripts/run-scenarios.js", "--suite", "renderers"]) !== "renderers") throw new Error("explicit suite filter mismatch");
     if (parseRequestedSuite(["node", "scripts/run-scenarios.js", "--suite=cli"]) !== "cli") throw new Error("equals suite filter mismatch");
     if (parseRequestedSuite(["node", "scripts/run-scenarios.js", "--suite", "unknown"]) !== "unknown") throw new Error("unknown suite should be preserved for deterministic error handling");
+    if (parseRequestedCliScope(["node", "scripts/run-scenarios.js"]) !== null) throw new Error("default CLI scope filter should be null");
+    if (parseRequestedCliScope(["node", "scripts/run-scenarios.js", "--cli-scope", "artifact"]) !== "artifact") throw new Error("explicit CLI scope filter mismatch");
+    if (parseRequestedCliScope(["node", "scripts/run-scenarios.js", "--cli-scope=project-generation"]) !== "project-generation") throw new Error("equals CLI scope filter mismatch");
     console.log("PASS scenario-suite-filtering");
     return true;
   } catch (error) {
@@ -32581,6 +32584,217 @@ function runReadonlyRenderConsistencyUnit() {
   }
 }
 
+function getCheckNames(checks) {
+  return checks.map((check) => check.name);
+}
+
+function getCliScopeNames() {
+  return Object.keys(cliScenarioGroups).sort();
+}
+
+function flattenCliScenarioGroups() {
+  return getCliScopeNames().flatMap((scopeName) => cliScenarioGroups[scopeName]);
+}
+
+function selectCliScenarioChecks(scope) {
+  if (scope === null || scope === undefined || scope === "" || scope === "all") {
+    return flattenCliScenarioGroups();
+  }
+  const checks = cliScenarioGroups[scope];
+  if (!checks) {
+    throw new Error(`Unknown CLI scope: ${scope}. Expected one of: all, ${getCliScopeNames().join(", ")}`);
+  }
+  return checks;
+}
+
+function renderCliScopeExecutionSummary(summary) {
+  return [
+    "CLI validation scope summary:",
+    `  suite: cli`,
+    `  scope: ${summary.scope ?? "all"}`,
+    `  checks selected: ${summary.checksSelected}`,
+    `  checks passed: ${summary.checksPassed}`,
+    `  checks failed: ${summary.checksFailed}`
+  ].join("\n");
+}
+
+function runCliScopeFilteringConsistencyUnit() {
+  try {
+    const allChecks = selectCliScenarioChecks(null);
+    const allByAlias = selectCliScenarioChecks("all");
+    const groupedTotal = getCliScopeNames().reduce((total, scopeName) => total + cliScenarioGroups[scopeName].length, 0);
+    const allNames = getCheckNames(allChecks);
+    const duplicateNames = allNames.filter((name, index) => allNames.indexOf(name) !== index);
+    if (allChecks.length !== groupedTotal) throw new Error(`CLI scope total mismatch: all=${allChecks.length} grouped=${groupedTotal}`);
+    if (allByAlias.length !== allChecks.length) throw new Error("CLI all scope alias did not preserve full coverage");
+    if (duplicateNames.length > 0) throw new Error(`CLI scope duplicate checks: ${duplicateNames.join(", ")}`);
+    console.log("PASS cli-scope-filtering-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-scope-filtering-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliScopeControlledGenerationSelectionUnit() {
+  try {
+    const names = getCheckNames(selectCliScenarioChecks("controlled-generation"));
+    if (names.length !== 14) throw new Error(`controlled-generation CLI scope expected 14 checks, got ${names.length}`);
+    if (!names.includes("runControlledProjectGenerationContractBundleCliOutputUnit")) throw new Error("controlled-generation CLI scope missing bundle CLI output check");
+    if (!names.includes("runControlledProjectGenerationContractBundleHelpOutputUnit")) throw new Error("controlled-generation CLI scope missing bundle help check");
+    if (names.some((name) => name.startsWith("runProjectGeneration") && !name.startsWith("runControlledProjectGeneration"))) throw new Error(`controlled-generation CLI scope included project-generation checks: ${names.join(", ")}`);
+    console.log("PASS cli-scope-controlled-generation-selection");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-scope-controlled-generation-selection");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliScopeProjectGenerationSelectionUnit() {
+  try {
+    const names = getCheckNames(selectCliScenarioChecks("project-generation"));
+    if (names.length !== 22) throw new Error(`project-generation CLI scope expected 22 checks, got ${names.length}`);
+    if (!names.includes("runProjectGenerationReadinessCliOutputUnit")) throw new Error("project-generation CLI scope missing readiness CLI output check");
+    if (!names.includes("runProjectGenerationReadinessAuditHelpOutputUnit")) throw new Error("project-generation CLI scope missing readiness audit help check");
+    if (names.some((name) => name.startsWith("runControlledProjectGeneration"))) throw new Error(`project-generation CLI scope included controlled-generation checks: ${names.join(", ")}`);
+    console.log("PASS cli-scope-project-generation-selection");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-scope-project-generation-selection");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliScopeArtifactSelectionUnit() {
+  try {
+    const names = getCheckNames(selectCliScenarioChecks("artifact"));
+    if (names.length !== 5) throw new Error(`artifact CLI scope expected 5 checks, got ${names.length}`);
+    for (const expected of [
+      "runGovernanceArtifactQueryHelpOutputUnit",
+      "runGovernanceArtifactExportHelpOutputUnit",
+      "runGovernanceArtifactSnapshotHelpOutputUnit",
+      "runGovernanceArtifactReviewPackHelpOutputUnit",
+      "runGovernanceConsolidationAuditHelpOutputUnit"
+    ]) {
+      if (!names.includes(expected)) throw new Error(`artifact CLI scope missing ${expected}`);
+    }
+    console.log("PASS cli-scope-artifact-selection");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-scope-artifact-selection");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliScopeSummaryRenderingUnit() {
+  try {
+    const rendered = renderCliScopeExecutionSummary({
+      scope: "artifact",
+      checksSelected: 5,
+      checksPassed: 5,
+      checksFailed: 0
+    });
+    if (!rendered.includes("suite: cli") || !rendered.includes("scope: artifact") || !rendered.includes("checks selected: 5") || !rendered.includes("checks failed: 0")) {
+      throw new Error(`CLI scope summary rendering mismatch: ${rendered}`);
+    }
+    console.log("PASS cli-scope-summary-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-scope-summary-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runCliScopeUnknownScopeHandlingUnit() {
+  try {
+    let message = "";
+    try {
+      selectCliScenarioChecks("unknown");
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    if (!message.includes("Unknown CLI scope: unknown") || !message.includes("artifact") || !message.includes("controlled-generation") || !message.includes("project-generation")) {
+      throw new Error(`unknown CLI scope error mismatch: ${message}`);
+    }
+    console.log("PASS cli-scope-unknown-scope-handling");
+    return true;
+  } catch (error) {
+    console.log("FAIL cli-scope-unknown-scope-handling");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+const cliScenarioGroups = {
+  artifact: [
+    runGovernanceArtifactQueryHelpOutputUnit,
+    runGovernanceArtifactExportHelpOutputUnit,
+    runGovernanceArtifactSnapshotHelpOutputUnit,
+    runGovernanceArtifactReviewPackHelpOutputUnit,
+    runGovernanceConsolidationAuditHelpOutputUnit
+  ],
+  "controlled-generation": [
+    runControlledProjectGenerationContractCliOutputUnit,
+    runControlledProjectGenerationContractHelpOutputUnit,
+    runControlledProjectGenerationInputContractCliOutputUnit,
+    runControlledProjectGenerationInputContractHelpOutputUnit,
+    runControlledProjectGenerationOutputContractCliOutputUnit,
+    runControlledProjectGenerationOutputContractHelpOutputUnit,
+    runControlledProjectGenerationMutationBoundaryCliOutputUnit,
+    runControlledProjectGenerationMutationBoundaryHelpOutputUnit,
+    runControlledProjectGenerationApprovalBoundaryCliOutputUnit,
+    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit,
+    runControlledProjectGenerationRuntimeBoundaryCliOutputUnit,
+    runControlledProjectGenerationRuntimeBoundaryHelpOutputUnit,
+    runControlledProjectGenerationContractBundleCliOutputUnit,
+    runControlledProjectGenerationContractBundleHelpOutputUnit
+  ],
+  general: [
+    runCliRenderConsistencyUnit,
+    runCliRenderNormalizationUnit,
+    runScenarioSummaryRenderingUnit,
+    runCliScopeFilteringConsistencyUnit,
+    runCliScopeControlledGenerationSelectionUnit,
+    runCliScopeProjectGenerationSelectionUnit,
+    runCliScopeArtifactSelectionUnit,
+    runCliScopeSummaryRenderingUnit,
+    runCliScopeUnknownScopeHandlingUnit
+  ],
+  governance: [
+    runGovernanceReadonlyRenderingUnit
+  ],
+  "project-generation": [
+    runProjectGenerationReadinessCliOutputUnit,
+    runProjectGenerationReadinessHelpOutputUnit,
+    runProjectGenerationCapabilityCliOutputUnit,
+    runProjectGenerationCapabilityHelpOutputUnit,
+    runProjectGenerationBlueprintCliOutputUnit,
+    runProjectGenerationBlueprintHelpOutputUnit,
+    runProjectGenerationFilePlanCliOutputUnit,
+    runProjectGenerationFilePlanHelpOutputUnit,
+    runProjectGenerationDependencyPlanCliOutputUnit,
+    runProjectGenerationDependencyPlanHelpOutputUnit,
+    runProjectGenerationValidationPlanCliOutputUnit,
+    runProjectGenerationValidationPlanHelpOutputUnit,
+    runProjectGenerationApprovalPlanCliOutputUnit,
+    runProjectGenerationApprovalPlanHelpOutputUnit,
+    runProjectGenerationRiskPlanCliOutputUnit,
+    runProjectGenerationRiskPlanHelpOutputUnit,
+    runProjectGenerationRollbackPlanCliOutputUnit,
+    runProjectGenerationRollbackPlanHelpOutputUnit,
+    runProjectGenerationPlanBundleCliOutputUnit,
+    runProjectGenerationPlanBundleHelpOutputUnit,
+    runProjectGenerationReadinessAuditCliOutputUnit,
+    runProjectGenerationReadinessAuditHelpOutputUnit
+  ]
+};
+
 const scenarioSuites = {
   artifacts: [
     runGovernanceArtifactFactoryConsistencyUnit,
@@ -32608,53 +32822,7 @@ const scenarioSuites = {
     runProjectGenerationCapabilityMapConsistencyUnit,
     runProjectGenerationBlueprintConsistencyUnit
   ],
-  cli: [
-    runCliRenderConsistencyUnit,
-    runCliRenderNormalizationUnit,
-    runGovernanceReadonlyRenderingUnit,
-    runScenarioSummaryRenderingUnit,
-    runGovernanceArtifactQueryHelpOutputUnit,
-    runGovernanceArtifactExportHelpOutputUnit,
-    runGovernanceArtifactSnapshotHelpOutputUnit,
-    runGovernanceArtifactReviewPackHelpOutputUnit,
-    runGovernanceConsolidationAuditHelpOutputUnit,
-    runProjectGenerationReadinessCliOutputUnit,
-    runProjectGenerationReadinessHelpOutputUnit,
-    runProjectGenerationCapabilityCliOutputUnit,
-    runProjectGenerationCapabilityHelpOutputUnit,
-    runProjectGenerationBlueprintCliOutputUnit,
-    runProjectGenerationBlueprintHelpOutputUnit,
-    runProjectGenerationFilePlanCliOutputUnit,
-    runProjectGenerationFilePlanHelpOutputUnit,
-    runProjectGenerationDependencyPlanCliOutputUnit,
-    runProjectGenerationDependencyPlanHelpOutputUnit,
-    runProjectGenerationValidationPlanCliOutputUnit,
-    runProjectGenerationValidationPlanHelpOutputUnit,
-    runProjectGenerationApprovalPlanCliOutputUnit,
-    runProjectGenerationApprovalPlanHelpOutputUnit,
-    runProjectGenerationRiskPlanCliOutputUnit,
-    runProjectGenerationRiskPlanHelpOutputUnit,
-    runProjectGenerationRollbackPlanCliOutputUnit,
-    runProjectGenerationRollbackPlanHelpOutputUnit,
-    runProjectGenerationPlanBundleCliOutputUnit,
-    runProjectGenerationPlanBundleHelpOutputUnit,
-    runProjectGenerationReadinessAuditCliOutputUnit,
-    runProjectGenerationReadinessAuditHelpOutputUnit,
-    runControlledProjectGenerationContractCliOutputUnit,
-    runControlledProjectGenerationContractHelpOutputUnit,
-    runControlledProjectGenerationInputContractCliOutputUnit,
-    runControlledProjectGenerationInputContractHelpOutputUnit,
-    runControlledProjectGenerationOutputContractCliOutputUnit,
-    runControlledProjectGenerationOutputContractHelpOutputUnit,
-    runControlledProjectGenerationMutationBoundaryCliOutputUnit,
-    runControlledProjectGenerationMutationBoundaryHelpOutputUnit,
-    runControlledProjectGenerationApprovalBoundaryCliOutputUnit,
-    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit,
-    runControlledProjectGenerationRuntimeBoundaryCliOutputUnit,
-    runControlledProjectGenerationRuntimeBoundaryHelpOutputUnit,
-    runControlledProjectGenerationContractBundleCliOutputUnit,
-    runControlledProjectGenerationContractBundleHelpOutputUnit
-  ],
+  cli: flattenCliScenarioGroups(),
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
     runGovernanceArtifactExportJsonConsistencyUnit,
@@ -32926,17 +33094,40 @@ function parseRequestedSuite(argv) {
   return argv[suiteIndex + 1] ?? "";
 }
 
+function parseRequestedCliScope(argv) {
+  const scopeArg = argv.find((arg) => arg.startsWith("--cli-scope="));
+  if (scopeArg) return scopeArg.slice("--cli-scope=".length);
+  const scopeIndex = argv.indexOf("--cli-scope");
+  if (scopeIndex === -1) return null;
+  return argv[scopeIndex + 1] ?? "";
+}
+
 function renderScenarioExecutionSummary(summary) {
   const { renderValidationSummary } = require(path.join(projectRoot, "dist", "cli", "render", "validationSummaryRenderer.js"));
   return renderValidationSummary(summary);
 }
 
-function runScenarioSuite(suiteName) {
-  const suite = scenarioSuites[suiteName];
+function runScenarioSuite(suiteName, options = {}) {
+  const cliScope = options.cliScope ?? null;
   const allSuites = Object.keys(scenarioSuites).sort();
+  if (cliScope !== null && suiteName !== "cli") {
+    console.log(`FAIL scenario-suite-${suiteName}`);
+    console.log("  --cli-scope can only be used with --suite cli.");
+    return 1;
+  }
+  let suite = scenarioSuites[suiteName];
   if (!suite) {
     console.log(`FAIL scenario-suite-${suiteName}`);
     console.log(`  Unknown suite. Expected one of: ${allSuites.join(", ")}`);
+    return 1;
+  }
+  try {
+    if (suiteName === "cli") {
+      suite = selectCliScenarioChecks(cliScope);
+    }
+  } catch (error) {
+    console.log(`FAIL scenario-suite-${suiteName}`);
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
   let failed = 0;
@@ -32953,6 +33144,14 @@ function runScenarioSuite(suiteName) {
     failedChecks: failed,
     executionDurationMs: 0
   }));
+  if (suiteName === "cli") {
+    console.log(renderCliScopeExecutionSummary({
+      scope: cliScope ?? "all",
+      checksSelected: suite.length,
+      checksPassed: passed,
+      checksFailed: failed
+    }));
+  }
   return failed;
 }
 
@@ -33208,8 +33407,15 @@ async function main() {
   }
 
   const requestedSuite = parseRequestedSuite(process.argv);
+  const requestedCliScope = parseRequestedCliScope(process.argv);
   if (requestedSuite !== null) {
-    process.exitCode = runScenarioSuite(requestedSuite) === 0 ? 0 : 1;
+    process.exitCode = runScenarioSuite(requestedSuite, { cliScope: requestedCliScope }) === 0 ? 0 : 1;
+    return;
+  }
+  if (requestedCliScope !== null) {
+    console.log("FAIL scenario-suite-cli-scope");
+    console.log("  --cli-scope requires --suite cli.");
+    process.exitCode = 1;
     return;
   }
 
