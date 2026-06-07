@@ -11467,6 +11467,130 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.3 - Controlled Project Generation Mutation Boundary Contract Layer
+
+v12.3 continues the Controlled Project Generation Design Era by adding a deterministic, read-only mutation boundary contract for a future controlled project generation runtime. The contract is descriptive design data only. It does not execute mutations, expand mutation capability, execute inputs, execute outputs, execute bundles, execute rollback, execute recovery, enforce risks, execute approvals, execute validation commands, install dependencies, mutate package files, create files, scaffold files, implement builder agents, route runtime behavior, activate governance, enforce policy, generate projects, or change repair orchestration.
+
+Controlled project generation mutation boundary contract model:
+
+* `src/governance/controlledProjectGenerationMutationBoundaryContract.ts` adds `ControlledProjectGenerationMutationBoundaryContract`, `ControlledProjectGenerationMutationBoundary`, `ControlledProjectGenerationMutationBoundarySummary`, `ControlledProjectGenerationMutationBoundaryCompleteness`, `createControlledProjectGenerationMutationBoundaryContract`, and `summarizeControlledProjectGenerationMutationBoundaryContract`.
+* Mutation boundary contracts explicitly preserve read-only, preview-only, mutation-boundary-contract-only, stdout-only, no-mutation-execution, no-mutation-expansion, no-generation-runtime, no-generation-execution, no-input-execution, no-output-execution, no-bundle-execution, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-approval-execution, no-validation-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Mutation boundary contract helpers require explicit metadata input and do not generate hidden timestamps.
+
+Mutation groups:
+
+* `fileCreation`
+* `fileModification`
+* `fileDeletion`
+* `packageMutation`
+* `dependencyInstallation`
+* `configurationMutation`
+* `scriptMutation`
+* `generatedCodeMutation`
+* `testMutation`
+* `documentationMutation`
+* `safePatchBoundary`
+* `multiFileMutationBoundary`
+
+Mutation policies:
+
+* `forbidden`
+* `blocked`
+* `preview-only`
+* `manual-approval-required`
+* `safe-patch-only`
+* `not-applicable`
+
+Mutation boundary helpers:
+
+* `createMutationBoundary`
+* `sortMutationBoundaries`
+* `findMutationBoundariesByGroup`
+* `findMutationBoundariesByPolicy`
+* `findMutationBoundariesByRiskLevel`
+* `findBlockedMutationBoundaries`
+* `findForbiddenMutationBoundaries`
+* `findSafePatchOnlyMutationBoundaries`
+
+Each mutation boundary records boundary ID, group, title, description, mutation policy, risk level, allowed preview-only descriptions, forbidden mutation categories, Safe Patch requirement, approval requirement, blocked reason, warnings, recommendations, read-only state, preview-only state, and no-execution state.
+
+Advisory completeness scoring:
+
+* `calculateControlledProjectGenerationMutationBoundaryCompleteness` deterministically computes a 0-100 advisory completeness score.
+* Completeness levels are `incomplete`, `partial`, `contract-defined`, and `ready-for-design`.
+* Scoring is descriptive only and does not execute mutations, expand mutation capability, approve anything, activate governance, route runtime behavior, execute validation commands, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Mutation boundary rendering:
+
+* `renderControlledProjectGenerationMutationBoundarySummary` renders deterministic boundary count, forbidden count, blocked count, safe-patch-only count, approval-required count, group distribution, policy distribution, risk distribution, completeness score, warnings, and recommendations.
+* `renderControlledProjectGenerationMutationBoundary` renders stable mutation boundary details.
+* `renderControlledProjectGenerationMutationBoundaryContract` renders contract title, guarantees, metadata, summary, boundaries, and an explicit no-mutation-execution/no-mutation-expansion/no-project-generation notice.
+* `renderCliControlledProjectGenerationMutationBoundarySummary` and `renderCliControlledProjectGenerationMutationBoundaryContract` provide equivalent CLI-safe deterministic output.
+
+CLI mutation boundary preview:
+
+```powershell
+node dist\cli.js governance controlled-project-generation-mutation-boundary
+node dist\cli.js governance controlled-project-generation-mutation-boundary --json
+```
+
+Mutation boundary contracts print to stdout only. They do not write files, create files, scaffold files, execute mutations, expand mutation capability, execute inputs, execute outputs, execute bundles, execute rollback, execute recovery, enforce risks, execute approvals, execute validation commands, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, or change repair orchestration.
+
+v12.3 deterministic checks:
+
+* controlled-project-generation-mutation-boundary-consistency
+* controlled-project-generation-mutation-boundary-sorting
+* controlled-project-generation-mutation-boundary-filtering
+* controlled-project-generation-mutation-boundary-completeness
+* controlled-project-generation-mutation-boundary-rendering
+* controlled-project-generation-mutation-boundary-cli-output
+* controlled-project-generation-mutation-boundary-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite controlled-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no mutation execution is introduced
+* no output execution is introduced
+* no input execution is introduced
+* no bundle execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no approval execution is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* Safe Patch Engine remains the only theoretical mutation boundary
+* multi-file mutation remains forbidden
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

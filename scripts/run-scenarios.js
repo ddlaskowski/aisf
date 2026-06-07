@@ -31770,6 +31770,184 @@ function runControlledProjectGenerationOutputContractHelpOutputUnit() {
   }
 }
 
+function runControlledProjectGenerationMutationBoundaryConsistencyUnit() {
+  try {
+    const mutationModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationMutationBoundaryContract.js"));
+    const metadata = { version: "v12.3", source: "controlled-mutation-boundary-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = mutationModule.createControlledProjectGenerationMutationBoundaryContract({ title: "Unit Mutation Boundary", metadata });
+    const second = mutationModule.createControlledProjectGenerationMutationBoundaryContract({ title: "Unit Mutation Boundary", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled mutation boundary contract output is not deterministic");
+    if (first.summary.totalBoundaries !== 12 || first.summary.forbiddenCount !== 6 || first.summary.blockedCount !== 0 || first.summary.safePatchOnlyCount !== 4 || first.summary.approvalRequiredCount !== 11 || first.summary.completeness.score !== 93 || first.summary.completeness.level !== "ready-for-design") throw new Error(`controlled mutation boundary summary mismatch: ${JSON.stringify(first.summary)}`);
+    const falseFlags = [
+      "mutationExecutionAllowed",
+      "mutationExpansionAllowed",
+      "generationRuntimeImplemented",
+      "generationExecutionAllowed",
+      "outputExecutionAllowed",
+      "inputExecutionAllowed",
+      "bundleExecutionAllowed",
+      "rollbackExecutionAllowed",
+      "recoveryExecutionAllowed",
+      "riskEnforcementAllowed",
+      "mitigationEnforcementEnabled",
+      "approvalExecutionAllowed",
+      "approvalDecisionApplied",
+      "projectGenerationApproved",
+      "validationExecutionAllowed",
+      "generatedProjectValidationAllowed",
+      "commandExecutionAllowed",
+      "dependencyInstallationAllowed",
+      "packageMutationAllowed",
+      "fileWriteAllowed",
+      "fileCreationAllowed",
+      "scaffoldGenerationEnabled",
+      "runtimeRoutingEnabled",
+      "runtimeActivationEnabled",
+      "policyEnforcementEnabled",
+      "projectGenerationEnabled",
+      "builderAgentRuntimeEnabled"
+    ];
+    for (const flag of falseFlags) {
+      if (first[flag] !== false) throw new Error(`controlled mutation boundary flag ${flag} was not false`);
+    }
+    if (first.readonly !== true || first.previewOnly !== true || first.mutationBoundaryContractOnly !== true || first.stdoutOnly !== true) throw new Error(`controlled mutation boundary readonly flags mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`controlled mutation boundary introduced runtime activation/governance flags: ${JSON.stringify(first)}`);
+    console.log("PASS controlled-project-generation-mutation-boundary-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-mutation-boundary-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationMutationBoundarySortingUnit() {
+  try {
+    const mutationModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationMutationBoundaryContract.js"));
+    const contract = mutationModule.createControlledProjectGenerationMutationBoundaryContract({ title: "Sort Mutation Boundary", metadata: { version: "v12.3", source: "sort", readonly: true, previewOnly: true } });
+    const reversed = [...contract.boundaries].reverse();
+    const order = mutationModule.sortMutationBoundaries(reversed).map((boundary) => boundary.group).join(",");
+    if (order !== "fileCreation,fileModification,fileDeletion,packageMutation,dependencyInstallation,configurationMutation,scriptMutation,generatedCodeMutation,testMutation,documentationMutation,safePatchBoundary,multiFileMutationBoundary") throw new Error(`controlled mutation boundary ordering mismatch: ${order}`);
+    console.log("PASS controlled-project-generation-mutation-boundary-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-mutation-boundary-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationMutationBoundaryFilteringUnit() {
+  try {
+    const mutationModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationMutationBoundaryContract.js"));
+    const contract = mutationModule.createControlledProjectGenerationMutationBoundaryContract({ title: "Filter Mutation Boundary", metadata: { version: "v12.3", source: "filter", readonly: true, previewOnly: true } });
+    if (mutationModule.findMutationBoundariesByGroup(contract.boundaries, "fileCreation").length !== 1) throw new Error("file creation boundary filter mismatch");
+    if (mutationModule.findMutationBoundariesByPolicy(contract.boundaries, "safe-patch-only").length !== 4) throw new Error("safe-patch-only policy filter mismatch");
+    if (mutationModule.findMutationBoundariesByRiskLevel(contract.boundaries, "critical").length !== 6) throw new Error("critical risk filter mismatch");
+    if (mutationModule.findBlockedMutationBoundaries(contract.boundaries).length !== 0) throw new Error("blocked mutation boundary filter mismatch");
+    if (mutationModule.findForbiddenMutationBoundaries(contract.boundaries).length !== 6) throw new Error("forbidden mutation boundary filter mismatch");
+    if (mutationModule.findSafePatchOnlyMutationBoundaries(contract.boundaries).length !== 4) throw new Error("safe-patch-only mutation boundary filter mismatch");
+    console.log("PASS controlled-project-generation-mutation-boundary-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-mutation-boundary-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationMutationBoundaryCompletenessUnit() {
+  try {
+    const mutationModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationMutationBoundaryContract.js"));
+    const boundaries = [
+      mutationModule.createMutationBoundary({ boundaryId: "a", group: "fileCreation", title: "A", description: "A.", mutationPolicy: "forbidden", riskLevel: "critical", allowed: ["preview"], forbidden: ["create"], safePatchRequired: false, approvalRequired: true }),
+      mutationModule.createMutationBoundary({ boundaryId: "b", group: "fileModification", title: "B", description: "B.", mutationPolicy: "safe-patch-only", riskLevel: "high", allowed: ["safe patch"], forbidden: ["direct write"], safePatchRequired: true, approvalRequired: true })
+    ];
+    const completeness = mutationModule.calculateControlledProjectGenerationMutationBoundaryCompleteness(boundaries);
+    if (completeness.score !== 95 || completeness.level !== "ready-for-design") throw new Error(`controlled mutation boundary completeness mismatch: ${JSON.stringify(completeness)}`);
+    const empty = mutationModule.calculateControlledProjectGenerationMutationBoundaryCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty controlled mutation boundary completeness mismatch: ${JSON.stringify(empty)}`);
+    const executing = [{ ...boundaries[0], noExecution: false }];
+    const executingCompleteness = mutationModule.calculateControlledProjectGenerationMutationBoundaryCompleteness(executing);
+    if (executingCompleteness.score !== 0 || executingCompleteness.level !== "incomplete") throw new Error(`executing controlled mutation boundary completeness mismatch: ${JSON.stringify(executingCompleteness)}`);
+    console.log("PASS controlled-project-generation-mutation-boundary-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-mutation-boundary-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationMutationBoundaryRenderingUnit() {
+  try {
+    const mutationModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationMutationBoundaryContract.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const contract = mutationModule.createControlledProjectGenerationMutationBoundaryContract({ title: "Render Mutation Boundary", metadata: { version: "v12.3", source: "mutation-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledProjectGenerationMutationBoundaryContract(contract);
+    if (!rendered.includes("Controlled project generation mutation boundary contract: Render Mutation Boundary") || !rendered.includes("boundary count: 12") || !rendered.includes("forbidden count: 6") || !rendered.includes("safe-patch-only count: 4") || !rendered.includes("completeness score: 93") || !rendered.includes("mutationExecutionAllowed: false") || !rendered.includes("mutationExpansionAllowed: false") || !rendered.includes("Safe Patch Engine remains sole mutation layer") || !rendered.includes("no mutation execution")) throw new Error(`controlled mutation boundary render mismatch: ${rendered}`);
+    console.log("PASS controlled-project-generation-mutation-boundary-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-mutation-boundary-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationMutationBoundaryCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-project-generation-mutation-boundary"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled project generation mutation boundary contract:") || !human.stdout.includes("mutationExecutionAllowed: false") || !human.stdout.includes("mutationExpansionAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("completeness score: 93")) throw new Error(`controlled mutation boundary human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-project-generation-mutation-boundary", "--json"]);
+    if (json.status !== 0) throw new Error(`controlled mutation boundary json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.mutationBoundaryContractOnly !== true || parsed.mutationExecutionAllowed !== false || parsed.mutationExpansionAllowed !== false || parsed.generationRuntimeImplemented !== false || parsed.generationExecutionAllowed !== false || parsed.outputExecutionAllowed !== false || parsed.inputExecutionAllowed !== false || parsed.bundleExecutionAllowed !== false || parsed.rollbackExecutionAllowed !== false || parsed.recoveryExecutionAllowed !== false || parsed.riskEnforcementAllowed !== false || parsed.approvalExecutionAllowed !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalBoundaries !== 12 || parsed.summary.forbiddenCount !== 6 || parsed.summary.safePatchOnlyCount !== 4 || parsed.summary.completeness.score !== 93) throw new Error(`controlled mutation boundary json output mismatch: ${json.stdout}`);
+    console.log("PASS controlled-project-generation-mutation-boundary-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-mutation-boundary-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationMutationBoundaryHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-project-generation-mutation-boundary", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance controlled-project-generation-mutation-boundary",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "no mutation execution",
+      "no mutation expansion",
+      "no project generation",
+      "Safe Patch Engine",
+      "multi-file mutation",
+      "do not write files by default",
+      "execute bundle",
+      "execute rollback",
+      "execute recovery",
+      "enforce risks",
+      "execute approvals",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS controlled-project-generation-mutation-boundary-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-mutation-boundary-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -31923,7 +32101,9 @@ const scenarioSuites = {
     runControlledProjectGenerationInputContractCliOutputUnit,
     runControlledProjectGenerationInputContractHelpOutputUnit,
     runControlledProjectGenerationOutputContractCliOutputUnit,
-    runControlledProjectGenerationOutputContractHelpOutputUnit
+    runControlledProjectGenerationOutputContractHelpOutputUnit,
+    runControlledProjectGenerationMutationBoundaryCliOutputUnit,
+    runControlledProjectGenerationMutationBoundaryHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -31966,6 +32146,7 @@ const scenarioSuites = {
     runControlledProjectGenerationContractRenderingUnit,
     runControlledProjectGenerationInputContractRenderingUnit,
     runControlledProjectGenerationOutputContractRenderingUnit,
+    runControlledProjectGenerationMutationBoundaryRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -32061,7 +32242,14 @@ const scenarioSuites = {
     runControlledProjectGenerationOutputContractCompletenessUnit,
     runControlledProjectGenerationOutputContractRenderingUnit,
     runControlledProjectGenerationOutputContractCliOutputUnit,
-    runControlledProjectGenerationOutputContractHelpOutputUnit
+    runControlledProjectGenerationOutputContractHelpOutputUnit,
+    runControlledProjectGenerationMutationBoundaryConsistencyUnit,
+    runControlledProjectGenerationMutationBoundarySortingUnit,
+    runControlledProjectGenerationMutationBoundaryFilteringUnit,
+    runControlledProjectGenerationMutationBoundaryCompletenessUnit,
+    runControlledProjectGenerationMutationBoundaryRenderingUnit,
+    runControlledProjectGenerationMutationBoundaryCliOutputUnit,
+    runControlledProjectGenerationMutationBoundaryHelpOutputUnit
   ],
   "controlled-generation": [
     runControlledProjectGenerationContractConsistencyUnit,
@@ -32083,7 +32271,14 @@ const scenarioSuites = {
     runControlledProjectGenerationOutputContractCompletenessUnit,
     runControlledProjectGenerationOutputContractRenderingUnit,
     runControlledProjectGenerationOutputContractCliOutputUnit,
-    runControlledProjectGenerationOutputContractHelpOutputUnit
+    runControlledProjectGenerationOutputContractHelpOutputUnit,
+    runControlledProjectGenerationMutationBoundaryConsistencyUnit,
+    runControlledProjectGenerationMutationBoundarySortingUnit,
+    runControlledProjectGenerationMutationBoundaryFilteringUnit,
+    runControlledProjectGenerationMutationBoundaryCompletenessUnit,
+    runControlledProjectGenerationMutationBoundaryRenderingUnit,
+    runControlledProjectGenerationMutationBoundaryCliOutputUnit,
+    runControlledProjectGenerationMutationBoundaryHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -35213,6 +35408,27 @@ async function main() {
     failed += 1;
   }
   if (!runControlledProjectGenerationOutputContractHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationMutationBoundaryConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationMutationBoundarySortingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationMutationBoundaryFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationMutationBoundaryCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationMutationBoundaryRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationMutationBoundaryCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationMutationBoundaryHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
