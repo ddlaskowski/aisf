@@ -20,6 +20,7 @@ import type { ControlledProjectGenerationRuntimeBoundary, ControlledProjectGener
 import type { ControlledRuntimeArchitectureComponent, ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../controlledRuntimeArchitecturePreview.js";
 import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractEntry, ControlledRuntimeComponentContractSummary } from "../controlledRuntimeComponentContract.js";
 import type { ControlledRuntimeFlowPreview, ControlledRuntimeFlowStep, ControlledRuntimeFlowSummary, ControlledRuntimeFlowTransition } from "../controlledRuntimeFlowPreview.js";
+import type { ControlledRuntimeEventDefinition, ControlledRuntimeEventLifecycleMarker, ControlledRuntimeEventModelPreview, ControlledRuntimeEventModelSummary, ControlledRuntimeEventPayloadField } from "../controlledRuntimeEventModelPreview.js";
 import type { ControlledRuntimeStateField, ControlledRuntimeStateModelPreview, ControlledRuntimeStateModelSummary, ControlledRuntimeStateSnapshot, ControlledRuntimeStateTransition } from "../controlledRuntimeStateModelPreview.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
@@ -2430,6 +2431,111 @@ export function renderControlledRuntimeStateModelPreview(preview: ControlledRunt
   ].join("\n");
 }
 
+export function renderControlledRuntimeEventModelSummary(summary: ControlledRuntimeEventModelSummary): string {
+  return [
+    "Controlled runtime event model summary:",
+    `- event count: ${summary.totalEvents}`,
+    `- payload field count: ${summary.totalPayloadFields}`,
+    `- lifecycle marker count: ${summary.totalLifecycleMarkers}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- emission policies: ${renderRuntimeEventEmissionPolicyGroups(summary.emissionPolicyDistribution)}`,
+    `- risk distribution: ${renderRuntimeEventRiskGroups(summary.riskDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-emission: ${String(summary.noEmission)}`,
+    `- no-persistence: ${String(summary.noPersistence)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledRuntimeEventPayloadField(field: ControlledRuntimeEventPayloadField): string {
+  return [
+    `Controlled runtime event payload field: ${field.fieldId}`,
+    `- title: ${field.title}`,
+    `- description: ${field.description}`,
+    `- fieldType: ${field.fieldType}`,
+    `- required: ${String(field.required)}`,
+    `- visibility: ${field.visibility}`,
+    `- riskLevel: ${field.riskLevel}`,
+    `- read-only: ${String(field.readonly)}`,
+    `- preview-only: ${String(field.previewOnly)}`
+  ].join("\n");
+}
+
+export function renderControlledRuntimeEventLifecycleMarker(marker: ControlledRuntimeEventLifecycleMarker): string {
+  return [
+    `Controlled runtime event lifecycle marker: ${marker.markerId}`,
+    `- title: ${marker.title}`,
+    `- description: ${marker.description}`,
+    `- phase: ${marker.phase}`,
+    `- markerPolicy: ${marker.markerPolicy}`,
+    `- read-only: ${String(marker.readonly)}`,
+    `- preview-only: ${String(marker.previewOnly)}`,
+    `- no-emission: ${String(marker.noEmission)}`,
+    `- no-execution: ${String(marker.noExecution)}`
+  ].join("\n");
+}
+
+export function renderControlledRuntimeEventDefinition(event: ControlledRuntimeEventDefinition): string {
+  return [
+    `Controlled runtime event definition: ${event.eventId}`,
+    `- category: ${event.category}`,
+    `- title: ${event.title}`,
+    `- description: ${event.description}`,
+    `- emissionPolicy: ${event.emissionPolicy}`,
+    `- riskLevel: ${event.riskLevel}`,
+    `- status: ${event.status}`,
+    `- blockedReason: ${event.blockedReason ?? "none"}`,
+    `- payload fields: ${event.payloadFields.length}`,
+    `- lifecycle markers: ${event.lifecycleMarkers.length}`,
+    `- read-only: ${String(event.readonly)}`,
+    `- preview-only: ${String(event.previewOnly)}`,
+    `- no-emission: ${String(event.noEmission)}`,
+    `- no-persistence: ${String(event.noPersistence)}`,
+    `- no-execution: ${String(event.noExecution)}`,
+    renderWarnings(event.warnings),
+    "Recommendations:",
+    ...(event.recommendations.length === 0 ? ["- none"] : event.recommendations.map((recommendation) => `- ${recommendation}`)),
+    ...event.payloadFields.map(renderControlledRuntimeEventPayloadField),
+    ...event.lifecycleMarkers.map(renderControlledRuntimeEventLifecycleMarker)
+  ].join("\n");
+}
+
+export function renderControlledRuntimeEventModelPreview(preview: ControlledRuntimeEventModelPreview): string {
+  const events = preview.events.length === 0 ? ["Controlled runtime event definitions:", "- none"] : ["Controlled runtime event definitions:", ...preview.events.map(renderControlledRuntimeEventDefinition)];
+  return [
+    `Controlled runtime event model preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- eventModelPreviewOnly: ${String(preview.eventModelPreviewOnly)}`,
+    `- runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+    `- statePersistenceAllowed: ${String(preview.statePersistenceAllowed)}`,
+    `- eventEmissionAllowed: ${String(preview.eventEmissionAllowed)}`,
+    `- eventBusEnabled: ${String(preview.eventBusEnabled)}`,
+    `- eventListenersEnabled: ${String(preview.eventListenersEnabled)}`,
+    `- runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    `- agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    "Notice: read-only, preview-only runtime event model only. No event emission, no event bus, no event listeners, no runtime persistence, no state persistence, no runtime execution, no runtime routing, no runtime orchestration, no runtime activation, no project generation, no builder-agent runtime, no agent execution, no file writing, no dependency installation, no policy enforcement, and no governance activation is enabled.",
+    renderMetadata(preview.metadata),
+    renderControlledRuntimeEventModelSummary(preview.summary),
+    ...events
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -2498,6 +2604,16 @@ function renderRuntimeStatePersistencePolicyGroups(groups: readonly { key: strin
 function renderRuntimeStateRiskGroups(groups: readonly { key: string; totalFields: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
+}
+
+function renderRuntimeEventEmissionPolicyGroups(groups: readonly { key: string; totalEvents: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalEvents}`).join(", ");
+}
+
+function renderRuntimeEventRiskGroups(groups: readonly { key: string; totalEvents: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalEvents}`).join(", ");
 }
 
 function renderInputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {

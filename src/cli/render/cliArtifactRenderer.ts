@@ -20,6 +20,7 @@ import type { ControlledProjectGenerationRuntimeBoundaryContract, ControlledProj
 import type { ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../../governance/controlledRuntimeArchitecturePreview.js";
 import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractSummary } from "../../governance/controlledRuntimeComponentContract.js";
 import type { ControlledRuntimeFlowPreview, ControlledRuntimeFlowSummary } from "../../governance/controlledRuntimeFlowPreview.js";
+import type { ControlledRuntimeEventModelPreview, ControlledRuntimeEventModelSummary } from "../../governance/controlledRuntimeEventModelPreview.js";
 import type { ControlledRuntimeStateModelPreview, ControlledRuntimeStateModelSummary } from "../../governance/controlledRuntimeStateModelPreview.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
@@ -1883,6 +1884,63 @@ export function renderCliControlledRuntimeStateModelPreview(preview: ControlledR
   ].join("\n");
 }
 
+export function renderCliControlledRuntimeEventModelSummary(summary: ControlledRuntimeEventModelSummary): string {
+  return [
+    renderCliSection("Controlled runtime event model summary", [
+      `event count: ${summary.totalEvents}`,
+      `payload field count: ${summary.totalPayloadFields}`,
+      `lifecycle marker count: ${summary.totalLifecycleMarkers}`,
+      `blocked count: ${summary.blockedCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `emission policies: ${renderCliRuntimeEventEmissionPolicyGroups(summary.emissionPolicyDistribution)}`,
+      `risk distribution: ${renderCliRuntimeEventRiskGroups(summary.riskDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-emission: ${String(summary.noEmission)}`,
+      `no-persistence: ${String(summary.noPersistence)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledRuntimeEventModelPreview(preview: ControlledRuntimeEventModelPreview): string {
+  const eventLines = preview.events.length === 0
+    ? ["none"]
+    : preview.events.map((event) => `${event.eventId} | category=${event.category} | policy=${event.emissionPolicy} | payloadFields=${event.payloadFields.length} | lifecycleMarkers=${event.lifecycleMarkers.length} | noEmission=${String(event.noEmission)}`);
+  return [
+    renderCliSection("Controlled runtime event model preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `eventModelPreviewOnly: ${String(preview.eventModelPreviewOnly)}`,
+      `runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+      `runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+      `statePersistenceAllowed: ${String(preview.statePersistenceAllowed)}`,
+      `eventEmissionAllowed: ${String(preview.eventEmissionAllowed)}`,
+      `eventBusEnabled: ${String(preview.eventBusEnabled)}`,
+      `eventListenersEnabled: ${String(preview.eventListenersEnabled)}`,
+      `runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+      `runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      `agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      "notice: read-only, preview-only runtime event model only. No event emission, no event bus, no event listeners, no runtime persistence, no state persistence, no runtime execution, no runtime routing, no runtime orchestration, no runtime activation, no project generation, no builder-agent runtime, no agent execution, no file writing, no dependency installation, no policy enforcement, and no governance activation is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliControlledRuntimeEventModelSummary(preview.summary),
+    renderCliSection("Runtime event definitions", eventLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1951,6 +2009,16 @@ function renderCliRuntimeStatePersistencePolicyGroups(groups: readonly { key: st
 function renderCliRuntimeStateRiskGroups(groups: readonly { key: string; totalFields: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
+}
+
+function renderCliRuntimeEventEmissionPolicyGroups(groups: readonly { key: string; totalEvents: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalEvents}`).join(", ");
+}
+
+function renderCliRuntimeEventRiskGroups(groups: readonly { key: string; totalEvents: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalEvents}`).join(", ");
 }
 
 function renderCliMutationBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {

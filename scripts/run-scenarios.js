@@ -33543,6 +33543,149 @@ function runControlledRuntimeStateModelHelpOutputUnit() {
   }
 }
 
+function runControlledRuntimeEventModelConsistencyUnit() {
+  try {
+    const eventModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeEventModelPreview.js"));
+    const metadata = { version: "v13.4", source: "unit", command: "governance controlled-runtime-event-model", readonly: true, previewOnly: true };
+    const first = eventModule.createControlledRuntimeEventModelPreview({ title: "Unit Runtime Event Model", metadata });
+    const second = eventModule.createControlledRuntimeEventModelPreview({ title: "Unit Runtime Event Model", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled runtime event model output is not deterministic");
+    if (first.eventEmissionAllowed !== false || first.eventBusEnabled !== false || first.eventListenersEnabled !== false || first.runtimePersistenceAllowed !== false || first.runtimeExecutionAllowed !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error("event model invariant flags changed");
+    if (first.events.length !== 11 || first.summary.totalPayloadFields !== 22 || first.summary.totalLifecycleMarkers !== 11 || first.summary.noEmission !== true || first.summary.noExecution !== true) throw new Error("event model summary mismatch");
+    console.log("PASS controlled-runtime-event-model-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-model-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeEventOrderingUnit() {
+  try {
+    const eventModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeEventModelPreview.js"));
+    const preview = eventModule.createControlledRuntimeEventModelPreview({ title: "Sort Runtime Events", metadata: { version: "v13.4", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.events.map((event) => event.category).join(",");
+    if (order !== "request-events,contract-events,flow-events,approval-events,generation-events,validation-events,review-events,export-events,audit-events,completion-events,error-events") throw new Error(`event ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-event-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeEventPayloadFieldOrderingUnit() {
+  try {
+    const eventModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeEventModelPreview.js"));
+    const preview = eventModule.createControlledRuntimeEventModelPreview({ title: "Sort Runtime Events", metadata: { version: "v13.4", source: "sort", readonly: true, previewOnly: true } });
+    if (!preview.events.every((event) => event.payloadFields.map((field) => field.fieldId).join(",").endsWith("payload-001," + event.category + "-payload-002"))) throw new Error("payload field ordering mismatch");
+    console.log("PASS controlled-runtime-event-payload-field-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-payload-field-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeEventLifecycleMarkerOrderingUnit() {
+  try {
+    const eventModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeEventModelPreview.js"));
+    const preview = eventModule.createControlledRuntimeEventModelPreview({ title: "Sort Runtime Events", metadata: { version: "v13.4", source: "sort", readonly: true, previewOnly: true } });
+    if (!preview.events.every((event) => event.lifecycleMarkers[0].markerId === `${event.category}-marker-001`)) throw new Error("lifecycle marker ordering mismatch");
+    console.log("PASS controlled-runtime-event-lifecycle-marker-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-lifecycle-marker-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeEventModelFilteringUnit() {
+  try {
+    const eventModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeEventModelPreview.js"));
+    const preview = eventModule.createControlledRuntimeEventModelPreview({ title: "Filter Runtime Events", metadata: { version: "v13.4", source: "filter", readonly: true, previewOnly: true } });
+    if (eventModule.findRuntimeEventsByCategory(preview.events, "approval-events").length !== 1) throw new Error("event category filter mismatch");
+    if (eventModule.findRuntimeEventsByEmissionPolicy(preview.events, "no-emission").length !== 11) throw new Error("event emission policy filter mismatch");
+    if (eventModule.findBlockedRuntimeEvents(preview.events).length !== 0) throw new Error("blocked event filter mismatch");
+    if (eventModule.findPreviewOnlyRuntimeEvents(preview.events).length !== 11) throw new Error("preview-only event filter mismatch");
+    console.log("PASS controlled-runtime-event-model-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-model-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeEventModelCompletenessUnit() {
+  try {
+    const eventModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeEventModelPreview.js"));
+    const preview = eventModule.createControlledRuntimeEventModelPreview({ title: "Score Runtime Events", metadata: { version: "v13.4", source: "score", readonly: true, previewOnly: true } });
+    const score = eventModule.calculateControlledRuntimeEventModelCompleteness(preview.events);
+    const empty = eventModule.calculateControlledRuntimeEventModelCompleteness([]);
+    const unsafeScore = eventModule.calculateControlledRuntimeEventModelCompleteness([{ ...preview.events[0], noEmission: false }]);
+    if (score.score !== 100 || score.level !== "ready-for-observability-design") throw new Error(`event score mismatch: ${JSON.stringify(score)}`);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty event score mismatch: ${JSON.stringify(empty)}`);
+    if (unsafeScore.score !== 0 || unsafeScore.level !== "incomplete") throw new Error(`unsafe event score mismatch: ${JSON.stringify(unsafeScore)}`);
+    console.log("PASS controlled-runtime-event-model-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-model-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeEventModelRenderingUnit() {
+  try {
+    const eventModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeEventModelPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = eventModule.createControlledRuntimeEventModelPreview({ title: "Render Runtime Events", metadata: { version: "v13.4", source: "render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledRuntimeEventModelPreview(preview);
+    if (!rendered.includes("Controlled runtime event model preview: Render Runtime Events") || !rendered.includes("No event emission") || !rendered.includes("no event bus") || !rendered.includes("payload field count: 22") || !rendered.includes("lifecycle marker count: 11")) throw new Error(`event rendering mismatch: ${rendered}`);
+    console.log("PASS controlled-runtime-event-model-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-model-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeEventModelCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-runtime-event-model"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled runtime event model preview") || !human.stdout.includes("eventEmissionAllowed: false") || !human.stdout.includes("eventBusEnabled: false") || !human.stdout.includes("runtimeExecutionAllowed: false")) throw new Error(`event CLI output mismatch: status=${human.status} stdout=${human.stdout} stderr=${human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-runtime-event-model", "--json"]);
+    const parsed = JSON.parse(json.stdout);
+    if (json.status !== 0 || parsed.eventEmissionAllowed !== false || parsed.eventBusEnabled !== false || parsed.eventListenersEnabled !== false || parsed.runtimePersistenceAllowed !== false || parsed.runtimeExecutionAllowed !== false || parsed.events.length !== 11 || parsed.summary.completeness.level !== "ready-for-observability-design") throw new Error(`event JSON output mismatch: status=${json.status} stdout=${json.stdout} stderr=${json.stderr}`);
+    console.log("PASS controlled-runtime-event-model-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-model-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeEventModelHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-runtime-event-model", "--help"]);
+    if (help.status !== 0) throw new Error(`event help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, ["governance controlled-runtime-event-model", "read-only", "preview-only", "stdout-only", "no-runtime-execution", "no-runtime-persistence", "no-event-emission", "no-event-bus", "no-project-generation", "no-agent-execution", "emit events", "event bus", "event listeners", "generate projects"]);
+    console.log("PASS controlled-runtime-event-model-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-event-model-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -33838,7 +33981,9 @@ const cliScenarioGroups = {
     runControlledRuntimeFlowCliOutputUnit,
     runControlledRuntimeFlowHelpOutputUnit,
     runControlledRuntimeStateModelCliOutputUnit,
-    runControlledRuntimeStateModelHelpOutputUnit
+    runControlledRuntimeStateModelHelpOutputUnit,
+    runControlledRuntimeEventModelCliOutputUnit,
+    runControlledRuntimeEventModelHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessCliOutputUnit,
@@ -33946,6 +34091,7 @@ const scenarioSuites = {
     runControlledRuntimeComponentContractRenderingUnit,
     runControlledRuntimeFlowRenderingUnit,
     runControlledRuntimeStateModelRenderingUnit,
+    runControlledRuntimeEventModelRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "runtime-architecture": [
@@ -33979,7 +34125,16 @@ const scenarioSuites = {
     runControlledRuntimeStateModelCompletenessUnit,
     runControlledRuntimeStateModelRenderingUnit,
     runControlledRuntimeStateModelCliOutputUnit,
-    runControlledRuntimeStateModelHelpOutputUnit
+    runControlledRuntimeStateModelHelpOutputUnit,
+    runControlledRuntimeEventModelConsistencyUnit,
+    runControlledRuntimeEventOrderingUnit,
+    runControlledRuntimeEventPayloadFieldOrderingUnit,
+    runControlledRuntimeEventLifecycleMarkerOrderingUnit,
+    runControlledRuntimeEventModelFilteringUnit,
+    runControlledRuntimeEventModelCompletenessUnit,
+    runControlledRuntimeEventModelRenderingUnit,
+    runControlledRuntimeEventModelCliOutputUnit,
+    runControlledRuntimeEventModelHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessConsistencyUnit,
@@ -37582,6 +37737,33 @@ async function main() {
     failed += 1;
   }
   if (!runControlledRuntimeStateModelHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventModelConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventPayloadFieldOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventLifecycleMarkerOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventModelFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventModelCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventModelRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventModelCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeEventModelHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

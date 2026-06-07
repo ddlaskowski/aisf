@@ -12389,6 +12389,111 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v13.4 - Controlled Runtime Event Model Preview Layer
+
+v13.4 adds a deterministic, read-only runtime event model preview for the future Controlled Runtime Architecture. It describes future event definitions, event categories, payload fields, lifecycle markers, and emission policies without implementing event emission, event buses, event listeners, runtime persistence, state persistence, runtime execution, routing, orchestration, activation, project generation, builder agents, agent execution, file writing, dependency installation, package mutation, policy enforcement, governance activation, or autonomous behavior.
+
+Controlled runtime event model preview:
+
+* `src/governance/controlledRuntimeEventModelPreview.ts` adds `ControlledRuntimeEventModelPreview`, `ControlledRuntimeEventDefinition`, `ControlledRuntimeEventPayloadField`, `ControlledRuntimeEventLifecycleMarker`, `ControlledRuntimeEventModelSummary`, `createControlledRuntimeEventModelPreview`, `summarizeControlledRuntimeEventModelPreview`, and `calculateControlledRuntimeEventModelCompleteness`.
+* Event model previews explicitly preserve read-only, preview-only, stdout-only, event-model-preview-only, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-state-persistence, no-event-emission, no-event-bus, no-event-listeners, no-flow-execution, no-project-generation, no-builder-agent-runtime, no-agent-execution, no-approval-execution, no-mutation-execution, no-input-execution, no-output-execution, no-contract-execution, no-file-writing, no-file-creation, no-dependency-installation, no-package-mutation, no-generated-project-validation, no-policy-enforcement, and no-governance-activation guarantees.
+
+Event categories:
+
+* `request-events`
+* `contract-events`
+* `flow-events`
+* `approval-events`
+* `generation-events`
+* `validation-events`
+* `review-events`
+* `export-events`
+* `audit-events`
+* `completion-events`
+* `error-events`
+
+Event helpers:
+
+* `createRuntimeEventDefinition`
+* `createRuntimeEventPayloadField`
+* `createRuntimeEventLifecycleMarker`
+* `sortRuntimeEventDefinitions`
+* `sortRuntimeEventPayloadFields`
+* `sortRuntimeEventLifecycleMarkers`
+* `findRuntimeEventsByCategory`
+* `findRuntimeEventsByEmissionPolicy`
+* `findBlockedRuntimeEvents`
+* `findPreviewOnlyRuntimeEvents`
+
+Completeness scoring:
+
+* `calculateControlledRuntimeEventModelCompleteness` deterministically computes a 0-100 advisory event model completeness score.
+* Completeness levels are `incomplete`, `partial`, `event-model-defined`, and `ready-for-observability-design`.
+* Scoring is advisory only and does not emit events, implement an event bus, register listeners, persist state, execute runtime, route runtime behavior, orchestrate runtime behavior, activate runtime, enforce policy, generate projects, run agents, mutate files, write files, or change repair orchestration.
+
+Runtime event model rendering:
+
+* `renderControlledRuntimeEventModelPreview` renders the event model title, invariant flags, metadata, summary, event definitions, payload fields, lifecycle markers, emission policies, warnings, and recommendations.
+* `renderControlledRuntimeEventModelSummary` renders deterministic event counts, payload field counts, lifecycle marker counts, blocked counts, preview-only counts, emission policy distribution, risk distribution, completeness score, no-emission guarantees, no-persistence guarantees, and no-execution guarantees.
+* `renderControlledRuntimeEventDefinition`, `renderControlledRuntimeEventPayloadField`, and `renderControlledRuntimeEventLifecycleMarker` render stable event details.
+* `renderCliControlledRuntimeEventModelPreview` and `renderCliControlledRuntimeEventModelSummary` provide equivalent CLI-safe deterministic output.
+
+CLI runtime event model preview:
+
+```powershell
+node dist\cli.js governance controlled-runtime-event-model
+node dist\cli.js governance controlled-runtime-event-model --json
+```
+
+Controlled runtime event model previews print to stdout only. They do not emit events, implement event buses, register event listeners, write files, create files, scaffold files, install dependencies, mutate packages, persist runtime state, persist approval state, route runtime behavior, orchestrate runtime behavior, execute runtime behavior, activate runtime behavior, execute flows, execute contracts, execute generated-project validation, generate projects, implement builder agents, execute agents, execute approvals, execute mutations, enforce policies, activate governance, or change repair orchestration.
+
+v13.4 deterministic checks:
+
+* controlled-runtime-event-model-consistency
+* controlled-runtime-event-ordering
+* controlled-runtime-event-payload-field-ordering
+* controlled-runtime-event-lifecycle-marker-ordering
+* controlled-runtime-event-model-filtering
+* controlled-runtime-event-model-completeness
+* controlled-runtime-event-model-rendering
+* controlled-runtime-event-model-cli-output
+* controlled-runtime-event-model-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite runtime-architecture
+node scripts\run-scenarios.js --suite cli --cli-scope governance
+node scripts\run-scenarios.js --suite renderers
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no event emission is introduced
+* no event bus is introduced
+* no event listeners are introduced
+* no runtime persistence is introduced
+* no state persistence is introduced
+* no runtime execution is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no project generation is introduced
+* no builder agents are introduced
+* no agent execution is introduced
+* no file creation is introduced
+* no file writing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 ## v13.3 - Controlled Runtime State Model Preview Layer
 
 v13.3 adds a deterministic, read-only runtime state model preview for the future Controlled Runtime Architecture. It describes future state fields, snapshots, transitions, metadata, persistence policies, visibility, allowed readers, and allowed writers without implementing runtime persistence, state persistence, runtime execution, runtime routing, runtime orchestration, runtime activation, project generation, builder agents, agent execution, file writing, dependency installation, package mutation, policy enforcement, governance activation, or autonomous behavior.
