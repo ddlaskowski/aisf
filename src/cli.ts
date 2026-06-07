@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -77,6 +77,10 @@ import {
   createProjectGenerationRollbackPlanPreview,
   type ProjectGenerationRollbackPlanPreview
 } from "./governance/projectGenerationRollbackPlanPreview.js";
+import {
+  createProjectGenerationPlanBundlePreview,
+  type ProjectGenerationPlanBundlePreview
+} from "./governance/projectGenerationPlanBundlePreview.js";
 import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
@@ -480,6 +484,7 @@ import {
   renderGovernanceProjectGenerationReadinessHelp,
   renderGovernanceProjectGenerationRiskPlanHelp,
   renderGovernanceProjectGenerationRollbackPlanHelp,
+  renderGovernanceProjectGenerationPlanBundleHelp,
   renderGovernanceProjectGenerationValidationPlanHelp,
   renderGovernanceArtifactIndexHelp,
   renderGovernanceAutonomyScopePreviewHelp,
@@ -1070,6 +1075,19 @@ function buildProjectGenerationRollbackPlanPreview(): ProjectGenerationRollbackP
   });
 }
 
+function buildProjectGenerationPlanBundlePreview(): ProjectGenerationPlanBundlePreview {
+  return createProjectGenerationPlanBundlePreview({
+    title: "Project Generation Plan Bundle Preview",
+    metadata: {
+      version: "v11.9",
+      source: "project-generation-plan-bundle-cli-preview",
+      command: "governance project-generation-plan-bundle",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1310,6 +1328,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(rollbackPlan, null, 2), 0);
     }
     printAndExit(renderCliProjectGenerationRollbackPlanPreview(rollbackPlan), 0);
+  }
+
+  if (command === "governance" && args[1] === "project-generation-plan-bundle") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance project-generation-plan-bundle", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceProjectGenerationPlanBundleHelp(), 0);
+    }
+
+    const planBundle = buildProjectGenerationPlanBundlePreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(planBundle, null, 2), 0);
+    }
+    printAndExit(renderCliProjectGenerationPlanBundlePreview(planBundle), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

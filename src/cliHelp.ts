@@ -82,6 +82,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance project-generation-approval-plan",
     "  node dist/cli.js governance project-generation-risk-plan",
     "  node dist/cli.js governance project-generation-rollback-plan",
+    "  node dist/cli.js governance project-generation-plan-bundle",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -173,6 +174,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance project-generation-approval-plan",
     "  node dist/cli.js governance project-generation-risk-plan",
     "  node dist/cli.js governance project-generation-rollback-plan",
+    "  node dist/cli.js governance project-generation-plan-bundle",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1247,6 +1249,32 @@ export function renderGovernanceProjectGenerationRollbackPlanHelp(): string {
     "  Rollback plan previews are stdout-only and do not write files by default.",
     "  This is a read-only / preview-only planning command.",
     "  It does not execute rollback, execute recovery, enforce risks, execute approvals, approve project generation, execute validation commands, run generated-project validation, install dependencies, modify packages, generate projects, scaffold files, create files, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceProjectGenerationPlanBundleHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance project-generation-plan-bundle",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance project-generation-plan-bundle [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic plan bundle preview output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance project-generation-plan-bundle",
+    "  node dist/cli.js governance project-generation-plan-bundle --json",
+    "",
+    "Project generation plan bundle preview:",
+    "  This command aggregates future blueprint, file plan, dependency plan, validation plan, approval plan, risk plan, rollback plan, governance summary, and read-only guarantee previews as descriptive data only.",
+    "  This is preview-only and does not execute bundle workflows, write bundle files, execute rollback, execute recovery, enforce risks, execute mitigations, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, install dependencies, mutate package.json, edit lockfiles, implement builder agents, scaffold files, create files, or generate projects.",
+    "  Plan bundle previews are stdout-only and do not write files by default.",
+    "  This is a read-only / preview-only planning command.",
+    "  It does not execute bundles, execute rollback, execute recovery, enforce risks, execute approvals, approve project generation, execute validation commands, run generated-project validation, install dependencies, modify packages, mutate package.json, generate projects, scaffold files, create files, activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";

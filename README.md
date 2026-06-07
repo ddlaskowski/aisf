@@ -10900,6 +10900,104 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v11.9 - Project Generation Plan Bundle Preview Layer
+
+v11.9 continues the Project Generation Readiness Era by adding a deterministic, read-only plan bundle preview model for future controlled project generation systems. The plan bundle preview aggregates blueprint, file plan, dependency plan, validation plan, approval plan, risk plan, rollback plan, governance summary, and read-only guarantee previews as descriptive planning data only. It does not execute bundles, execute rollback, execute recovery, enforce risks, execute mitigations, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, install dependencies, mutate package files, create files, scaffold files, write files, implement builder agents, generate projects, route runtime behavior, activate governance, enforce policy, expand mutation scope, or change repair orchestration.
+
+Plan bundle preview model:
+
+* `src/governance/projectGenerationPlanBundlePreview.ts` adds `ProjectGenerationPlanBundlePreview`, `ProjectGenerationPlanBundleSection`, `ProjectGenerationPlanBundleSummary`, `ProjectGenerationPlanBundleReadiness`, `createProjectGenerationPlanBundlePreview`, and `summarizeProjectGenerationPlanBundlePreview`.
+* Plan bundle previews explicitly preserve read-only, preview-only, plan-bundle-preview-only, stdout-only, no-bundle-execution, no-bundle-writing, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-mitigation-enforcement, no-approval-execution, no-approval-decision-application, no-project-generation-approval, no-validation-execution, no-generated-project-validation, no-command-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Plan bundle helpers require explicit metadata input and do not generate hidden timestamps.
+
+Plan bundle section helpers:
+
+* `createPlanBundleBlueprintSection`
+* `createPlanBundleFilePlanSection`
+* `createPlanBundleDependencyPlanSection`
+* `createPlanBundleValidationPlanSection`
+* `createPlanBundleApprovalPlanSection`
+* `createPlanBundleRiskPlanSection`
+* `createPlanBundleRollbackPlanSection`
+* `createPlanBundleGovernanceSummarySection`
+* `createPlanBundleReadonlyGuaranteesSection`
+* `sortPlanBundleSections`
+
+Each plan bundle section records section type, title, summary, status, advisory score, level, entry count, blocked count, approval-required count, warnings, recommendations, read-only state, and preview-only state.
+
+Advisory plan bundle readiness scoring:
+
+* `calculateProjectGenerationPlanBundleReadiness` deterministically computes a 0-100 advisory readiness score from preview section scores.
+* Readiness levels are `incomplete`, `partial`, `review-ready`, and `ready-for-design`.
+* Scoring is descriptive only and does not execute bundles, execute rollback, execute recovery, enforce risks, approve anything, activate governance, route runtime behavior, execute validation commands, run generated-project validation, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Plan bundle rendering:
+
+* `renderProjectGenerationPlanBundleSummary` renders deterministic section count, total entries, blocked count, approval-required count, readiness score, warnings, and recommendations.
+* `renderProjectGenerationPlanBundleSection` renders stable section details.
+* `renderProjectGenerationPlanBundlePreview` renders plan bundle title, guarantees, metadata, summary, section details, and an explicit no-bundle-execution/no-project-generation notice.
+* `renderCliProjectGenerationPlanBundleSummary` and `renderCliProjectGenerationPlanBundlePreview` provide equivalent CLI-safe deterministic output.
+
+CLI plan bundle preview:
+
+```powershell
+node dist\cli.js governance project-generation-plan-bundle
+node dist\cli.js governance project-generation-plan-bundle --json
+```
+
+Plan bundle previews print to stdout only. They do not write files, create files, scaffold files, execute bundles, execute rollback, execute recovery, enforce risks, execute mitigations, execute approvals, apply approval decisions, approve project generation, execute validation commands, run generated-project validation, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, expand mutation scope, or change repair orchestration.
+
+v11.9 deterministic checks:
+
+* project-generation-plan-bundle-consistency
+* project-generation-plan-bundle-section-ordering
+* project-generation-plan-bundle-readiness
+* project-generation-plan-bundle-rendering
+* project-generation-plan-bundle-cli-output
+* project-generation-plan-bundle-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite project-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no bundle execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no approval execution is introduced
+* no approval decision application is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no builder agents are introduced
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

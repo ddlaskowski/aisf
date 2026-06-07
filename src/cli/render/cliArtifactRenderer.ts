@@ -12,6 +12,7 @@ import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSumma
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
 import type { ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../../governance/projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../../governance/projectGenerationFilePlanPreview.js";
+import type { ProjectGenerationPlanBundlePreview, ProjectGenerationPlanBundleSummary } from "../../governance/projectGenerationPlanBundlePreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSummary } from "../../governance/projectGenerationReadiness.js";
 import type { ProjectGenerationRollbackPlanPreview, ProjectGenerationRollbackPlanSummary } from "../../governance/projectGenerationRollbackPlanPreview.js";
 import type { ProjectGenerationRiskPlanPreview, ProjectGenerationRiskPlanSummary } from "../../governance/projectGenerationRiskPlanPreview.js";
@@ -745,6 +746,67 @@ export function renderCliProjectGenerationRollbackPlanPreview(preview: ProjectGe
     renderCliMetadata(preview.metadata),
     renderCliProjectGenerationRollbackPlanSummary(preview.summary),
     renderCliSection("Rollback steps", stepLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationPlanBundleSummary(summary: ProjectGenerationPlanBundleSummary): string {
+  return [
+    renderCliSection("Project generation plan bundle preview summary", [
+      `section count: ${summary.totalSections}`,
+      `total entries: ${summary.totalEntries}`,
+      `blocked count: ${summary.totalBlockedCount}`,
+      `approval-required count: ${summary.totalApprovalRequiredCount}`,
+      `readiness score: ${summary.readiness.score}`,
+      `readiness level: ${summary.readiness.level}`,
+      `readiness reason: ${summary.readiness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliProjectGenerationPlanBundlePreview(preview: ProjectGenerationPlanBundlePreview): string {
+  const sectionLines = preview.sections.length === 0
+    ? ["none"]
+    : preview.sections.map((section) => `${section.sectionType} | status=${section.status} | score=${section.score} | entries=${section.entryCount} | blocked=${section.blockedCount} | approvalRequired=${section.approvalRequiredCount}`);
+  return [
+    renderCliSection("Project generation plan bundle preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `planBundlePreviewOnly: ${String(preview.planBundlePreviewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `bundleExecutionAllowed: ${String(preview.bundleExecutionAllowed)}`,
+      `bundleWriteAllowed: ${String(preview.bundleWriteAllowed)}`,
+      `rollbackExecutionAllowed: ${String(preview.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(preview.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(preview.riskEnforcementAllowed)}`,
+      `mitigationEnforcementEnabled: ${String(preview.mitigationEnforcementEnabled)}`,
+      `approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+      `approvalDecisionApplied: ${String(preview.approvalDecisionApplied)}`,
+      `projectGenerationApproved: ${String(preview.projectGenerationApproved)}`,
+      `validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+      `commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      "notice: no bundle execution, bundle writing, rollback execution, recovery execution, risk enforcement, mitigation enforcement, approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliProjectGenerationPlanBundleSummary(preview.summary),
+    renderCliSection("Plan bundle sections", sectionLines),
     renderReadonlyNotice(preview.previewOnly)
   ].join("\n");
 }

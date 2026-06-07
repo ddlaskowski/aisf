@@ -30924,6 +30924,167 @@ function runProjectGenerationRollbackPlanHelpOutputUnit() {
   }
 }
 
+function runProjectGenerationPlanBundleConsistencyUnit() {
+  try {
+    const bundleModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationPlanBundlePreview.js"));
+    const metadata = { version: "v11.9", source: "plan-bundle-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = bundleModule.createProjectGenerationPlanBundlePreview({ title: "Unit Bundle", metadata });
+    const second = bundleModule.createProjectGenerationPlanBundlePreview({ title: "Unit Bundle", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("plan bundle output is not deterministic");
+    if (first.summary.totalSections !== 9 || first.summary.totalEntries !== 58 || first.summary.totalBlockedCount !== 0 || first.summary.totalApprovalRequiredCount !== 40 || first.summary.readiness.score !== 73 || first.summary.readiness.level !== "partial") throw new Error(`plan bundle summary mismatch: ${JSON.stringify(first.summary)}`);
+    const falseFlags = [
+      "bundleExecutionAllowed",
+      "bundleWriteAllowed",
+      "rollbackExecutionAllowed",
+      "recoveryExecutionAllowed",
+      "riskEnforcementAllowed",
+      "mitigationEnforcementEnabled",
+      "approvalExecutionAllowed",
+      "approvalDecisionApplied",
+      "projectGenerationApproved",
+      "validationExecutionAllowed",
+      "generatedProjectValidationAllowed",
+      "commandExecutionAllowed",
+      "dependencyInstallationAllowed",
+      "packageMutationAllowed",
+      "fileWriteAllowed",
+      "fileCreationAllowed",
+      "scaffoldGenerationEnabled",
+      "runtimeRoutingEnabled",
+      "runtimeActivationEnabled",
+      "policyEnforcementEnabled",
+      "projectGenerationEnabled",
+      "builderAgentRuntimeEnabled"
+    ];
+    for (const flag of falseFlags) {
+      if (first[flag] !== false) throw new Error(`plan bundle flag ${flag} was not false`);
+    }
+    if (first.readonly !== true || first.previewOnly !== true || first.planBundlePreviewOnly !== true || first.stdoutOnly !== true) throw new Error(`plan bundle readonly flags mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`plan bundle introduced runtime activation/governance flags: ${JSON.stringify(first)}`);
+    console.log("PASS project-generation-plan-bundle-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-plan-bundle-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationPlanBundleSectionOrderingUnit() {
+  try {
+    const bundleModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationPlanBundlePreview.js"));
+    const sections = [
+      bundleModule.createPlanBundleReadonlyGuaranteesSection(),
+      bundleModule.createPlanBundleBlueprintSection(),
+      bundleModule.createPlanBundleRiskPlanSection(),
+      bundleModule.createPlanBundleFilePlanSection(),
+      bundleModule.createPlanBundleRollbackPlanSection(),
+      bundleModule.createPlanBundleDependencyPlanSection(),
+      bundleModule.createPlanBundleGovernanceSummarySection(),
+      bundleModule.createPlanBundleApprovalPlanSection(),
+      bundleModule.createPlanBundleValidationPlanSection()
+    ];
+    const order = bundleModule.sortPlanBundleSections(sections).map((section) => section.sectionType).join(",");
+    if (order !== "blueprint,filePlan,dependencyPlan,validationPlan,approvalPlan,riskPlan,rollbackPlan,governanceSummary,readonlyGuarantees") throw new Error(`plan bundle section ordering mismatch: ${order}`);
+    console.log("PASS project-generation-plan-bundle-section-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-plan-bundle-section-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationPlanBundleReadinessUnit() {
+  try {
+    const bundleModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationPlanBundlePreview.js"));
+    const sections = [
+      bundleModule.createPlanBundleBlueprintSection(),
+      bundleModule.createPlanBundleReadonlyGuaranteesSection(),
+      bundleModule.createPlanBundleRiskPlanSection()
+    ];
+    const readiness = bundleModule.calculateProjectGenerationPlanBundleReadiness(sections);
+    if (readiness.score !== 81 || readiness.level !== "review-ready") throw new Error(`plan bundle readiness mismatch: ${JSON.stringify(readiness)}`);
+    const empty = bundleModule.calculateProjectGenerationPlanBundleReadiness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty plan bundle readiness mismatch: ${JSON.stringify(empty)}`);
+    const blocked = { ...bundleModule.createPlanBundleBlueprintSection(), status: "blocked", blockedCount: 1, score: 0 };
+    const blockedReadiness = bundleModule.calculateProjectGenerationPlanBundleReadiness([blocked]);
+    if (blockedReadiness.score !== 0 || blockedReadiness.level !== "incomplete") throw new Error(`blocked plan bundle readiness mismatch: ${JSON.stringify(blockedReadiness)}`);
+    console.log("PASS project-generation-plan-bundle-readiness");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-plan-bundle-readiness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationPlanBundleRenderingUnit() {
+  try {
+    const bundleModule = require(path.join(projectRoot, "dist", "governance", "projectGenerationPlanBundlePreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = bundleModule.createProjectGenerationPlanBundlePreview({ title: "Render Bundle", metadata: { version: "v11.9", source: "plan-bundle-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderProjectGenerationPlanBundlePreview(preview);
+    if (!rendered.includes("Project generation plan bundle preview: Render Bundle") || !rendered.includes("section count: 9") || !rendered.includes("bundleExecutionAllowed: false") || !rendered.includes("rollbackExecutionAllowed: false") || !rendered.includes("recoveryExecutionAllowed: false") || !rendered.includes("riskEnforcementAllowed: false") || !rendered.includes("no bundle execution")) throw new Error(`plan bundle render mismatch: ${rendered}`);
+    console.log("PASS project-generation-plan-bundle-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-plan-bundle-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationPlanBundleCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "project-generation-plan-bundle"]);
+    if (human.status !== 0 || !human.stdout.includes("Project generation plan bundle preview:") || !human.stdout.includes("bundleExecutionAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("rollbackExecutionAllowed: false")) throw new Error(`plan bundle human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "project-generation-plan-bundle", "--json"]);
+    if (json.status !== 0) throw new Error(`plan bundle json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.planBundlePreviewOnly !== true || parsed.bundleExecutionAllowed !== false || parsed.rollbackExecutionAllowed !== false || parsed.recoveryExecutionAllowed !== false || parsed.riskEnforcementAllowed !== false || parsed.approvalExecutionAllowed !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalSections !== 9 || parsed.summary.totalEntries !== 58 || parsed.summary.readiness.score !== 73) throw new Error(`plan bundle json output mismatch: ${json.stdout}`);
+    console.log("PASS project-generation-plan-bundle-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-plan-bundle-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runProjectGenerationPlanBundleHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "project-generation-plan-bundle", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance project-generation-plan-bundle",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "do not write files by default",
+      "does not execute bundle",
+      "execute rollback",
+      "execute recovery",
+      "enforce risks",
+      "execute approvals",
+      "approve project generation",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "modify packages",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS project-generation-plan-bundle-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL project-generation-plan-bundle-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -31067,7 +31228,9 @@ const scenarioSuites = {
     runProjectGenerationRiskPlanCliOutputUnit,
     runProjectGenerationRiskPlanHelpOutputUnit,
     runProjectGenerationRollbackPlanCliOutputUnit,
-    runProjectGenerationRollbackPlanHelpOutputUnit
+    runProjectGenerationRollbackPlanHelpOutputUnit,
+    runProjectGenerationPlanBundleCliOutputUnit,
+    runProjectGenerationPlanBundleHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -31105,6 +31268,7 @@ const scenarioSuites = {
     runProjectGenerationApprovalPlanRenderingUnit,
     runProjectGenerationRiskPlanRenderingUnit,
     runProjectGenerationRollbackPlanRenderingUnit,
+    runProjectGenerationPlanBundleRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -31168,7 +31332,13 @@ const scenarioSuites = {
     runProjectGenerationRollbackReadinessUnit,
     runProjectGenerationRollbackPlanRenderingUnit,
     runProjectGenerationRollbackPlanCliOutputUnit,
-    runProjectGenerationRollbackPlanHelpOutputUnit
+    runProjectGenerationRollbackPlanHelpOutputUnit,
+    runProjectGenerationPlanBundleConsistencyUnit,
+    runProjectGenerationPlanBundleSectionOrderingUnit,
+    runProjectGenerationPlanBundleReadinessUnit,
+    runProjectGenerationPlanBundleRenderingUnit,
+    runProjectGenerationPlanBundleCliOutputUnit,
+    runProjectGenerationPlanBundleHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -34202,6 +34372,24 @@ async function main() {
     failed += 1;
   }
   if (!runProjectGenerationRollbackPlanHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationPlanBundleConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationPlanBundleSectionOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationPlanBundleReadinessUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationPlanBundleRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationPlanBundleCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runProjectGenerationPlanBundleHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

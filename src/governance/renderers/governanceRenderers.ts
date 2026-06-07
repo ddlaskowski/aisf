@@ -16,6 +16,7 @@ import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSecti
 import type { ProjectGenerationCapability, ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../projectGenerationCapabilityMap.js";
 import type { ProjectGenerationDependencyPlanEntry, ProjectGenerationDependencyPlanPreview, ProjectGenerationDependencyPlanSummary } from "../projectGenerationDependencyPlanPreview.js";
 import type { ProjectGenerationFilePlanEntry, ProjectGenerationFilePlanPreview, ProjectGenerationFilePlanSummary } from "../projectGenerationFilePlanPreview.js";
+import type { ProjectGenerationPlanBundlePreview, ProjectGenerationPlanBundleSection, ProjectGenerationPlanBundleSummary } from "../projectGenerationPlanBundlePreview.js";
 import type { ProjectGenerationReadinessAssessment, ProjectGenerationReadinessSection, ProjectGenerationReadinessSummary } from "../projectGenerationReadiness.js";
 import type { ProjectGenerationRollbackPlanPreview, ProjectGenerationRollbackPlanSummary, ProjectGenerationRollbackStep } from "../projectGenerationRollbackPlanPreview.js";
 import type { ProjectGenerationRiskEntry, ProjectGenerationRiskPlanPreview, ProjectGenerationRiskPlanSummary } from "../projectGenerationRiskPlanPreview.js";
@@ -985,6 +986,83 @@ export function renderProjectGenerationRollbackPlanPreview(preview: ProjectGener
     renderMetadata(preview.metadata),
     renderProjectGenerationRollbackPlanSummary(preview.summary),
     ...steps
+  ].join("\n");
+}
+
+export function renderProjectGenerationPlanBundleSummary(summary: ProjectGenerationPlanBundleSummary): string {
+  return [
+    "Project generation plan bundle preview summary:",
+    `- section count: ${summary.totalSections}`,
+    `- total entries: ${summary.totalEntries}`,
+    `- blocked count: ${summary.totalBlockedCount}`,
+    `- approval-required count: ${summary.totalApprovalRequiredCount}`,
+    `- readiness score: ${summary.readiness.score}`,
+    `- readiness level: ${summary.readiness.level}`,
+    `- readiness reason: ${summary.readiness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationPlanBundleSection(section: ProjectGenerationPlanBundleSection): string {
+  return [
+    `Project generation plan bundle section: ${section.sectionType}`,
+    `- title: ${section.title}`,
+    `- summary: ${section.summary}`,
+    `- status: ${section.status}`,
+    `- score: ${section.score}`,
+    `- level: ${section.level}`,
+    `- entryCount: ${section.entryCount}`,
+    `- blockedCount: ${section.blockedCount}`,
+    `- approvalRequiredCount: ${section.approvalRequiredCount}`,
+    `- read-only: ${String(section.readonly)}`,
+    `- preview-only: ${String(section.previewOnly)}`,
+    renderWarnings(section.warnings),
+    "Recommendations:",
+    ...(section.recommendations.length === 0 ? ["- none"] : section.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderProjectGenerationPlanBundlePreview(preview: ProjectGenerationPlanBundlePreview): string {
+  const sections = preview.sections.length === 0
+    ? ["Project generation plan bundle sections:", "- none"]
+    : ["Project generation plan bundle sections:", ...preview.sections.map(renderProjectGenerationPlanBundleSection)];
+  return [
+    `Project generation plan bundle preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- planBundlePreviewOnly: ${String(preview.planBundlePreviewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- bundleExecutionAllowed: ${String(preview.bundleExecutionAllowed)}`,
+    `- bundleWriteAllowed: ${String(preview.bundleWriteAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(preview.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(preview.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(preview.riskEnforcementAllowed)}`,
+    `- mitigationEnforcementEnabled: ${String(preview.mitigationEnforcementEnabled)}`,
+    `- approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+    `- approvalDecisionApplied: ${String(preview.approvalDecisionApplied)}`,
+    `- projectGenerationApproved: ${String(preview.projectGenerationApproved)}`,
+    `- validationExecutionAllowed: ${String(preview.validationExecutionAllowed)}`,
+    `- generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+    `- commandExecutionAllowed: ${String(preview.commandExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(preview.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(preview.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(preview.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    "Notice: no bundle execution, bundle writing, rollback execution, recovery execution, risk enforcement, mitigation enforcement, approval execution, approval decision application, project generation approval, validation execution, generated-project validation, command execution, dependency installation, package mutation, file creation, scaffold generation, project generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(preview.metadata),
+    renderProjectGenerationPlanBundleSummary(preview.summary),
+    ...sections
   ].join("\n");
 }
 
