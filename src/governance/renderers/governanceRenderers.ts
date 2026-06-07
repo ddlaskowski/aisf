@@ -12,6 +12,7 @@ import type { ControlledProjectGenerationContractSection, ControlledProjectGener
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary, ControlledProjectGenerationInputField } from "../controlledProjectGenerationInputContract.js";
 import type { ControlledProjectGenerationMutationBoundary, ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../controlledProjectGenerationMutationBoundaryContract.js";
 import type { ControlledProjectGenerationOutputContract, ControlledProjectGenerationOutputContractSummary, ControlledProjectGenerationOutputField } from "../controlledProjectGenerationOutputContract.js";
+import type { ControlledProjectGenerationRuntimeBoundary, ControlledProjectGenerationRuntimeBoundaryContract, ControlledProjectGenerationRuntimeBoundarySummary } from "../controlledProjectGenerationRuntimeBoundaryContract.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -1577,6 +1578,104 @@ export function renderControlledProjectGenerationApprovalBoundaryContract(contra
   ].join("\n");
 }
 
+export function renderControlledProjectGenerationRuntimeBoundarySummary(summary: ControlledProjectGenerationRuntimeBoundarySummary): string {
+  return [
+    "Controlled project generation runtime boundary summary:",
+    `- boundary count: ${summary.totalBoundaries}`,
+    `- forbidden count: ${summary.forbiddenCount}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- activation-allowed count: ${summary.activationAllowedCount}`,
+    `- execution-allowed count: ${summary.executionAllowedCount}`,
+    `- routing-allowed count: ${summary.routingAllowedCount}`,
+    `- persistence-allowed count: ${summary.persistenceAllowedCount}`,
+    `- group distribution: ${renderRuntimeBoundaryGroups(summary.groupDistribution)}`,
+    `- policy distribution: ${renderRuntimeBoundaryGroups(summary.policyDistribution)}`,
+    `- risk distribution: ${renderRuntimeBoundaryGroups(summary.riskDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationRuntimeBoundary(boundary: ControlledProjectGenerationRuntimeBoundary): string {
+  return [
+    `Controlled project generation runtime boundary: ${boundary.boundaryId}`,
+    `- group: ${boundary.group}`,
+    `- title: ${boundary.title}`,
+    `- description: ${boundary.description}`,
+    `- runtimePolicy: ${boundary.runtimePolicy}`,
+    `- riskLevel: ${boundary.riskLevel}`,
+    `- activationAllowed: ${String(boundary.activationAllowed)}`,
+    `- executionAllowed: ${String(boundary.executionAllowed)}`,
+    `- routingAllowed: ${String(boundary.routingAllowed)}`,
+    `- persistenceAllowed: ${String(boundary.persistenceAllowed)}`,
+    `- blockedReason: ${boundary.blockedReason ?? "none"}`,
+    `- read-only: ${String(boundary.readonly)}`,
+    `- preview-only: ${String(boundary.previewOnly)}`,
+    `- no-execution: ${String(boundary.noExecution)}`,
+    renderWarnings(boundary.warnings),
+    "Recommendations:",
+    ...(boundary.recommendations.length === 0 ? ["- none"] : boundary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationRuntimeBoundaryContract(contract: ControlledProjectGenerationRuntimeBoundaryContract): string {
+  const boundaries = contract.boundaries.length === 0
+    ? ["Controlled project generation runtime boundaries:", "- none"]
+    : ["Controlled project generation runtime boundaries:", ...contract.boundaries.map(renderControlledProjectGenerationRuntimeBoundary)];
+  return [
+    `Controlled project generation runtime boundary contract: ${contract.title}`,
+    `- schemaVersion: ${contract.schemaVersion}`,
+    `- readonly: ${String(contract.readonly)}`,
+    `- previewOnly: ${String(contract.previewOnly)}`,
+    `- runtimeBoundaryContractOnly: ${String(contract.runtimeBoundaryContractOnly)}`,
+    `- stdoutOnly: ${String(contract.stdoutOnly)}`,
+    `- runtimeExecutionAllowed: ${String(contract.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(contract.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(contract.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(contract.runtimeOrchestrationAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(contract.runtimePersistenceAllowed)}`,
+    `- runtimeStatePersistenceAllowed: ${String(contract.runtimeStatePersistenceAllowed)}`,
+    `- plannerLoopAllowed: ${String(contract.plannerLoopAllowed)}`,
+    `- builderAgentLoopAllowed: ${String(contract.builderAgentLoopAllowed)}`,
+    `- autonomousGenerationAllowed: ${String(contract.autonomousGenerationAllowed)}`,
+    `- approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+    `- approvalPersistenceAllowed: ${String(contract.approvalPersistenceAllowed)}`,
+    `- mutationExecutionAllowed: ${String(contract.mutationExecutionAllowed)}`,
+    `- mutationExpansionAllowed: ${String(contract.mutationExpansionAllowed)}`,
+    `- generationRuntimeImplemented: ${String(contract.generationRuntimeImplemented)}`,
+    `- generationExecutionAllowed: ${String(contract.generationExecutionAllowed)}`,
+    `- outputExecutionAllowed: ${String(contract.outputExecutionAllowed)}`,
+    `- inputExecutionAllowed: ${String(contract.inputExecutionAllowed)}`,
+    `- bundleExecutionAllowed: ${String(contract.bundleExecutionAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(contract.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(contract.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(contract.riskEnforcementAllowed)}`,
+    `- validationExecutionAllowed: ${String(contract.validationExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(contract.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+    "Notice: no runtime execution, no runtime activation, no runtime routing, no runtime orchestration, no runtime persistence, no project generation, no approval execution, no approval persistence, no mutation execution, no mutation expansion, no input execution, no output execution, no bundle execution, rollback execution, recovery execution, risk enforcement, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, policy enforcement, or file writing is enabled.",
+    renderMetadata(contract.metadata),
+    renderControlledProjectGenerationRuntimeBoundarySummary(contract.summary),
+    ...boundaries
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1638,6 +1737,11 @@ function renderMutationBoundaryGroups(groups: readonly { key: string; totalBound
 }
 
 function renderApprovalBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalBoundaries}`).join(", ");
+}
+
+function renderRuntimeBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalBoundaries}`).join(", ");
 }

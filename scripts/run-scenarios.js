@@ -32129,6 +32129,198 @@ function runControlledProjectGenerationApprovalBoundaryHelpOutputUnit() {
   }
 }
 
+function runControlledProjectGenerationRuntimeBoundaryConsistencyUnit() {
+  try {
+    const runtimeModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationRuntimeBoundaryContract.js"));
+    const metadata = { version: "v12.5", source: "controlled-runtime-boundary-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = runtimeModule.createControlledProjectGenerationRuntimeBoundaryContract({ title: "Unit Runtime Boundary", metadata });
+    const second = runtimeModule.createControlledProjectGenerationRuntimeBoundaryContract({ title: "Unit Runtime Boundary", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled runtime boundary contract output is not deterministic");
+    if (first.summary.totalBoundaries !== 13 || first.summary.forbiddenCount !== 9 || first.summary.blockedCount !== 3 || first.summary.previewOnlyCount !== 1 || first.summary.activationAllowedCount !== 0 || first.summary.executionAllowedCount !== 0 || first.summary.routingAllowedCount !== 0 || first.summary.persistenceAllowedCount !== 0 || first.summary.completeness.score !== 96 || first.summary.completeness.level !== "ready-for-design") throw new Error(`controlled runtime boundary summary mismatch: ${JSON.stringify(first.summary)}`);
+    const falseFlags = [
+      "runtimeExecutionAllowed",
+      "runtimeActivationAllowed",
+      "runtimeRoutingAllowed",
+      "runtimeOrchestrationAllowed",
+      "runtimePersistenceAllowed",
+      "runtimeStatePersistenceAllowed",
+      "plannerLoopAllowed",
+      "builderAgentLoopAllowed",
+      "autonomousGenerationAllowed",
+      "approvalExecutionAllowed",
+      "approvalPersistenceAllowed",
+      "approvalDecisionApplied",
+      "projectGenerationApproved",
+      "mutationExecutionAllowed",
+      "mutationExpansionAllowed",
+      "generationRuntimeImplemented",
+      "generationExecutionAllowed",
+      "outputExecutionAllowed",
+      "inputExecutionAllowed",
+      "bundleExecutionAllowed",
+      "rollbackExecutionAllowed",
+      "recoveryExecutionAllowed",
+      "riskEnforcementAllowed",
+      "mitigationEnforcementEnabled",
+      "validationExecutionAllowed",
+      "generatedProjectValidationAllowed",
+      "commandExecutionAllowed",
+      "dependencyInstallationAllowed",
+      "packageMutationAllowed",
+      "fileWriteAllowed",
+      "fileCreationAllowed",
+      "scaffoldGenerationEnabled",
+      "runtimeRoutingEnabled",
+      "runtimeActivationEnabled",
+      "policyEnforcementEnabled",
+      "projectGenerationEnabled",
+      "builderAgentRuntimeEnabled"
+    ];
+    for (const flag of falseFlags) {
+      if (first[flag] !== false) throw new Error(`controlled runtime boundary flag ${flag} was not false`);
+    }
+    if (first.readonly !== true || first.previewOnly !== true || first.runtimeBoundaryContractOnly !== true || first.stdoutOnly !== true) throw new Error(`controlled runtime boundary readonly flags mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`controlled runtime boundary introduced runtime activation/governance flags: ${JSON.stringify(first)}`);
+    console.log("PASS controlled-project-generation-runtime-boundary-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-runtime-boundary-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationRuntimeBoundarySortingUnit() {
+  try {
+    const runtimeModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationRuntimeBoundaryContract.js"));
+    const contract = runtimeModule.createControlledProjectGenerationRuntimeBoundaryContract({ title: "Sort Runtime Boundary", metadata: { version: "v12.5", source: "sort", readonly: true, previewOnly: true } });
+    const reversed = [...contract.boundaries].reverse();
+    const order = runtimeModule.sortRuntimeBoundaries(reversed).map((boundary) => boundary.group).join(",");
+    if (order !== "runtimeActivation,runtimeExecution,runtimeRouting,runtimeOrchestration,plannerLoop,builderAgentLoop,autonomousGeneration,statePersistence,policyEnforcement,governanceActivation,validationExecution,rollbackExecution,recoveryExecution") throw new Error(`controlled runtime boundary ordering mismatch: ${order}`);
+    console.log("PASS controlled-project-generation-runtime-boundary-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-runtime-boundary-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationRuntimeBoundaryFilteringUnit() {
+  try {
+    const runtimeModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationRuntimeBoundaryContract.js"));
+    const contract = runtimeModule.createControlledProjectGenerationRuntimeBoundaryContract({ title: "Filter Runtime Boundary", metadata: { version: "v12.5", source: "filter", readonly: true, previewOnly: true } });
+    if (runtimeModule.findRuntimeBoundariesByGroup(contract.boundaries, "runtimeActivation").length !== 1) throw new Error("runtime activation boundary filter mismatch");
+    if (runtimeModule.findRuntimeBoundariesByPolicy(contract.boundaries, "forbidden").length !== 9) throw new Error("forbidden runtime policy filter mismatch");
+    if (runtimeModule.findRuntimeBoundariesByRiskLevel(contract.boundaries, "critical").length !== 9) throw new Error("critical risk filter mismatch");
+    if (runtimeModule.findBlockedRuntimeBoundaries(contract.boundaries).length !== 3) throw new Error("blocked runtime boundary filter mismatch");
+    if (runtimeModule.findForbiddenRuntimeBoundaries(contract.boundaries).length !== 9) throw new Error("forbidden runtime boundary filter mismatch");
+    if (runtimeModule.findPreviewOnlyRuntimeBoundaries(contract.boundaries).length !== 1) throw new Error("preview-only runtime boundary filter mismatch");
+    console.log("PASS controlled-project-generation-runtime-boundary-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-runtime-boundary-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationRuntimeBoundaryCompletenessUnit() {
+  try {
+    const runtimeModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationRuntimeBoundaryContract.js"));
+    const boundaries = [
+      runtimeModule.createRuntimeBoundary({ boundaryId: "a", group: "runtimeActivation", title: "A", description: "A.", runtimePolicy: "forbidden", riskLevel: "critical" }),
+      runtimeModule.createRuntimeBoundary({ boundaryId: "b", group: "runtimeOrchestration", title: "B", description: "B.", runtimePolicy: "blocked", riskLevel: "critical", blockedReason: "Blocked." })
+    ];
+    const completeness = runtimeModule.calculateControlledProjectGenerationRuntimeBoundaryCompleteness(boundaries);
+    if (completeness.score !== 95 || completeness.level !== "ready-for-design") throw new Error(`controlled runtime boundary completeness mismatch: ${JSON.stringify(completeness)}`);
+    const empty = runtimeModule.calculateControlledProjectGenerationRuntimeBoundaryCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty controlled runtime boundary completeness mismatch: ${JSON.stringify(empty)}`);
+    const executing = [{ ...boundaries[0], executionAllowed: true }];
+    const executingCompleteness = runtimeModule.calculateControlledProjectGenerationRuntimeBoundaryCompleteness(executing);
+    if (executingCompleteness.score !== 0 || executingCompleteness.level !== "incomplete") throw new Error(`executing controlled runtime boundary completeness mismatch: ${JSON.stringify(executingCompleteness)}`);
+    const persisted = [{ ...boundaries[0], persistenceAllowed: true }];
+    const persistedCompleteness = runtimeModule.calculateControlledProjectGenerationRuntimeBoundaryCompleteness(persisted);
+    if (persistedCompleteness.score !== 0 || persistedCompleteness.level !== "incomplete") throw new Error(`persisted controlled runtime boundary completeness mismatch: ${JSON.stringify(persistedCompleteness)}`);
+    console.log("PASS controlled-project-generation-runtime-boundary-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-runtime-boundary-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationRuntimeBoundaryRenderingUnit() {
+  try {
+    const runtimeModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationRuntimeBoundaryContract.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const contract = runtimeModule.createControlledProjectGenerationRuntimeBoundaryContract({ title: "Render Runtime Boundary", metadata: { version: "v12.5", source: "runtime-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledProjectGenerationRuntimeBoundaryContract(contract);
+    if (!rendered.includes("Controlled project generation runtime boundary contract: Render Runtime Boundary") || !rendered.includes("boundary count: 13") || !rendered.includes("forbidden count: 9") || !rendered.includes("blocked count: 3") || !rendered.includes("preview-only count: 1") || !rendered.includes("activation-allowed count: 0") || !rendered.includes("execution-allowed count: 0") || !rendered.includes("routing-allowed count: 0") || !rendered.includes("persistence-allowed count: 0") || !rendered.includes("completeness score: 96") || !rendered.includes("runtimeExecutionAllowed: false") || !rendered.includes("runtimeActivationAllowed: false") || !rendered.includes("runtimeRoutingAllowed: false") || !rendered.includes("no runtime execution")) throw new Error(`controlled runtime boundary render mismatch: ${rendered}`);
+    console.log("PASS controlled-project-generation-runtime-boundary-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-runtime-boundary-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationRuntimeBoundaryCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-project-generation-runtime-boundary"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled project generation runtime boundary contract:") || !human.stdout.includes("runtimeExecutionAllowed: false") || !human.stdout.includes("runtimeActivationAllowed: false") || !human.stdout.includes("runtimeRoutingAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("completeness score: 96")) throw new Error(`controlled runtime boundary human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-project-generation-runtime-boundary", "--json"]);
+    if (json.status !== 0) throw new Error(`controlled runtime boundary json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.runtimeBoundaryContractOnly !== true || parsed.runtimeExecutionAllowed !== false || parsed.runtimeActivationAllowed !== false || parsed.runtimeRoutingAllowed !== false || parsed.runtimeOrchestrationAllowed !== false || parsed.runtimePersistenceAllowed !== false || parsed.plannerLoopAllowed !== false || parsed.builderAgentLoopAllowed !== false || parsed.autonomousGenerationAllowed !== false || parsed.approvalExecutionAllowed !== false || parsed.approvalPersistenceAllowed !== false || parsed.mutationExecutionAllowed !== false || parsed.mutationExpansionAllowed !== false || parsed.generationRuntimeImplemented !== false || parsed.generationExecutionAllowed !== false || parsed.outputExecutionAllowed !== false || parsed.inputExecutionAllowed !== false || parsed.bundleExecutionAllowed !== false || parsed.rollbackExecutionAllowed !== false || parsed.recoveryExecutionAllowed !== false || parsed.riskEnforcementAllowed !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalBoundaries !== 13 || parsed.summary.forbiddenCount !== 9 || parsed.summary.blockedCount !== 3 || parsed.summary.previewOnlyCount !== 1 || parsed.summary.activationAllowedCount !== 0 || parsed.summary.executionAllowedCount !== 0 || parsed.summary.routingAllowedCount !== 0 || parsed.summary.persistenceAllowedCount !== 0 || parsed.summary.completeness.score !== 96) throw new Error(`controlled runtime boundary json output mismatch: ${json.stdout}`);
+    console.log("PASS controlled-project-generation-runtime-boundary-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-runtime-boundary-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationRuntimeBoundaryHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-project-generation-runtime-boundary", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance controlled-project-generation-runtime-boundary",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "no runtime execution",
+      "no runtime activation",
+      "no runtime routing",
+      "runtime persistence",
+      "no project generation",
+      "do not write files by default",
+      "execute bundle",
+      "execute rollback",
+      "execute recovery",
+      "enforce risks",
+      "execute approvals",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "activate governance",
+      "enforce policy",
+      "planner-agent runtime loops",
+      "builder-agent runtime loops"
+    ]);
+    console.log("PASS controlled-project-generation-runtime-boundary-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-runtime-boundary-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -32286,7 +32478,9 @@ const scenarioSuites = {
     runControlledProjectGenerationMutationBoundaryCliOutputUnit,
     runControlledProjectGenerationMutationBoundaryHelpOutputUnit,
     runControlledProjectGenerationApprovalBoundaryCliOutputUnit,
-    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit
+    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit,
+    runControlledProjectGenerationRuntimeBoundaryCliOutputUnit,
+    runControlledProjectGenerationRuntimeBoundaryHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -32331,6 +32525,7 @@ const scenarioSuites = {
     runControlledProjectGenerationOutputContractRenderingUnit,
     runControlledProjectGenerationMutationBoundaryRenderingUnit,
     runControlledProjectGenerationApprovalBoundaryRenderingUnit,
+    runControlledProjectGenerationRuntimeBoundaryRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -32440,7 +32635,14 @@ const scenarioSuites = {
     runControlledProjectGenerationApprovalBoundaryCompletenessUnit,
     runControlledProjectGenerationApprovalBoundaryRenderingUnit,
     runControlledProjectGenerationApprovalBoundaryCliOutputUnit,
-    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit
+    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit,
+    runControlledProjectGenerationRuntimeBoundaryConsistencyUnit,
+    runControlledProjectGenerationRuntimeBoundarySortingUnit,
+    runControlledProjectGenerationRuntimeBoundaryFilteringUnit,
+    runControlledProjectGenerationRuntimeBoundaryCompletenessUnit,
+    runControlledProjectGenerationRuntimeBoundaryRenderingUnit,
+    runControlledProjectGenerationRuntimeBoundaryCliOutputUnit,
+    runControlledProjectGenerationRuntimeBoundaryHelpOutputUnit
   ],
   "controlled-generation": [
     runControlledProjectGenerationContractConsistencyUnit,
@@ -32476,7 +32678,14 @@ const scenarioSuites = {
     runControlledProjectGenerationApprovalBoundaryCompletenessUnit,
     runControlledProjectGenerationApprovalBoundaryRenderingUnit,
     runControlledProjectGenerationApprovalBoundaryCliOutputUnit,
-    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit
+    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit,
+    runControlledProjectGenerationRuntimeBoundaryConsistencyUnit,
+    runControlledProjectGenerationRuntimeBoundarySortingUnit,
+    runControlledProjectGenerationRuntimeBoundaryFilteringUnit,
+    runControlledProjectGenerationRuntimeBoundaryCompletenessUnit,
+    runControlledProjectGenerationRuntimeBoundaryRenderingUnit,
+    runControlledProjectGenerationRuntimeBoundaryCliOutputUnit,
+    runControlledProjectGenerationRuntimeBoundaryHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -35648,6 +35857,27 @@ async function main() {
     failed += 1;
   }
   if (!runControlledProjectGenerationApprovalBoundaryHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationRuntimeBoundaryConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationRuntimeBoundarySortingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationRuntimeBoundaryFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationRuntimeBoundaryCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationRuntimeBoundaryRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationRuntimeBoundaryCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationRuntimeBoundaryHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

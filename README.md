@@ -11717,6 +11717,135 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.5 - Controlled Project Generation Runtime Boundary Contract Layer
+
+v12.5 continues the Controlled Project Generation Design Era by adding a deterministic, read-only runtime boundary contract for a future controlled project generation runtime. The contract is descriptive design data only. It does not execute runtime behavior, activate runtime behavior, route runtime behavior, orchestrate runtime behavior, persist runtime state, execute approvals, persist approval state, execute mutations, expand mutation capability, execute inputs, execute outputs, execute bundles, execute rollback, execute recovery, enforce risks, execute validation commands, install dependencies, mutate package files, create files, scaffold files, implement builder agents, activate governance, enforce policy, generate projects, or change repair orchestration.
+
+Controlled project generation runtime boundary contract model:
+
+* `src/governance/controlledProjectGenerationRuntimeBoundaryContract.ts` adds `ControlledProjectGenerationRuntimeBoundaryContract`, `ControlledProjectGenerationRuntimeBoundary`, `ControlledProjectGenerationRuntimeBoundarySummary`, `ControlledProjectGenerationRuntimeBoundaryCompleteness`, `createControlledProjectGenerationRuntimeBoundaryContract`, and `summarizeControlledProjectGenerationRuntimeBoundaryContract`.
+* Runtime boundary contracts explicitly preserve read-only, preview-only, runtime-boundary-contract-only, stdout-only, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-planner-loop, no-builder-agent-loop, no-autonomous-generation, no-approval-execution, no-approval-persistence, no-mutation-execution, no-mutation-expansion, no-generation-runtime, no-generation-execution, no-input-execution, no-output-execution, no-bundle-execution, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-validation-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Runtime boundary contract helpers require explicit metadata input and do not generate hidden timestamps.
+
+Runtime groups:
+
+* `runtimeActivation`
+* `runtimeExecution`
+* `runtimeRouting`
+* `runtimeOrchestration`
+* `plannerLoop`
+* `builderAgentLoop`
+* `autonomousGeneration`
+* `statePersistence`
+* `policyEnforcement`
+* `governanceActivation`
+* `validationExecution`
+* `rollbackExecution`
+* `recoveryExecution`
+
+Runtime policies:
+
+* `forbidden`
+* `blocked`
+* `preview-only`
+* `manual-approval-required`
+* `not-applicable`
+
+Runtime boundary helpers:
+
+* `createRuntimeBoundary`
+* `sortRuntimeBoundaries`
+* `findRuntimeBoundariesByGroup`
+* `findRuntimeBoundariesByPolicy`
+* `findRuntimeBoundariesByRiskLevel`
+* `findBlockedRuntimeBoundaries`
+* `findForbiddenRuntimeBoundaries`
+* `findPreviewOnlyRuntimeBoundaries`
+
+Each runtime boundary records boundary ID, group, title, description, runtime policy, risk level, activation allowance, execution allowance, routing allowance, persistence allowance, blocked reason, warnings, recommendations, read-only state, preview-only state, and no-execution state.
+
+Advisory completeness scoring:
+
+* `calculateControlledProjectGenerationRuntimeBoundaryCompleteness` deterministically computes a 0-100 advisory completeness score.
+* Completeness levels are `incomplete`, `partial`, `contract-defined`, and `ready-for-design`.
+* Scoring is descriptive only and does not execute runtime behavior, persist runtime state, approve anything, mutate anything, activate anything, route runtime behavior, execute validation commands, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Runtime boundary rendering:
+
+* `renderControlledProjectGenerationRuntimeBoundarySummary` renders deterministic boundary count, forbidden count, blocked count, preview-only count, activation-allowed count, execution-allowed count, routing-allowed count, persistence-allowed count, group distribution, policy distribution, risk distribution, completeness score, warnings, and recommendations.
+* `renderControlledProjectGenerationRuntimeBoundary` renders stable runtime boundary details.
+* `renderControlledProjectGenerationRuntimeBoundaryContract` renders contract title, guarantees, metadata, summary, boundaries, and an explicit no-runtime-execution/no-runtime-activation/no-runtime-routing/no-project-generation notice.
+* `renderCliControlledProjectGenerationRuntimeBoundarySummary` and `renderCliControlledProjectGenerationRuntimeBoundaryContract` provide equivalent CLI-safe deterministic output.
+
+CLI runtime boundary preview:
+
+```powershell
+node dist\cli.js governance controlled-project-generation-runtime-boundary
+node dist\cli.js governance controlled-project-generation-runtime-boundary --json
+```
+
+Runtime boundary contracts print to stdout only. They do not write files, create files, scaffold files, execute runtime behavior, activate runtime behavior, route runtime behavior, persist runtime state, execute approvals, persist approval state, execute mutations, expand mutation capability, execute inputs, execute outputs, execute bundles, execute rollback, execute recovery, enforce risks, execute validation commands, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, or change repair orchestration.
+
+v12.5 deterministic checks:
+
+* controlled-project-generation-runtime-boundary-consistency
+* controlled-project-generation-runtime-boundary-sorting
+* controlled-project-generation-runtime-boundary-filtering
+* controlled-project-generation-runtime-boundary-completeness
+* controlled-project-generation-runtime-boundary-rendering
+* controlled-project-generation-runtime-boundary-cli-output
+* controlled-project-generation-runtime-boundary-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite controlled-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no runtime execution is introduced
+* no runtime activation is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no runtime persistence is introduced
+* no approval execution is introduced
+* no approval persistence is introduced
+* no mutation execution is introduced
+* no output execution is introduced
+* no input execution is introduced
+* no bundle execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* forbidden runtime boundaries remain explicit
+* activation, execution, routing, orchestration, and persistence remain disallowed
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

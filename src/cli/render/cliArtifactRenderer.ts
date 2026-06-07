@@ -12,6 +12,7 @@ import type { ControlledProjectGenerationContractSummary, ControlledProjectGener
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary } from "../../governance/controlledProjectGenerationInputContract.js";
 import type { ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../../governance/controlledProjectGenerationMutationBoundaryContract.js";
 import type { ControlledProjectGenerationOutputContract, ControlledProjectGenerationOutputContractSummary } from "../../governance/controlledProjectGenerationOutputContract.js";
+import type { ControlledProjectGenerationRuntimeBoundaryContract, ControlledProjectGenerationRuntimeBoundarySummary } from "../../governance/controlledProjectGenerationRuntimeBoundaryContract.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
@@ -1214,6 +1215,85 @@ export function renderCliControlledProjectGenerationApprovalBoundaryContract(con
   ].join("\n");
 }
 
+export function renderCliControlledProjectGenerationRuntimeBoundarySummary(summary: ControlledProjectGenerationRuntimeBoundarySummary): string {
+  return [
+    renderCliSection("Controlled project generation runtime boundary summary", [
+      `boundary count: ${summary.totalBoundaries}`,
+      `forbidden count: ${summary.forbiddenCount}`,
+      `blocked count: ${summary.blockedCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `activation-allowed count: ${summary.activationAllowedCount}`,
+      `execution-allowed count: ${summary.executionAllowedCount}`,
+      `routing-allowed count: ${summary.routingAllowedCount}`,
+      `persistence-allowed count: ${summary.persistenceAllowedCount}`,
+      `group distribution: ${renderCliRuntimeBoundaryGroups(summary.groupDistribution)}`,
+      `policy distribution: ${renderCliRuntimeBoundaryGroups(summary.policyDistribution)}`,
+      `risk distribution: ${renderCliRuntimeBoundaryGroups(summary.riskDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationRuntimeBoundaryContract(contract: ControlledProjectGenerationRuntimeBoundaryContract): string {
+  const boundaryLines = contract.boundaries.length === 0
+    ? ["none"]
+    : contract.boundaries.map((boundary) => `${boundary.boundaryId} | group=${boundary.group} | policy=${boundary.runtimePolicy} | risk=${boundary.riskLevel} | activationAllowed=${String(boundary.activationAllowed)} | executionAllowed=${String(boundary.executionAllowed)} | routingAllowed=${String(boundary.routingAllowed)} | persistenceAllowed=${String(boundary.persistenceAllowed)}`);
+  return [
+    renderCliSection("Controlled project generation runtime boundary contract", [
+      `title: ${contract.title}`,
+      `schemaVersion: ${contract.schemaVersion}`,
+      `readonly: ${String(contract.readonly)}`,
+      `previewOnly: ${String(contract.previewOnly)}`,
+      `runtimeBoundaryContractOnly: ${String(contract.runtimeBoundaryContractOnly)}`,
+      `stdoutOnly: ${String(contract.stdoutOnly)}`,
+      `runtimeExecutionAllowed: ${String(contract.runtimeExecutionAllowed)}`,
+      `runtimeActivationAllowed: ${String(contract.runtimeActivationAllowed)}`,
+      `runtimeRoutingAllowed: ${String(contract.runtimeRoutingAllowed)}`,
+      `runtimeOrchestrationAllowed: ${String(contract.runtimeOrchestrationAllowed)}`,
+      `runtimePersistenceAllowed: ${String(contract.runtimePersistenceAllowed)}`,
+      `runtimeStatePersistenceAllowed: ${String(contract.runtimeStatePersistenceAllowed)}`,
+      `plannerLoopAllowed: ${String(contract.plannerLoopAllowed)}`,
+      `builderAgentLoopAllowed: ${String(contract.builderAgentLoopAllowed)}`,
+      `autonomousGenerationAllowed: ${String(contract.autonomousGenerationAllowed)}`,
+      `approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+      `approvalPersistenceAllowed: ${String(contract.approvalPersistenceAllowed)}`,
+      `mutationExecutionAllowed: ${String(contract.mutationExecutionAllowed)}`,
+      `mutationExpansionAllowed: ${String(contract.mutationExpansionAllowed)}`,
+      `generationRuntimeImplemented: ${String(contract.generationRuntimeImplemented)}`,
+      `generationExecutionAllowed: ${String(contract.generationExecutionAllowed)}`,
+      `outputExecutionAllowed: ${String(contract.outputExecutionAllowed)}`,
+      `inputExecutionAllowed: ${String(contract.inputExecutionAllowed)}`,
+      `bundleExecutionAllowed: ${String(contract.bundleExecutionAllowed)}`,
+      `rollbackExecutionAllowed: ${String(contract.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(contract.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(contract.riskEnforcementAllowed)}`,
+      `validationExecutionAllowed: ${String(contract.validationExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(contract.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+      "notice: no runtime execution, no runtime activation, no runtime routing, no runtime orchestration, no runtime persistence, no project generation, no approval execution, no approval persistence, no mutation execution, no mutation expansion, no input execution, no output execution, no bundle execution, rollback execution, recovery execution, risk enforcement, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, policy enforcement, or file writing is enabled"
+    ]),
+    renderCliMetadata(contract.metadata),
+    renderCliControlledProjectGenerationRuntimeBoundarySummary(contract.summary),
+    renderCliSection("Runtime boundaries", boundaryLines),
+    renderReadonlyNotice(contract.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1265,6 +1345,11 @@ function renderCliMutationBoundaryGroups(groups: readonly { key: string; totalBo
 }
 
 function renderCliApprovalBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalBoundaries}`).join(", ");
+}
+
+function renderCliRuntimeBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalBoundaries}`).join(", ");
 }
