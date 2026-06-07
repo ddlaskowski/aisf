@@ -7,6 +7,7 @@ import type { GovernanceArtifactReviewPack, GovernanceArtifactReviewPackSummary 
 import type { GovernanceReadonlyContract } from "../../governance/governanceReadonlyContract.js";
 import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } from "../../governance/governanceArtifactSnapshot.js";
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
+import type { ControlledProjectGenerationApprovalBoundaryContract, ControlledProjectGenerationApprovalBoundarySummary } from "../../governance/controlledProjectGenerationApprovalBoundaryContract.js";
 import type { ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../../governance/controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary } from "../../governance/controlledProjectGenerationInputContract.js";
 import type { ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../../governance/controlledProjectGenerationMutationBoundaryContract.js";
@@ -1144,6 +1145,75 @@ export function renderCliControlledProjectGenerationMutationBoundaryContract(con
   ].join("\n");
 }
 
+export function renderCliControlledProjectGenerationApprovalBoundarySummary(summary: ControlledProjectGenerationApprovalBoundarySummary): string {
+  return [
+    renderCliSection("Controlled project generation approval boundary summary", [
+      `boundary count: ${summary.totalBoundaries}`,
+      `manual-approval-required count: ${summary.manualApprovalRequiredCount}`,
+      `forbidden-auto-approval count: ${summary.forbiddenAutoApprovalCount}`,
+      `blocked count: ${summary.blockedCount}`,
+      `approval-persistence-allowed count: ${summary.approvalPersistenceAllowedCount}`,
+      `group distribution: ${renderCliApprovalBoundaryGroups(summary.groupDistribution)}`,
+      `policy distribution: ${renderCliApprovalBoundaryGroups(summary.policyDistribution)}`,
+      `risk distribution: ${renderCliApprovalBoundaryGroups(summary.riskDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationApprovalBoundaryContract(contract: ControlledProjectGenerationApprovalBoundaryContract): string {
+  const boundaryLines = contract.boundaries.length === 0
+    ? ["none"]
+    : contract.boundaries.map((boundary) => `${boundary.boundaryId} | group=${boundary.group} | policy=${boundary.approvalPolicy} | risk=${boundary.riskLevel} | manualApprovalRequired=${String(boundary.manualApprovalRequired)} | forbiddenAutoApproval=${String(boundary.forbiddenAutoApproval)}`);
+  return [
+    renderCliSection("Controlled project generation approval boundary contract", [
+      `title: ${contract.title}`,
+      `schemaVersion: ${contract.schemaVersion}`,
+      `readonly: ${String(contract.readonly)}`,
+      `previewOnly: ${String(contract.previewOnly)}`,
+      `approvalBoundaryContractOnly: ${String(contract.approvalBoundaryContractOnly)}`,
+      `stdoutOnly: ${String(contract.stdoutOnly)}`,
+      `approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+      `approvalPersistenceAllowed: ${String(contract.approvalPersistenceAllowed)}`,
+      `approvalDecisionApplied: ${String(contract.approvalDecisionApplied)}`,
+      `projectGenerationApproved: ${String(contract.projectGenerationApproved)}`,
+      `mutationExecutionAllowed: ${String(contract.mutationExecutionAllowed)}`,
+      `mutationExpansionAllowed: ${String(contract.mutationExpansionAllowed)}`,
+      `generationRuntimeImplemented: ${String(contract.generationRuntimeImplemented)}`,
+      `generationExecutionAllowed: ${String(contract.generationExecutionAllowed)}`,
+      `outputExecutionAllowed: ${String(contract.outputExecutionAllowed)}`,
+      `inputExecutionAllowed: ${String(contract.inputExecutionAllowed)}`,
+      `bundleExecutionAllowed: ${String(contract.bundleExecutionAllowed)}`,
+      `rollbackExecutionAllowed: ${String(contract.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(contract.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(contract.riskEnforcementAllowed)}`,
+      `validationExecutionAllowed: ${String(contract.validationExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(contract.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+      "notice: no approval execution, no approval persistence, no project generation, no mutation execution, no mutation expansion, no input execution, no output execution, no bundle execution, rollback execution, recovery execution, risk enforcement, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, or file writing is enabled"
+    ]),
+    renderCliMetadata(contract.metadata),
+    renderCliControlledProjectGenerationApprovalBoundarySummary(contract.summary),
+    renderCliSection("Approval boundaries", boundaryLines),
+    renderReadonlyNotice(contract.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1190,6 +1260,11 @@ function renderCliRollbackAppliesToGroups(groups: readonly { key: string; totalS
 }
 
 function renderCliMutationBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalBoundaries}`).join(", ");
+}
+
+function renderCliApprovalBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalBoundaries}`).join(", ");
 }

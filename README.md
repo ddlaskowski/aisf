@@ -11591,6 +11591,132 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.4 - Controlled Project Generation Approval Boundary Contract Layer
+
+v12.4 continues the Controlled Project Generation Design Era by adding a deterministic, read-only approval boundary contract for a future controlled project generation runtime. The contract is descriptive design data only. It does not execute approvals, persist approval state, apply approval decisions, approve project generation, execute mutations, expand mutation capability, execute inputs, execute outputs, execute bundles, execute rollback, execute recovery, enforce risks, execute validation commands, install dependencies, mutate package files, create files, scaffold files, implement builder agents, route runtime behavior, activate governance, enforce policy, generate projects, or change repair orchestration.
+
+Controlled project generation approval boundary contract model:
+
+* `src/governance/controlledProjectGenerationApprovalBoundaryContract.ts` adds `ControlledProjectGenerationApprovalBoundaryContract`, `ControlledProjectGenerationApprovalBoundary`, `ControlledProjectGenerationApprovalBoundarySummary`, `ControlledProjectGenerationApprovalBoundaryCompleteness`, `createControlledProjectGenerationApprovalBoundaryContract`, and `summarizeControlledProjectGenerationApprovalBoundaryContract`.
+* Approval boundary contracts explicitly preserve read-only, preview-only, approval-boundary-contract-only, stdout-only, no-approval-execution, no-approval-persistence, no-approval-decision-application, no-project-generation-approval, no-mutation-execution, no-mutation-expansion, no-generation-runtime, no-generation-execution, no-input-execution, no-output-execution, no-bundle-execution, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-validation-execution, no-dependency-installation, no-package-mutation, no-file-write, no-file-creation, no-scaffold-generation, no-runtime-routing, no-runtime-activation, no-policy-enforcement, no-project-generation, and no-builder-agent-runtime guarantees.
+* Approval boundary contract helpers require explicit metadata input and do not generate hidden timestamps.
+
+Approval groups:
+
+* `blueprintApproval`
+* `filePlanApproval`
+* `dependencyPlanApproval`
+* `validationPlanApproval`
+* `riskPlanApproval`
+* `rollbackPlanApproval`
+* `mutationApproval`
+* `outputApproval`
+* `runtimeTransitionApproval`
+* `manualReviewBoundary`
+* `forbiddenAutoApprovalBoundary`
+
+Approval policies:
+
+* `manual-approval-required`
+* `preview-only`
+* `auto-approval-forbidden`
+* `blocked`
+* `not-applicable`
+
+Approval boundary helpers:
+
+* `createApprovalBoundary`
+* `sortApprovalBoundaries`
+* `findApprovalBoundariesByGroup`
+* `findApprovalBoundariesByPolicy`
+* `findApprovalBoundariesByRiskLevel`
+* `findBlockedApprovalBoundaries`
+* `findForbiddenAutoApprovalBoundaries`
+* `findManualApprovalRequiredBoundaries`
+
+Each approval boundary records boundary ID, group, title, description, approval policy, risk level, auto-approval allowance, manual approval requirement, forbidden auto-approval state, approval persistence allowance, blocked reason, warnings, recommendations, read-only state, preview-only state, and no-execution state.
+
+Advisory completeness scoring:
+
+* `calculateControlledProjectGenerationApprovalBoundaryCompleteness` deterministically computes a 0-100 advisory completeness score.
+* Completeness levels are `incomplete`, `partial`, `contract-defined`, and `ready-for-design`.
+* Scoring is descriptive only and does not approve anything, persist approval state, execute anything, mutate anything, activate governance, route runtime behavior, execute validation commands, install dependencies, mutate packages, generate projects, scaffold files, create files, write files, or enable builder agents.
+
+Approval boundary rendering:
+
+* `renderControlledProjectGenerationApprovalBoundarySummary` renders deterministic boundary count, manual-approval-required count, forbidden-auto-approval count, blocked count, approval-persistence-allowed count, group distribution, policy distribution, risk distribution, completeness score, warnings, and recommendations.
+* `renderControlledProjectGenerationApprovalBoundary` renders stable approval boundary details.
+* `renderControlledProjectGenerationApprovalBoundaryContract` renders contract title, guarantees, metadata, summary, boundaries, and an explicit no-approval-execution/no-approval-persistence/no-project-generation notice.
+* `renderCliControlledProjectGenerationApprovalBoundarySummary` and `renderCliControlledProjectGenerationApprovalBoundaryContract` provide equivalent CLI-safe deterministic output.
+
+CLI approval boundary preview:
+
+```powershell
+node dist\cli.js governance controlled-project-generation-approval-boundary
+node dist\cli.js governance controlled-project-generation-approval-boundary --json
+```
+
+Approval boundary contracts print to stdout only. They do not write files, create files, scaffold files, execute approvals, persist approval state, apply approval decisions, approve project generation, execute mutations, expand mutation capability, execute inputs, execute outputs, execute bundles, execute rollback, execute recovery, enforce risks, execute validation commands, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, route runtime behavior, or change repair orchestration.
+
+v12.4 deterministic checks:
+
+* controlled-project-generation-approval-boundary-consistency
+* controlled-project-generation-approval-boundary-sorting
+* controlled-project-generation-approval-boundary-filtering
+* controlled-project-generation-approval-boundary-completeness
+* controlled-project-generation-approval-boundary-rendering
+* controlled-project-generation-approval-boundary-cli-output
+* controlled-project-generation-approval-boundary-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite controlled-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no approval execution is introduced
+* no approval persistence is introduced
+* no approval decision application is introduced
+* no project generation approval is introduced
+* no mutation execution is introduced
+* no output execution is introduced
+* no input execution is introduced
+* no bundle execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* manual approval boundaries remain descriptive only
+* forbidden auto-approval boundaries remain explicit
+* approval persistence remains disallowed
+* no runtime routing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

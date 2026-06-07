@@ -31948,6 +31948,187 @@ function runControlledProjectGenerationMutationBoundaryHelpOutputUnit() {
   }
 }
 
+function runControlledProjectGenerationApprovalBoundaryConsistencyUnit() {
+  try {
+    const approvalModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationApprovalBoundaryContract.js"));
+    const metadata = { version: "v12.4", source: "controlled-approval-boundary-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = approvalModule.createControlledProjectGenerationApprovalBoundaryContract({ title: "Unit Approval Boundary", metadata });
+    const second = approvalModule.createControlledProjectGenerationApprovalBoundaryContract({ title: "Unit Approval Boundary", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled approval boundary contract output is not deterministic");
+    if (first.summary.totalBoundaries !== 11 || first.summary.manualApprovalRequiredCount !== 10 || first.summary.forbiddenAutoApprovalCount !== 2 || first.summary.blockedCount !== 0 || first.summary.approvalPersistenceAllowedCount !== 0 || first.summary.completeness.score !== 91 || first.summary.completeness.level !== "ready-for-design") throw new Error(`controlled approval boundary summary mismatch: ${JSON.stringify(first.summary)}`);
+    const falseFlags = [
+      "approvalExecutionAllowed",
+      "approvalPersistenceAllowed",
+      "approvalDecisionApplied",
+      "projectGenerationApproved",
+      "mutationExecutionAllowed",
+      "mutationExpansionAllowed",
+      "generationRuntimeImplemented",
+      "generationExecutionAllowed",
+      "outputExecutionAllowed",
+      "inputExecutionAllowed",
+      "bundleExecutionAllowed",
+      "rollbackExecutionAllowed",
+      "recoveryExecutionAllowed",
+      "riskEnforcementAllowed",
+      "mitigationEnforcementEnabled",
+      "validationExecutionAllowed",
+      "generatedProjectValidationAllowed",
+      "commandExecutionAllowed",
+      "dependencyInstallationAllowed",
+      "packageMutationAllowed",
+      "fileWriteAllowed",
+      "fileCreationAllowed",
+      "scaffoldGenerationEnabled",
+      "runtimeRoutingEnabled",
+      "runtimeActivationEnabled",
+      "policyEnforcementEnabled",
+      "projectGenerationEnabled",
+      "builderAgentRuntimeEnabled"
+    ];
+    for (const flag of falseFlags) {
+      if (first[flag] !== false) throw new Error(`controlled approval boundary flag ${flag} was not false`);
+    }
+    if (first.readonly !== true || first.previewOnly !== true || first.approvalBoundaryContractOnly !== true || first.stdoutOnly !== true) throw new Error(`controlled approval boundary readonly flags mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`controlled approval boundary introduced runtime activation/governance flags: ${JSON.stringify(first)}`);
+    console.log("PASS controlled-project-generation-approval-boundary-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-approval-boundary-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationApprovalBoundarySortingUnit() {
+  try {
+    const approvalModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationApprovalBoundaryContract.js"));
+    const contract = approvalModule.createControlledProjectGenerationApprovalBoundaryContract({ title: "Sort Approval Boundary", metadata: { version: "v12.4", source: "sort", readonly: true, previewOnly: true } });
+    const reversed = [...contract.boundaries].reverse();
+    const order = approvalModule.sortApprovalBoundaries(reversed).map((boundary) => boundary.group).join(",");
+    if (order !== "blueprintApproval,filePlanApproval,dependencyPlanApproval,validationPlanApproval,riskPlanApproval,rollbackPlanApproval,mutationApproval,outputApproval,runtimeTransitionApproval,manualReviewBoundary,forbiddenAutoApprovalBoundary") throw new Error(`controlled approval boundary ordering mismatch: ${order}`);
+    console.log("PASS controlled-project-generation-approval-boundary-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-approval-boundary-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationApprovalBoundaryFilteringUnit() {
+  try {
+    const approvalModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationApprovalBoundaryContract.js"));
+    const contract = approvalModule.createControlledProjectGenerationApprovalBoundaryContract({ title: "Filter Approval Boundary", metadata: { version: "v12.4", source: "filter", readonly: true, previewOnly: true } });
+    if (approvalModule.findApprovalBoundariesByGroup(contract.boundaries, "blueprintApproval").length !== 1) throw new Error("blueprint approval boundary filter mismatch");
+    if (approvalModule.findApprovalBoundariesByPolicy(contract.boundaries, "manual-approval-required").length !== 8) throw new Error("manual approval policy filter mismatch");
+    if (approvalModule.findApprovalBoundariesByRiskLevel(contract.boundaries, "critical").length !== 4) throw new Error("critical risk filter mismatch");
+    if (approvalModule.findBlockedApprovalBoundaries(contract.boundaries).length !== 0) throw new Error("blocked approval boundary filter mismatch");
+    if (approvalModule.findForbiddenAutoApprovalBoundaries(contract.boundaries).length !== 2) throw new Error("forbidden auto approval boundary filter mismatch");
+    if (approvalModule.findManualApprovalRequiredBoundaries(contract.boundaries).length !== 10) throw new Error("manual approval required boundary filter mismatch");
+    console.log("PASS controlled-project-generation-approval-boundary-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-approval-boundary-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationApprovalBoundaryCompletenessUnit() {
+  try {
+    const approvalModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationApprovalBoundaryContract.js"));
+    const boundaries = [
+      approvalModule.createApprovalBoundary({ boundaryId: "a", group: "blueprintApproval", title: "A", description: "A.", approvalPolicy: "manual-approval-required", riskLevel: "high", manualApprovalRequired: true, forbiddenAutoApproval: false }),
+      approvalModule.createApprovalBoundary({ boundaryId: "b", group: "runtimeTransitionApproval", title: "B", description: "B.", approvalPolicy: "auto-approval-forbidden", riskLevel: "critical", manualApprovalRequired: true, forbiddenAutoApproval: true })
+    ];
+    const completeness = approvalModule.calculateControlledProjectGenerationApprovalBoundaryCompleteness(boundaries);
+    if (completeness.score !== 95 || completeness.level !== "ready-for-design") throw new Error(`controlled approval boundary completeness mismatch: ${JSON.stringify(completeness)}`);
+    const empty = approvalModule.calculateControlledProjectGenerationApprovalBoundaryCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty controlled approval boundary completeness mismatch: ${JSON.stringify(empty)}`);
+    const executing = [{ ...boundaries[0], noExecution: false }];
+    const executingCompleteness = approvalModule.calculateControlledProjectGenerationApprovalBoundaryCompleteness(executing);
+    if (executingCompleteness.score !== 0 || executingCompleteness.level !== "incomplete") throw new Error(`executing controlled approval boundary completeness mismatch: ${JSON.stringify(executingCompleteness)}`);
+    const persisted = [{ ...boundaries[0], approvalPersistenceAllowed: true }];
+    const persistedCompleteness = approvalModule.calculateControlledProjectGenerationApprovalBoundaryCompleteness(persisted);
+    if (persistedCompleteness.score !== 0 || persistedCompleteness.level !== "incomplete") throw new Error(`persisted controlled approval boundary completeness mismatch: ${JSON.stringify(persistedCompleteness)}`);
+    console.log("PASS controlled-project-generation-approval-boundary-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-approval-boundary-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationApprovalBoundaryRenderingUnit() {
+  try {
+    const approvalModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationApprovalBoundaryContract.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const contract = approvalModule.createControlledProjectGenerationApprovalBoundaryContract({ title: "Render Approval Boundary", metadata: { version: "v12.4", source: "approval-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledProjectGenerationApprovalBoundaryContract(contract);
+    if (!rendered.includes("Controlled project generation approval boundary contract: Render Approval Boundary") || !rendered.includes("boundary count: 11") || !rendered.includes("manual-approval-required count: 10") || !rendered.includes("forbidden-auto-approval count: 2") || !rendered.includes("approval-persistence-allowed count: 0") || !rendered.includes("completeness score: 91") || !rendered.includes("approvalExecutionAllowed: false") || !rendered.includes("approvalPersistenceAllowed: false") || !rendered.includes("no approval execution")) throw new Error(`controlled approval boundary render mismatch: ${rendered}`);
+    console.log("PASS controlled-project-generation-approval-boundary-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-approval-boundary-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationApprovalBoundaryCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-project-generation-approval-boundary"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled project generation approval boundary contract:") || !human.stdout.includes("approvalExecutionAllowed: false") || !human.stdout.includes("approvalPersistenceAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("completeness score: 91")) throw new Error(`controlled approval boundary human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-project-generation-approval-boundary", "--json"]);
+    if (json.status !== 0) throw new Error(`controlled approval boundary json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.approvalBoundaryContractOnly !== true || parsed.approvalExecutionAllowed !== false || parsed.approvalPersistenceAllowed !== false || parsed.approvalDecisionApplied !== false || parsed.projectGenerationApproved !== false || parsed.mutationExecutionAllowed !== false || parsed.mutationExpansionAllowed !== false || parsed.generationRuntimeImplemented !== false || parsed.generationExecutionAllowed !== false || parsed.outputExecutionAllowed !== false || parsed.inputExecutionAllowed !== false || parsed.bundleExecutionAllowed !== false || parsed.rollbackExecutionAllowed !== false || parsed.recoveryExecutionAllowed !== false || parsed.riskEnforcementAllowed !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalBoundaries !== 11 || parsed.summary.manualApprovalRequiredCount !== 10 || parsed.summary.forbiddenAutoApprovalCount !== 2 || parsed.summary.approvalPersistenceAllowedCount !== 0 || parsed.summary.completeness.score !== 91) throw new Error(`controlled approval boundary json output mismatch: ${json.stdout}`);
+    console.log("PASS controlled-project-generation-approval-boundary-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-approval-boundary-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationApprovalBoundaryHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-project-generation-approval-boundary", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance controlled-project-generation-approval-boundary",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "no approval execution",
+      "no approval persistence",
+      "no project generation",
+      "manual approval",
+      "Auto-approval remains forbidden",
+      "do not write files by default",
+      "execute bundle",
+      "execute rollback",
+      "execute recovery",
+      "enforce risks",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS controlled-project-generation-approval-boundary-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-approval-boundary-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -32103,7 +32284,9 @@ const scenarioSuites = {
     runControlledProjectGenerationOutputContractCliOutputUnit,
     runControlledProjectGenerationOutputContractHelpOutputUnit,
     runControlledProjectGenerationMutationBoundaryCliOutputUnit,
-    runControlledProjectGenerationMutationBoundaryHelpOutputUnit
+    runControlledProjectGenerationMutationBoundaryHelpOutputUnit,
+    runControlledProjectGenerationApprovalBoundaryCliOutputUnit,
+    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -32147,6 +32330,7 @@ const scenarioSuites = {
     runControlledProjectGenerationInputContractRenderingUnit,
     runControlledProjectGenerationOutputContractRenderingUnit,
     runControlledProjectGenerationMutationBoundaryRenderingUnit,
+    runControlledProjectGenerationApprovalBoundaryRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -32249,7 +32433,14 @@ const scenarioSuites = {
     runControlledProjectGenerationMutationBoundaryCompletenessUnit,
     runControlledProjectGenerationMutationBoundaryRenderingUnit,
     runControlledProjectGenerationMutationBoundaryCliOutputUnit,
-    runControlledProjectGenerationMutationBoundaryHelpOutputUnit
+    runControlledProjectGenerationMutationBoundaryHelpOutputUnit,
+    runControlledProjectGenerationApprovalBoundaryConsistencyUnit,
+    runControlledProjectGenerationApprovalBoundarySortingUnit,
+    runControlledProjectGenerationApprovalBoundaryFilteringUnit,
+    runControlledProjectGenerationApprovalBoundaryCompletenessUnit,
+    runControlledProjectGenerationApprovalBoundaryRenderingUnit,
+    runControlledProjectGenerationApprovalBoundaryCliOutputUnit,
+    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit
   ],
   "controlled-generation": [
     runControlledProjectGenerationContractConsistencyUnit,
@@ -32278,7 +32469,14 @@ const scenarioSuites = {
     runControlledProjectGenerationMutationBoundaryCompletenessUnit,
     runControlledProjectGenerationMutationBoundaryRenderingUnit,
     runControlledProjectGenerationMutationBoundaryCliOutputUnit,
-    runControlledProjectGenerationMutationBoundaryHelpOutputUnit
+    runControlledProjectGenerationMutationBoundaryHelpOutputUnit,
+    runControlledProjectGenerationApprovalBoundaryConsistencyUnit,
+    runControlledProjectGenerationApprovalBoundarySortingUnit,
+    runControlledProjectGenerationApprovalBoundaryFilteringUnit,
+    runControlledProjectGenerationApprovalBoundaryCompletenessUnit,
+    runControlledProjectGenerationApprovalBoundaryRenderingUnit,
+    runControlledProjectGenerationApprovalBoundaryCliOutputUnit,
+    runControlledProjectGenerationApprovalBoundaryHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -35429,6 +35627,27 @@ async function main() {
     failed += 1;
   }
   if (!runControlledProjectGenerationMutationBoundaryHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationApprovalBoundaryConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationApprovalBoundarySortingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationApprovalBoundaryFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationApprovalBoundaryCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationApprovalBoundaryRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationApprovalBoundaryCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationApprovalBoundaryHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

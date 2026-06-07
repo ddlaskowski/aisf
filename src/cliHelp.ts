@@ -88,6 +88,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance controlled-project-generation-input-contract",
     "  node dist/cli.js governance controlled-project-generation-output-contract",
     "  node dist/cli.js governance controlled-project-generation-mutation-boundary",
+    "  node dist/cli.js governance controlled-project-generation-approval-boundary",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -185,6 +186,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance controlled-project-generation-input-contract",
     "  node dist/cli.js governance controlled-project-generation-output-contract",
     "  node dist/cli.js governance controlled-project-generation-mutation-boundary",
+    "  node dist/cli.js governance controlled-project-generation-approval-boundary",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1412,6 +1414,32 @@ export function renderGovernanceControlledProjectGenerationMutationBoundaryHelp(
     "  This is preview-only and read-only. It has no mutation execution, no mutation expansion, no runtime, and no project generation. Safe Patch Engine remains the sole mutation layer and multi-file mutation remains blocked or forbidden.",
     "  Mutation boundary previews are stdout-only and do not write files by default.",
     "  It does not execute mutations, execute inputs, execute outputs, execute bundle workflows, execute rollback, execute recovery, enforce risks, execute approvals, execute validation commands, install dependencies, mutate package.json, scaffold files, create files, write files, or generate projects.",
+    "  It does not activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceControlledProjectGenerationApprovalBoundaryHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance controlled-project-generation-approval-boundary",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance controlled-project-generation-approval-boundary [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic controlled project generation approval boundary contract output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance controlled-project-generation-approval-boundary",
+    "  node dist/cli.js governance controlled-project-generation-approval-boundary --json",
+    "",
+    "Controlled project generation approval boundary contract:",
+    "  This command defines future controlled generation approval groups, approval policies, manual approval boundaries, forbidden auto-approval boundaries, and approval persistence boundaries as descriptive data only.",
+    "  This is preview-only and read-only. It has no approval execution, no approval persistence, no runtime, and no project generation. Auto-approval remains forbidden for runtime transitions and controlled generation approval boundaries.",
+    "  Approval boundary previews are stdout-only and do not write files by default.",
+    "  It does not execute approvals, persist approval state, apply approval decisions, approve project generation, execute mutations, execute inputs, execute outputs, execute bundle workflows, execute rollback, execute recovery, enforce risks, execute validation commands, install dependencies, mutate package.json, scaffold files, create files, write files, or generate projects.",
     "  It does not activate governance, enforce policy, route runtime behavior, execute runtime activation, enable runtime autonomy, mutate files, expand mutation scope, or change repair orchestration.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
