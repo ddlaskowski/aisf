@@ -21,6 +21,7 @@ import type { ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectur
 import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractSummary } from "../../governance/controlledRuntimeComponentContract.js";
 import type { ControlledRuntimeFlowPreview, ControlledRuntimeFlowSummary } from "../../governance/controlledRuntimeFlowPreview.js";
 import type { ControlledRuntimeEventModelPreview, ControlledRuntimeEventModelSummary } from "../../governance/controlledRuntimeEventModelPreview.js";
+import type { ControlledRuntimeObservabilityPreview, ControlledRuntimeObservabilitySummary } from "../../governance/controlledRuntimeObservabilityPreview.js";
 import type { ControlledRuntimeStateModelPreview, ControlledRuntimeStateModelSummary } from "../../governance/controlledRuntimeStateModelPreview.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
@@ -1941,6 +1942,84 @@ export function renderCliControlledRuntimeEventModelPreview(preview: ControlledR
   ].join("\n");
 }
 
+export function renderCliControlledRuntimeObservabilitySummary(summary: ControlledRuntimeObservabilitySummary): string {
+  return [
+    renderCliSection("Controlled runtime observability summary", [
+      `metric count: ${summary.totalMetrics}`,
+      `log count: ${summary.totalLogs}`,
+      `trace count: ${summary.totalTraces}`,
+      `health signal count: ${summary.totalHealthSignals}`,
+      `audit signal count: ${summary.totalAuditSignals}`,
+      `blocked count: ${summary.blockedCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `collection policies: ${renderCliRuntimeObservabilityCollectionPolicyGroups(summary.collectionPolicyDistribution)}`,
+      `risk distribution: ${renderCliRuntimeObservabilityRiskGroups(summary.riskDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-collection: ${String(summary.noCollection)}`,
+      `no-persistence: ${String(summary.noPersistence)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledRuntimeObservabilityPreview(preview: ControlledRuntimeObservabilityPreview): string {
+  const metricLines = preview.metrics.length === 0
+    ? ["none"]
+    : preview.metrics.map((signal) => `${signal.signalId} | category=${signal.category} | policy=${signal.collectionPolicy} | noCollection=${String(signal.noCollection)}`);
+  const logLines = preview.logs.length === 0
+    ? ["none"]
+    : preview.logs.map((signal) => `${signal.signalId} | category=${signal.category} | policy=${signal.collectionPolicy} | noPersistence=${String(signal.noPersistence)}`);
+  const traceLines = preview.traces.length === 0
+    ? ["none"]
+    : preview.traces.map((signal) => `${signal.signalId} | category=${signal.category} | policy=${signal.collectionPolicy} | noExecution=${String(signal.noExecution)}`);
+  const healthLines = preview.healthSignals.length === 0
+    ? ["none"]
+    : preview.healthSignals.map((signal) => `${signal.signalId} | category=${signal.category} | policy=${signal.collectionPolicy} | status=${signal.status}`);
+  const auditLines = preview.auditSignals.length === 0
+    ? ["none"]
+    : preview.auditSignals.map((signal) => `${signal.signalId} | category=${signal.category} | policy=${signal.collectionPolicy} | status=${signal.status}`);
+  return [
+    renderCliSection("Controlled runtime observability preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `observabilityPreviewOnly: ${String(preview.observabilityPreviewOnly)}`,
+      `runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+      `runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+      `telemetryCollectionAllowed: ${String(preview.telemetryCollectionAllowed)}`,
+      `metricCollectionAllowed: ${String(preview.metricCollectionAllowed)}`,
+      `logWritingAllowed: ${String(preview.logWritingAllowed)}`,
+      `traceEmissionAllowed: ${String(preview.traceEmissionAllowed)}`,
+      `eventEmissionAllowed: ${String(preview.eventEmissionAllowed)}`,
+      `eventBusEnabled: ${String(preview.eventBusEnabled)}`,
+      `eventListenersEnabled: ${String(preview.eventListenersEnabled)}`,
+      `runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+      `runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      `agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      "notice: read-only, preview-only runtime observability only. No telemetry collection, no metric collection, no log writing, no trace emission, no event emission, no event bus, no event listeners, no runtime persistence, no state persistence, no runtime execution, no runtime routing, no runtime orchestration, no runtime activation, no project generation, no builder-agent runtime, no agent execution, no file writing, no dependency installation, no policy enforcement, and no governance activation is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliControlledRuntimeObservabilitySummary(preview.summary),
+    renderCliSection("Runtime metric definitions", metricLines),
+    renderCliSection("Runtime log definitions", logLines),
+    renderCliSection("Runtime trace definitions", traceLines),
+    renderCliSection("Runtime health signals", healthLines),
+    renderCliSection("Runtime audit signals", auditLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -2019,6 +2098,16 @@ function renderCliRuntimeEventEmissionPolicyGroups(groups: readonly { key: strin
 function renderCliRuntimeEventRiskGroups(groups: readonly { key: string; totalEvents: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEvents}`).join(", ");
+}
+
+function renderCliRuntimeObservabilityCollectionPolicyGroups(groups: readonly { key: string; totalSignals: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSignals}`).join(", ");
+}
+
+function renderCliRuntimeObservabilityRiskGroups(groups: readonly { key: string; totalSignals: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSignals}`).join(", ");
 }
 
 function renderCliMutationBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {

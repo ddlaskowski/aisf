@@ -33686,6 +33686,187 @@ function runControlledRuntimeEventModelHelpOutputUnit() {
   }
 }
 
+function runControlledRuntimeObservabilityConsistencyUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const metadata = { version: "v13.5", source: "unit", command: "governance controlled-runtime-observability", readonly: true, previewOnly: true };
+    const first = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Unit Runtime Observability", metadata });
+    const second = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Unit Runtime Observability", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled runtime observability output is not deterministic");
+    if (first.telemetryCollectionAllowed !== false || first.metricCollectionAllowed !== false || first.logWritingAllowed !== false || first.traceEmissionAllowed !== false || first.eventEmissionAllowed !== false || first.eventBusEnabled !== false || first.eventListenersEnabled !== false || first.runtimePersistenceAllowed !== false || first.runtimeExecutionAllowed !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false) throw new Error("observability invariant flags changed");
+    if (first.metrics.length !== 11 || first.logs.length !== 11 || first.traces.length !== 11 || first.healthSignals.length !== 11 || first.auditSignals.length !== 11 || first.summary.noCollection !== true || first.summary.noPersistence !== true || first.summary.noExecution !== true) throw new Error("observability summary mismatch");
+    console.log("PASS controlled-runtime-observability-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function expectedRuntimeObservabilityCategoryOrder() {
+  return "intake-signals,contract-signals,flow-signals,approval-signals,generation-signals,validation-signals,review-signals,export-signals,audit-signals,error-signals,completion-signals";
+}
+
+function runControlledRuntimeObservabilityMetricOrderingUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const preview = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Sort Runtime Observability", metadata: { version: "v13.5", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.metrics.map((signal) => signal.category).join(",");
+    if (order !== expectedRuntimeObservabilityCategoryOrder()) throw new Error(`metric ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-observability-metric-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-metric-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityLogOrderingUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const preview = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Sort Runtime Observability", metadata: { version: "v13.5", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.logs.map((signal) => signal.category).join(",");
+    if (order !== expectedRuntimeObservabilityCategoryOrder()) throw new Error(`log ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-observability-log-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-log-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityTraceOrderingUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const preview = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Sort Runtime Observability", metadata: { version: "v13.5", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.traces.map((signal) => signal.category).join(",");
+    if (order !== expectedRuntimeObservabilityCategoryOrder()) throw new Error(`trace ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-observability-trace-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-trace-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityHealthOrderingUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const preview = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Sort Runtime Observability", metadata: { version: "v13.5", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.healthSignals.map((signal) => signal.category).join(",");
+    if (order !== expectedRuntimeObservabilityCategoryOrder()) throw new Error(`health ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-observability-health-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-health-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityAuditOrderingUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const preview = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Sort Runtime Observability", metadata: { version: "v13.5", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.auditSignals.map((signal) => signal.category).join(",");
+    if (order !== expectedRuntimeObservabilityCategoryOrder()) throw new Error(`audit ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-observability-audit-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-audit-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityFilteringUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const preview = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Filter Runtime Observability", metadata: { version: "v13.5", source: "filter", readonly: true, previewOnly: true } });
+    const signals = [...preview.metrics, ...preview.logs, ...preview.traces, ...preview.healthSignals, ...preview.auditSignals];
+    if (observabilityModule.findRuntimeObservabilitySignalsByCategory(signals, "approval-signals").length !== 5) throw new Error("observability category filter mismatch");
+    if (observabilityModule.findRuntimeObservabilitySignalsByCollectionPolicy(signals, "no-collection").length !== 55) throw new Error("observability collection policy filter mismatch");
+    if (observabilityModule.findBlockedRuntimeObservabilitySignals(signals).length !== 0) throw new Error("blocked observability filter mismatch");
+    if (observabilityModule.findPreviewOnlyRuntimeObservabilitySignals(signals).length !== 55) throw new Error("preview-only observability filter mismatch");
+    console.log("PASS controlled-runtime-observability-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityCompletenessUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const preview = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Score Runtime Observability", metadata: { version: "v13.5", source: "score", readonly: true, previewOnly: true } });
+    const signals = [...preview.metrics, ...preview.logs, ...preview.traces, ...preview.healthSignals, ...preview.auditSignals];
+    const score = observabilityModule.calculateControlledRuntimeObservabilityCompleteness(signals);
+    const empty = observabilityModule.calculateControlledRuntimeObservabilityCompleteness([]);
+    const unsafeScore = observabilityModule.calculateControlledRuntimeObservabilityCompleteness([{ ...signals[0], noCollection: false }]);
+    if (score.score !== 100 || score.level !== "ready-for-diagnostics-design") throw new Error(`observability score mismatch: ${JSON.stringify(score)}`);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty observability score mismatch: ${JSON.stringify(empty)}`);
+    if (unsafeScore.score !== 0 || unsafeScore.level !== "incomplete") throw new Error(`unsafe observability score mismatch: ${JSON.stringify(unsafeScore)}`);
+    console.log("PASS controlled-runtime-observability-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityRenderingUnit() {
+  try {
+    const observabilityModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeObservabilityPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = observabilityModule.createControlledRuntimeObservabilityPreview({ title: "Render Runtime Observability", metadata: { version: "v13.5", source: "render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledRuntimeObservabilityPreview(preview);
+    if (!rendered.includes("Controlled runtime observability preview: Render Runtime Observability") || !rendered.includes("No telemetry collection") || !rendered.includes("no log writing") || !rendered.includes("no trace emission") || !rendered.includes("metric count: 11") || !rendered.includes("audit signal count: 11")) throw new Error(`observability rendering mismatch: ${rendered}`);
+    console.log("PASS controlled-runtime-observability-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-runtime-observability"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled runtime observability preview") || !human.stdout.includes("telemetryCollectionAllowed: false") || !human.stdout.includes("metricCollectionAllowed: false") || !human.stdout.includes("logWritingAllowed: false") || !human.stdout.includes("traceEmissionAllowed: false")) throw new Error(`observability CLI output mismatch: status=${human.status} stdout=${human.stdout} stderr=${human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-runtime-observability", "--json"]);
+    const parsed = JSON.parse(json.stdout);
+    if (json.status !== 0 || parsed.telemetryCollectionAllowed !== false || parsed.metricCollectionAllowed !== false || parsed.logWritingAllowed !== false || parsed.traceEmissionAllowed !== false || parsed.eventEmissionAllowed !== false || parsed.runtimePersistenceAllowed !== false || parsed.runtimeExecutionAllowed !== false || parsed.metrics.length !== 11 || parsed.summary.completeness.level !== "ready-for-diagnostics-design") throw new Error(`observability JSON output mismatch: status=${json.status} stdout=${json.stdout} stderr=${json.stderr}`);
+    console.log("PASS controlled-runtime-observability-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeObservabilityHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-runtime-observability", "--help"]);
+    if (help.status !== 0) throw new Error(`observability help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, ["governance controlled-runtime-observability", "read-only", "preview-only", "stdout-only", "no-runtime-execution", "no-runtime-persistence", "no-telemetry-collection", "no-metric-collection", "no-log-writing", "no-trace-emission", "no-event-emission", "no-project-generation", "no-agent-execution", "collect telemetry", "collect metrics", "write logs", "emit traces", "emit events", "generate projects"]);
+    console.log("PASS controlled-runtime-observability-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-observability-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -33983,7 +34164,9 @@ const cliScenarioGroups = {
     runControlledRuntimeStateModelCliOutputUnit,
     runControlledRuntimeStateModelHelpOutputUnit,
     runControlledRuntimeEventModelCliOutputUnit,
-    runControlledRuntimeEventModelHelpOutputUnit
+    runControlledRuntimeEventModelHelpOutputUnit,
+    runControlledRuntimeObservabilityCliOutputUnit,
+    runControlledRuntimeObservabilityHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessCliOutputUnit,
@@ -34092,6 +34275,7 @@ const scenarioSuites = {
     runControlledRuntimeFlowRenderingUnit,
     runControlledRuntimeStateModelRenderingUnit,
     runControlledRuntimeEventModelRenderingUnit,
+    runControlledRuntimeObservabilityRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "runtime-architecture": [
@@ -34134,7 +34318,18 @@ const scenarioSuites = {
     runControlledRuntimeEventModelCompletenessUnit,
     runControlledRuntimeEventModelRenderingUnit,
     runControlledRuntimeEventModelCliOutputUnit,
-    runControlledRuntimeEventModelHelpOutputUnit
+    runControlledRuntimeEventModelHelpOutputUnit,
+    runControlledRuntimeObservabilityConsistencyUnit,
+    runControlledRuntimeObservabilityMetricOrderingUnit,
+    runControlledRuntimeObservabilityLogOrderingUnit,
+    runControlledRuntimeObservabilityTraceOrderingUnit,
+    runControlledRuntimeObservabilityHealthOrderingUnit,
+    runControlledRuntimeObservabilityAuditOrderingUnit,
+    runControlledRuntimeObservabilityFilteringUnit,
+    runControlledRuntimeObservabilityCompletenessUnit,
+    runControlledRuntimeObservabilityRenderingUnit,
+    runControlledRuntimeObservabilityCliOutputUnit,
+    runControlledRuntimeObservabilityHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessConsistencyUnit,
@@ -37764,6 +37959,39 @@ async function main() {
     failed += 1;
   }
   if (!runControlledRuntimeEventModelHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityMetricOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityLogOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityTraceOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityHealthOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityAuditOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeObservabilityHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

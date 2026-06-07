@@ -30,7 +30,7 @@ import {
   exportGovernanceCiSummary,
   renderGovernanceCiSummaryMarkdown
 } from "./repair/governanceCiSummary.js";
-import { renderCliControlledProjectGenerationApprovalBoundaryContract, renderCliControlledProjectGenerationContractAudit, renderCliControlledProjectGenerationContractBundle, renderCliControlledProjectGenerationDesignCompletionAudit, renderCliControlledProjectGenerationDesignContract, renderCliControlledProjectGenerationInputContract, renderCliControlledProjectGenerationMutationBoundaryContract, renderCliControlledProjectGenerationOutputContract, renderCliControlledProjectGenerationRuntimeBoundaryContract, renderCliControlledRuntimeArchitecturePreview, renderCliControlledRuntimeComponentContract, renderCliControlledRuntimeEventModelPreview, renderCliControlledRuntimeFlowPreview, renderCliControlledRuntimeStateModelPreview, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
+import { renderCliControlledProjectGenerationApprovalBoundaryContract, renderCliControlledProjectGenerationContractAudit, renderCliControlledProjectGenerationContractBundle, renderCliControlledProjectGenerationDesignCompletionAudit, renderCliControlledProjectGenerationDesignContract, renderCliControlledProjectGenerationInputContract, renderCliControlledProjectGenerationMutationBoundaryContract, renderCliControlledProjectGenerationOutputContract, renderCliControlledProjectGenerationRuntimeBoundaryContract, renderCliControlledRuntimeArchitecturePreview, renderCliControlledRuntimeComponentContract, renderCliControlledRuntimeEventModelPreview, renderCliControlledRuntimeFlowPreview, renderCliControlledRuntimeObservabilityPreview, renderCliControlledRuntimeStateModelPreview, renderCliGovernanceArtifactQueryResult, renderCliGovernanceArtifactReviewPack, renderCliGovernanceArtifactSnapshot, renderCliGovernanceConsolidationAudit, renderCliProjectGenerationApprovalPlanPreview, renderCliProjectGenerationBlueprintPreview, renderCliProjectGenerationCapabilityMap, renderCliProjectGenerationDependencyPlanPreview, renderCliProjectGenerationFilePlanPreview, renderCliProjectGenerationPlanBundlePreview, renderCliProjectGenerationReadinessAssessment, renderCliProjectGenerationReadinessCompletionAudit, renderCliProjectGenerationRiskPlanPreview, renderCliProjectGenerationRollbackPlanPreview, renderCliProjectGenerationValidationPlanPreview } from "./cli/render/cliArtifactRenderer.js";
 import { createGovernanceArtifactIndex } from "./governance/governanceArtifactIndex.js";
 import {
   createGovernanceArtifactExportContract,
@@ -145,6 +145,10 @@ import {
   createControlledRuntimeEventModelPreview,
   type ControlledRuntimeEventModelPreview
 } from "./governance/controlledRuntimeEventModelPreview.js";
+import {
+  createControlledRuntimeObservabilityPreview,
+  type ControlledRuntimeObservabilityPreview
+} from "./governance/controlledRuntimeObservabilityPreview.js";
 import {
   createControlledRuntimeStateModelPreview,
   type ControlledRuntimeStateModelPreview
@@ -556,6 +560,7 @@ import {
   renderGovernanceControlledRuntimeComponentsHelp,
   renderGovernanceControlledRuntimeFlowHelp,
   renderGovernanceControlledRuntimeEventModelHelp,
+  renderGovernanceControlledRuntimeObservabilityHelp,
   renderGovernanceControlledRuntimeStateModelHelp,
   renderGovernanceConsolidationAuditHelp,
   renderGovernanceProjectGenerationApprovalPlanHelp,
@@ -1366,6 +1371,19 @@ function buildControlledRuntimeEventModelPreview(): ControlledRuntimeEventModelP
   });
 }
 
+function buildControlledRuntimeObservabilityPreview(): ControlledRuntimeObservabilityPreview {
+  return createControlledRuntimeObservabilityPreview({
+    title: "Controlled Runtime Observability Preview",
+    metadata: {
+      version: "v13.5",
+      source: "controlled-runtime-observability-cli-preview",
+      command: "governance controlled-runtime-observability",
+      readonly: true,
+      previewOnly: true
+    }
+  });
+}
+
 function buildControlledProjectGenerationContractExportMetadata(format: ControlledProjectGenerationContractExportFormat, commandName: string) {
   return {
     version: "v12.9",
@@ -2021,6 +2039,29 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
       printAndExit(JSON.stringify(preview, null, 2), 0);
     }
     printAndExit(renderCliControlledRuntimeEventModelPreview(preview), 0);
+  }
+
+  if (command === "governance" && args[1] === "controlled-runtime-observability") {
+    const allowed = new Set(["--json", "--help", "-h"]);
+    for (const arg of args.slice(2)) {
+      if (!arg.startsWith("-")) {
+        continue;
+      }
+      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+      if (!allowed.has(flag)) {
+        printAndExit(renderInvalidFlagError("governance controlled-runtime-observability", flag), 1);
+      }
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      printAndExit(renderGovernanceControlledRuntimeObservabilityHelp(), 0);
+    }
+
+    const preview = buildControlledRuntimeObservabilityPreview();
+    if (args.includes("--json")) {
+      printAndExit(JSON.stringify(preview, null, 2), 0);
+    }
+    printAndExit(renderCliControlledRuntimeObservabilityPreview(preview), 0);
   }
 
   if (command === "governance" && args[1] === "artifact-index") {

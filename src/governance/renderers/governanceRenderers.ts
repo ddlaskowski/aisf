@@ -21,6 +21,7 @@ import type { ControlledRuntimeArchitectureComponent, ControlledRuntimeArchitect
 import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractEntry, ControlledRuntimeComponentContractSummary } from "../controlledRuntimeComponentContract.js";
 import type { ControlledRuntimeFlowPreview, ControlledRuntimeFlowStep, ControlledRuntimeFlowSummary, ControlledRuntimeFlowTransition } from "../controlledRuntimeFlowPreview.js";
 import type { ControlledRuntimeEventDefinition, ControlledRuntimeEventLifecycleMarker, ControlledRuntimeEventModelPreview, ControlledRuntimeEventModelSummary, ControlledRuntimeEventPayloadField } from "../controlledRuntimeEventModelPreview.js";
+import type { ControlledRuntimeAuditSignal, ControlledRuntimeHealthSignal, ControlledRuntimeLogDefinition, ControlledRuntimeMetricDefinition, ControlledRuntimeObservabilityPreview, ControlledRuntimeObservabilitySignal, ControlledRuntimeObservabilitySummary, ControlledRuntimeTraceDefinition } from "../controlledRuntimeObservabilityPreview.js";
 import type { ControlledRuntimeStateField, ControlledRuntimeStateModelPreview, ControlledRuntimeStateModelSummary, ControlledRuntimeStateSnapshot, ControlledRuntimeStateTransition } from "../controlledRuntimeStateModelPreview.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
@@ -2536,6 +2537,114 @@ export function renderControlledRuntimeEventModelPreview(preview: ControlledRunt
   ].join("\n");
 }
 
+export function renderControlledRuntimeObservabilitySummary(summary: ControlledRuntimeObservabilitySummary): string {
+  return [
+    "Controlled runtime observability summary:",
+    `- metric count: ${summary.totalMetrics}`,
+    `- log count: ${summary.totalLogs}`,
+    `- trace count: ${summary.totalTraces}`,
+    `- health signal count: ${summary.totalHealthSignals}`,
+    `- audit signal count: ${summary.totalAuditSignals}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- collection policies: ${renderRuntimeObservabilityCollectionPolicyGroups(summary.collectionPolicyDistribution)}`,
+    `- risk distribution: ${renderRuntimeObservabilityRiskGroups(summary.riskDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-collection: ${String(summary.noCollection)}`,
+    `- no-persistence: ${String(summary.noPersistence)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+function renderControlledRuntimeObservabilitySignal(signal: ControlledRuntimeObservabilitySignal): string {
+  return [
+    `Controlled runtime observability signal: ${signal.signalId}`,
+    `- category: ${signal.category}`,
+    `- title: ${signal.title}`,
+    `- description: ${signal.description}`,
+    `- signalType: ${signal.signalType}`,
+    `- collectionPolicy: ${signal.collectionPolicy}`,
+    `- visibility: ${signal.visibility}`,
+    `- riskLevel: ${signal.riskLevel}`,
+    `- status: ${signal.status}`,
+    `- blockedReason: ${signal.blockedReason ?? "none"}`,
+    `- read-only: ${String(signal.readonly)}`,
+    `- preview-only: ${String(signal.previewOnly)}`,
+    `- no-collection: ${String(signal.noCollection)}`,
+    `- no-persistence: ${String(signal.noPersistence)}`,
+    `- no-execution: ${String(signal.noExecution)}`,
+    renderWarnings(signal.warnings),
+    "Recommendations:",
+    ...(signal.recommendations.length === 0 ? ["- none"] : signal.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledRuntimeMetricDefinition(signal: ControlledRuntimeMetricDefinition): string {
+  return renderControlledRuntimeObservabilitySignal(signal);
+}
+
+export function renderControlledRuntimeLogDefinition(signal: ControlledRuntimeLogDefinition): string {
+  return renderControlledRuntimeObservabilitySignal(signal);
+}
+
+export function renderControlledRuntimeTraceDefinition(signal: ControlledRuntimeTraceDefinition): string {
+  return renderControlledRuntimeObservabilitySignal(signal);
+}
+
+export function renderControlledRuntimeHealthSignal(signal: ControlledRuntimeHealthSignal): string {
+  return renderControlledRuntimeObservabilitySignal(signal);
+}
+
+export function renderControlledRuntimeAuditSignal(signal: ControlledRuntimeAuditSignal): string {
+  return renderControlledRuntimeObservabilitySignal(signal);
+}
+
+export function renderControlledRuntimeObservabilityPreview(preview: ControlledRuntimeObservabilityPreview): string {
+  return [
+    `Controlled runtime observability preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- observabilityPreviewOnly: ${String(preview.observabilityPreviewOnly)}`,
+    `- runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+    `- telemetryCollectionAllowed: ${String(preview.telemetryCollectionAllowed)}`,
+    `- metricCollectionAllowed: ${String(preview.metricCollectionAllowed)}`,
+    `- logWritingAllowed: ${String(preview.logWritingAllowed)}`,
+    `- traceEmissionAllowed: ${String(preview.traceEmissionAllowed)}`,
+    `- eventEmissionAllowed: ${String(preview.eventEmissionAllowed)}`,
+    `- eventBusEnabled: ${String(preview.eventBusEnabled)}`,
+    `- eventListenersEnabled: ${String(preview.eventListenersEnabled)}`,
+    `- runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    `- agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    "Notice: read-only, preview-only runtime observability only. No telemetry collection, no metric collection, no log writing, no trace emission, no event emission, no event bus, no event listeners, no runtime persistence, no state persistence, no runtime execution, no runtime routing, no runtime orchestration, no runtime activation, no project generation, no builder-agent runtime, no agent execution, no file writing, no dependency installation, no policy enforcement, and no governance activation is enabled.",
+    renderMetadata(preview.metadata),
+    renderControlledRuntimeObservabilitySummary(preview.summary),
+    "Controlled runtime metrics:",
+    ...preview.metrics.map(renderControlledRuntimeMetricDefinition),
+    "Controlled runtime logs:",
+    ...preview.logs.map(renderControlledRuntimeLogDefinition),
+    "Controlled runtime traces:",
+    ...preview.traces.map(renderControlledRuntimeTraceDefinition),
+    "Controlled runtime health signals:",
+    ...preview.healthSignals.map(renderControlledRuntimeHealthSignal),
+    "Controlled runtime audit signals:",
+    ...preview.auditSignals.map(renderControlledRuntimeAuditSignal)
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -2614,6 +2723,16 @@ function renderRuntimeEventEmissionPolicyGroups(groups: readonly { key: string; 
 function renderRuntimeEventRiskGroups(groups: readonly { key: string; totalEvents: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEvents}`).join(", ");
+}
+
+function renderRuntimeObservabilityCollectionPolicyGroups(groups: readonly { key: string; totalSignals: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSignals}`).join(", ");
+}
+
+function renderRuntimeObservabilityRiskGroups(groups: readonly { key: string; totalSignals: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSignals}`).join(", ");
 }
 
 function renderInputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {

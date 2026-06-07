@@ -98,6 +98,7 @@ export function renderMainHelp(): string {
     "  node dist/cli.js governance controlled-runtime-flow",
     "  node dist/cli.js governance controlled-runtime-state-model",
     "  node dist/cli.js governance controlled-runtime-event-model",
+    "  node dist/cli.js governance controlled-runtime-observability",
     "  node dist/cli.js runs",
     "  node dist/cli.js insights --profile conservative",
     "  node dist/cli.js ci-summary --profile balanced",
@@ -205,6 +206,7 @@ export function renderGovernanceHelp(): string {
     "  node dist/cli.js governance controlled-runtime-flow",
     "  node dist/cli.js governance controlled-runtime-state-model",
     "  node dist/cli.js governance controlled-runtime-event-model",
+    "  node dist/cli.js governance controlled-runtime-observability",
     "",
     "Read-only guarantee:",
     "  Governance control plane reads governance data and does not modify repair behavior.",
@@ -1701,6 +1703,32 @@ export function renderGovernanceControlledRuntimeEventModelHelp(): string {
     "  It has no-runtime-execution, no-runtime-persistence, no-event-emission, no-event-bus, no-project-generation, and no-agent-execution.",
     "  It does not emit events, implement an event bus, register event listeners, execute runtime, activate runtime, persist runtime state, persist approval state, route runtime behavior, orchestrate runtime behavior, execute flows, execute contracts, generate projects, run builder agents, execute agents, create files, write files, install dependencies, mutate package.json, enforce policy, activate governance, or change repair orchestration.",
     "  Controlled runtime event model previews do not write files by default.",
+    "",
+    renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
+  ].join("\n") + "\n";
+}
+
+export function renderGovernanceControlledRuntimeObservabilityHelp(): string {
+  return [
+    "# AI Software Factory CLI - governance controlled-runtime-observability",
+    "",
+    "Usage:",
+    "  node dist/cli.js governance controlled-runtime-observability [options]",
+    "",
+    "Options:",
+    "  --json      Print deterministic controlled runtime observability preview output",
+    "  --help, -h  Show help",
+    "",
+    "Examples:",
+    "  node dist/cli.js governance controlled-runtime-observability",
+    "  node dist/cli.js governance controlled-runtime-observability --json",
+    "",
+    "Controlled runtime observability preview:",
+    "  This command describes future controlled runtime metric definitions, log definitions, trace definitions, health signals, audit signals, visibility, collection policies, and diagnostics boundaries as deterministic data only.",
+    "  This is read-only, preview-only, and stdout-only.",
+    "  It has no-runtime-execution, no-runtime-persistence, no-telemetry-collection, no-metric-collection, no-log-writing, no-trace-emission, no-event-emission, no-project-generation, and no-agent-execution.",
+    "  It does not collect telemetry, collect metrics, write logs, emit traces, emit events, implement an event bus, register event listeners, execute runtime, activate runtime, persist runtime state, persist approval state, route runtime behavior, orchestrate runtime behavior, execute flows, execute contracts, generate projects, run builder agents, execute agents, create files, write files, install dependencies, mutate package.json, enforce policy, activate governance, or change repair orchestration.",
+    "  Controlled runtime observability previews do not write files by default.",
     "",
     renderCliSection("Read-only notice", [renderReadonlyNotice(true)])
   ].join("\n") + "\n";

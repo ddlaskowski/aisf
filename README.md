@@ -12389,6 +12389,121 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v13.5 - Controlled Runtime Observability Preview Layer
+
+v13.5 adds a deterministic, read-only runtime observability preview for the future Controlled Runtime Architecture. It describes future metric definitions, log definitions, trace definitions, health signals, audit signals, visibility, collection policies, and diagnostics boundaries without collecting telemetry, collecting metrics, writing logs, emitting traces, emitting events, implementing event buses, registering listeners, persisting runtime state, executing runtime behavior, routing, orchestration, activation, project generation, builder agents, agent execution, file writing, dependency installation, package mutation, policy enforcement, governance activation, or autonomous behavior.
+
+Controlled runtime observability preview:
+
+* `src/governance/controlledRuntimeObservabilityPreview.ts` adds `ControlledRuntimeObservabilityPreview`, `ControlledRuntimeMetricDefinition`, `ControlledRuntimeLogDefinition`, `ControlledRuntimeTraceDefinition`, `ControlledRuntimeHealthSignal`, `ControlledRuntimeAuditSignal`, `ControlledRuntimeObservabilitySummary`, `createControlledRuntimeObservabilityPreview`, `summarizeControlledRuntimeObservabilityPreview`, and `calculateControlledRuntimeObservabilityCompleteness`.
+* Observability previews explicitly preserve read-only, preview-only, stdout-only, observability-preview-only, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-state-persistence, no-telemetry-collection, no-metric-collection, no-log-writing, no-trace-emission, no-event-emission, no-event-bus, no-event-listeners, no-flow-execution, no-project-generation, no-builder-agent-runtime, no-agent-execution, no-approval-execution, no-mutation-execution, no-input-execution, no-output-execution, no-contract-execution, no-file-writing, no-file-creation, no-dependency-installation, no-package-mutation, no-generated-project-validation, no-policy-enforcement, and no-governance-activation guarantees.
+
+Observability categories:
+
+* `intake-signals`
+* `contract-signals`
+* `flow-signals`
+* `approval-signals`
+* `generation-signals`
+* `validation-signals`
+* `review-signals`
+* `export-signals`
+* `audit-signals`
+* `error-signals`
+* `completion-signals`
+
+Observability helpers:
+
+* `createRuntimeMetricDefinition`
+* `createRuntimeLogDefinition`
+* `createRuntimeTraceDefinition`
+* `createRuntimeHealthSignal`
+* `createRuntimeAuditSignal`
+* `sortRuntimeMetricDefinitions`
+* `sortRuntimeLogDefinitions`
+* `sortRuntimeTraceDefinitions`
+* `sortRuntimeHealthSignals`
+* `sortRuntimeAuditSignals`
+* `findRuntimeObservabilitySignalsByCategory`
+* `findRuntimeObservabilitySignalsByCollectionPolicy`
+* `findBlockedRuntimeObservabilitySignals`
+* `findPreviewOnlyRuntimeObservabilitySignals`
+
+Completeness scoring:
+
+* `calculateControlledRuntimeObservabilityCompleteness` deterministically computes a 0-100 advisory observability completeness score.
+* Completeness levels are `incomplete`, `partial`, `observability-defined`, and `ready-for-diagnostics-design`.
+* Scoring is advisory only and does not collect telemetry, collect metrics, write logs, emit traces, emit events, persist state, execute runtime, route runtime behavior, orchestrate runtime behavior, activate runtime, enforce policy, generate projects, run agents, mutate files, write files, or change repair orchestration.
+
+Runtime observability rendering:
+
+* `renderControlledRuntimeObservabilityPreview` renders the observability title, invariant flags, metadata, summary, metric definitions, log definitions, trace definitions, health signals, audit signals, collection policies, warnings, and recommendations.
+* `renderControlledRuntimeObservabilitySummary` renders deterministic metric counts, log counts, trace counts, health counts, audit counts, blocked counts, preview-only counts, collection policy distribution, risk distribution, completeness score, no-collection guarantees, no-persistence guarantees, and no-execution guarantees.
+* `renderControlledRuntimeMetricDefinition`, `renderControlledRuntimeLogDefinition`, `renderControlledRuntimeTraceDefinition`, `renderControlledRuntimeHealthSignal`, and `renderControlledRuntimeAuditSignal` render stable signal details.
+* `renderCliControlledRuntimeObservabilityPreview` and `renderCliControlledRuntimeObservabilitySummary` provide equivalent CLI-safe deterministic output.
+
+CLI runtime observability preview:
+
+```powershell
+node dist\cli.js governance controlled-runtime-observability
+node dist\cli.js governance controlled-runtime-observability --json
+```
+
+Controlled runtime observability previews print to stdout only. They do not collect telemetry, collect metrics, write logs, emit traces, emit events, implement event buses, register event listeners, write files, create files, scaffold files, install dependencies, mutate packages, persist runtime state, persist approval state, route runtime behavior, orchestrate runtime behavior, execute runtime behavior, activate runtime behavior, execute flows, execute contracts, execute generated-project validation, generate projects, implement builder agents, execute agents, execute approvals, execute mutations, enforce policies, activate governance, or change repair orchestration.
+
+v13.5 deterministic checks:
+
+* controlled-runtime-observability-consistency
+* controlled-runtime-observability-metric-ordering
+* controlled-runtime-observability-log-ordering
+* controlled-runtime-observability-trace-ordering
+* controlled-runtime-observability-health-ordering
+* controlled-runtime-observability-audit-ordering
+* controlled-runtime-observability-filtering
+* controlled-runtime-observability-completeness
+* controlled-runtime-observability-rendering
+* controlled-runtime-observability-cli-output
+* controlled-runtime-observability-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite runtime-architecture
+node scripts\run-scenarios.js --suite cli --cli-scope governance
+node scripts\run-scenarios.js --suite renderers
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no telemetry collection is introduced
+* no metric collection is introduced
+* no log writing is introduced
+* no trace emission is introduced
+* no event emission is introduced
+* no event bus is introduced
+* no event listeners are introduced
+* no runtime persistence is introduced
+* no state persistence is introduced
+* no runtime execution is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no project generation is introduced
+* no builder agents are introduced
+* no agent execution is introduced
+* no file creation is introduced
+* no file writing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 ## v13.4 - Controlled Runtime Event Model Preview Layer
 
 v13.4 adds a deterministic, read-only runtime event model preview for the future Controlled Runtime Architecture. It describes future event definitions, event categories, payload fields, lifecycle markers, and emission policies without implementing event emission, event buses, event listeners, runtime persistence, state persistence, runtime execution, routing, orchestration, activation, project generation, builder agents, agent execution, file writing, dependency installation, package mutation, policy enforcement, governance activation, or autonomous behavior.
