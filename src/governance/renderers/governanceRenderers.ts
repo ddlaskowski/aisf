@@ -10,6 +10,7 @@ import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSection,
 import type { ControlledProjectGenerationApprovalBoundary, ControlledProjectGenerationApprovalBoundaryContract, ControlledProjectGenerationApprovalBoundarySummary } from "../controlledProjectGenerationApprovalBoundaryContract.js";
 import type { ControlledProjectGenerationContractAudit, ControlledProjectGenerationContractAuditSection, ControlledProjectGenerationContractAuditSummary } from "../controlledProjectGenerationContractAudit.js";
 import type { ControlledProjectGenerationContractBundle, ControlledProjectGenerationContractBundleSection, ControlledProjectGenerationContractBundleSummary } from "../controlledProjectGenerationContractBundle.js";
+import type { ControlledProjectGenerationContractExportPayload, ControlledProjectGenerationContractExportSummary } from "../controlledProjectGenerationContractExport.js";
 import type { ControlledProjectGenerationContractSection, ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary, ControlledProjectGenerationInputField } from "../controlledProjectGenerationInputContract.js";
 import type { ControlledProjectGenerationMutationBoundary, ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../controlledProjectGenerationMutationBoundaryContract.js";
@@ -1864,6 +1865,69 @@ export function renderControlledProjectGenerationContractAudit(audit: Controlled
     renderMetadata(audit.metadata),
     renderControlledProjectGenerationContractAuditSummary(audit.summary),
     ...sections
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationContractExportSummary(summary: ControlledProjectGenerationContractExportSummary): string {
+  return [
+    "Controlled project generation contract export summary:",
+    `- format: ${summary.format}`,
+    `- dataType: ${summary.dataType}`,
+    `- included contract sections: ${summary.includedContractSections.join(", ") || "none"}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- stdout-only: ${String(summary.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(summary.fileWriteAllowed)}`,
+    `- contractExecutionAllowed: ${String(summary.contractExecutionAllowed)}`,
+    `- contractBundleExecutionAllowed: ${String(summary.contractBundleExecutionAllowed)}`,
+    `- contractAuditExecutionAllowed: ${String(summary.contractAuditExecutionAllowed)}`,
+    `- runtimeExecutionAllowed: ${String(summary.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(summary.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(summary.runtimeRoutingAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(summary.runtimePersistenceAllowed)}`,
+    `- projectGenerationEnabled: ${String(summary.projectGenerationEnabled)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationContractExportPayload(payload: ControlledProjectGenerationContractExportPayload<unknown>): string {
+  return [
+    `Controlled project generation contract export payload: ${payload.title}`,
+    `- schemaVersion: ${payload.schemaVersion}`,
+    `- format: ${payload.format}`,
+    `- dataType: ${payload.dataType}`,
+    `- readonly: ${String(payload.readonly)}`,
+    `- previewOnly: ${String(payload.previewOnly)}`,
+    `- stdoutOnly: ${String(payload.stdoutOnly)}`,
+    `- fileWriteAllowed: ${String(payload.fileWriteAllowed)}`,
+    `- contractExecutionAllowed: ${String(payload.contractExecutionAllowed)}`,
+    `- contractBundleExecutionAllowed: ${String(payload.contractBundleExecutionAllowed)}`,
+    `- contractAuditExecutionAllowed: ${String(payload.contractAuditExecutionAllowed)}`,
+    `- runtimeExecutionAllowed: ${String(payload.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(payload.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(payload.runtimeRoutingAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(payload.runtimePersistenceAllowed)}`,
+    `- approvalExecutionAllowed: ${String(payload.approvalExecutionAllowed)}`,
+    `- approvalPersistenceAllowed: ${String(payload.approvalPersistenceAllowed)}`,
+    `- mutationExecutionAllowed: ${String(payload.mutationExecutionAllowed)}`,
+    `- mutationExpansionAllowed: ${String(payload.mutationExpansionAllowed)}`,
+    `- outputExecutionAllowed: ${String(payload.outputExecutionAllowed)}`,
+    `- inputExecutionAllowed: ${String(payload.inputExecutionAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(payload.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(payload.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(payload.riskEnforcementAllowed)}`,
+    `- validationExecutionAllowed: ${String(payload.validationExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(payload.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(payload.packageMutationAllowed)}`,
+    `- fileCreationAllowed: ${String(payload.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(payload.scaffoldGenerationEnabled)}`,
+    `- projectGenerationEnabled: ${String(payload.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(payload.builderAgentRuntimeEnabled)}`,
+    "Notice: stdout-only export preview; no file writes, no contract execution, no contract bundle execution, no contract audit execution, no runtime execution, no project generation, no approval execution, no mutation execution, no dependency installation, no package mutation, no file creation, and no scaffold generation is enabled.",
+    renderMetadata(payload.metadata),
+    renderControlledProjectGenerationContractExportSummary(payload.summary)
   ].join("\n");
 }
 

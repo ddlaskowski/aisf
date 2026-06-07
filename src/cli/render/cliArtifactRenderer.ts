@@ -10,6 +10,7 @@ import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary 
 import type { ControlledProjectGenerationApprovalBoundaryContract, ControlledProjectGenerationApprovalBoundarySummary } from "../../governance/controlledProjectGenerationApprovalBoundaryContract.js";
 import type { ControlledProjectGenerationContractAudit, ControlledProjectGenerationContractAuditSummary } from "../../governance/controlledProjectGenerationContractAudit.js";
 import type { ControlledProjectGenerationContractBundle, ControlledProjectGenerationContractBundleSummary } from "../../governance/controlledProjectGenerationContractBundle.js";
+import type { ControlledProjectGenerationContractExportPayload, ControlledProjectGenerationContractExportSummary } from "../../governance/controlledProjectGenerationContractExport.js";
 import type { ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../../governance/controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary } from "../../governance/controlledProjectGenerationInputContract.js";
 import type { ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../../governance/controlledProjectGenerationMutationBoundaryContract.js";
@@ -1448,6 +1449,73 @@ export function renderCliControlledProjectGenerationContractAudit(audit: Control
     renderCliSection("CLI scope coverage", audit.cliScopeCoverage),
     renderCliSection("Scenario coverage", audit.scenarioCoverage),
     renderReadonlyNotice(audit.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationContractExportSummary(summary: ControlledProjectGenerationContractExportSummary): string {
+  return [
+    renderCliSection("Controlled project generation contract export summary", [
+      `format: ${summary.format}`,
+      `dataType: ${summary.dataType}`,
+      `included contract sections: ${summary.includedContractSections.join(", ") || "none"}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `stdout-only: ${String(summary.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(summary.fileWriteAllowed)}`,
+      `contractExecutionAllowed: ${String(summary.contractExecutionAllowed)}`,
+      `contractBundleExecutionAllowed: ${String(summary.contractBundleExecutionAllowed)}`,
+      `contractAuditExecutionAllowed: ${String(summary.contractAuditExecutionAllowed)}`,
+      `runtimeExecutionAllowed: ${String(summary.runtimeExecutionAllowed)}`,
+      `runtimeActivationAllowed: ${String(summary.runtimeActivationAllowed)}`,
+      `runtimeRoutingAllowed: ${String(summary.runtimeRoutingAllowed)}`,
+      `runtimePersistenceAllowed: ${String(summary.runtimePersistenceAllowed)}`,
+      `projectGenerationEnabled: ${String(summary.projectGenerationEnabled)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationContractExportPayload(payload: ControlledProjectGenerationContractExportPayload<unknown>): string {
+  return [
+    renderCliSection("Controlled project generation contract export payload", [
+      `title: ${payload.title}`,
+      `schemaVersion: ${payload.schemaVersion}`,
+      `format: ${payload.format}`,
+      `dataType: ${payload.dataType}`,
+      `readonly: ${String(payload.readonly)}`,
+      `previewOnly: ${String(payload.previewOnly)}`,
+      `stdoutOnly: ${String(payload.stdoutOnly)}`,
+      `fileWriteAllowed: ${String(payload.fileWriteAllowed)}`,
+      `contractExecutionAllowed: ${String(payload.contractExecutionAllowed)}`,
+      `contractBundleExecutionAllowed: ${String(payload.contractBundleExecutionAllowed)}`,
+      `contractAuditExecutionAllowed: ${String(payload.contractAuditExecutionAllowed)}`,
+      `runtimeExecutionAllowed: ${String(payload.runtimeExecutionAllowed)}`,
+      `runtimeActivationAllowed: ${String(payload.runtimeActivationAllowed)}`,
+      `runtimeRoutingAllowed: ${String(payload.runtimeRoutingAllowed)}`,
+      `runtimePersistenceAllowed: ${String(payload.runtimePersistenceAllowed)}`,
+      `approvalExecutionAllowed: ${String(payload.approvalExecutionAllowed)}`,
+      `approvalPersistenceAllowed: ${String(payload.approvalPersistenceAllowed)}`,
+      `mutationExecutionAllowed: ${String(payload.mutationExecutionAllowed)}`,
+      `mutationExpansionAllowed: ${String(payload.mutationExpansionAllowed)}`,
+      `outputExecutionAllowed: ${String(payload.outputExecutionAllowed)}`,
+      `inputExecutionAllowed: ${String(payload.inputExecutionAllowed)}`,
+      `rollbackExecutionAllowed: ${String(payload.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(payload.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(payload.riskEnforcementAllowed)}`,
+      `validationExecutionAllowed: ${String(payload.validationExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(payload.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(payload.packageMutationAllowed)}`,
+      `fileCreationAllowed: ${String(payload.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(payload.scaffoldGenerationEnabled)}`,
+      `projectGenerationEnabled: ${String(payload.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(payload.builderAgentRuntimeEnabled)}`,
+      "notice: stdout-only export preview; no file writes, no contract execution, no contract bundle execution, no contract audit execution, no runtime execution, no project generation, no approval execution, no mutation execution, no dependency installation, no package mutation, no file creation, and no scaffold generation is enabled"
+    ]),
+    renderCliMetadata(payload.metadata),
+    renderCliControlledProjectGenerationContractExportSummary(payload.summary),
+    renderCliSection("Included contract sections", payload.includedContractSections),
+    renderReadonlyNotice(payload.previewOnly)
   ].join("\n");
 }
 

@@ -32652,6 +32652,140 @@ function runControlledProjectGenerationContractAuditHelpOutputUnit() {
   }
 }
 
+function runControlledProjectGenerationContractExportConsistencyUnit() {
+  try {
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationContractExport.js"));
+    const auditModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationContractAudit.js"));
+    const audit = auditModule.createControlledProjectGenerationContractAudit({ title: "Export Audit", metadata: { version: "v12.9", source: "export-consistency", readonly: true, previewOnly: true } });
+    const metadata = { version: "v12.9", source: "unit", command: "governance controlled-project-generation-contract-audit --export json", readonly: true, previewOnly: true };
+    const first = exportModule.createControlledProjectGenerationContractExportPayload({ title: "Unit Export", format: "json", dataType: "contract-audit", metadata, data: audit });
+    const second = exportModule.createControlledProjectGenerationContractExportPayload({ title: "Unit Export", format: "json", dataType: "contract-audit", metadata, data: audit });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled contract export payload is not deterministic");
+    if (first.fileWriteAllowed !== false || first.contractExecutionAllowed !== false || first.contractBundleExecutionAllowed !== false || first.contractAuditExecutionAllowed !== false || first.runtimeExecutionAllowed !== false || first.projectGenerationEnabled !== false) throw new Error("controlled contract export invariant flags changed");
+    if (!first.includedContractSections.includes("contractAudit") || first.summary.stdoutOnly !== true || first.summary.previewOnly !== true) throw new Error("controlled contract export summary lost required guarantees");
+    console.log("PASS controlled-project-generation-contract-export-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-export-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractExportJsonUnit() {
+  try {
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationContractExport.js"));
+    const auditModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationContractAudit.js"));
+    const audit = auditModule.createControlledProjectGenerationContractAudit({ title: "JSON Export Audit", metadata: { version: "v12.9", source: "json-export", readonly: true, previewOnly: true } });
+    const metadata = { version: "v12.9", source: "json-unit", command: "governance controlled-project-generation-contract-audit --export json", readonly: true, previewOnly: true };
+    const first = exportModule.exportControlledProjectGenerationContractAuditAsJson(audit, metadata);
+    const second = exportModule.exportControlledProjectGenerationContractAuditAsJson(audit, metadata);
+    const parsed = JSON.parse(first);
+    if (first !== second) throw new Error("controlled contract audit JSON export is not deterministic");
+    if (parsed.format !== "json" || parsed.dataType !== "contract-audit" || parsed.fileWriteAllowed !== false || parsed.contractAuditExecutionAllowed !== false || parsed.data.contractAuditExecutionAllowed !== false) throw new Error(`controlled contract audit JSON export mismatch: ${first}`);
+    console.log("PASS controlled-project-generation-contract-export-json");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-export-json");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractExportMarkdownUnit() {
+  try {
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationContractExport.js"));
+    const bundleModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationContractBundle.js"));
+    const bundle = bundleModule.createControlledProjectGenerationContractBundle({ title: "Markdown Export Bundle", metadata: { version: "v12.9", source: "markdown-export", readonly: true, previewOnly: true } });
+    const metadata = { version: "v12.9", source: "markdown-unit", command: "governance controlled-project-generation-contract-bundle --export markdown", readonly: true, previewOnly: true };
+    const first = exportModule.exportControlledProjectGenerationContractBundleAsMarkdown(bundle, metadata);
+    const second = exportModule.exportControlledProjectGenerationContractBundleAsMarkdown(bundle, metadata);
+    if (first !== second) throw new Error("controlled contract bundle Markdown export is not deterministic");
+    if (!first.includes("# Controlled Project Generation Contract Bundle Export Preview") || !first.includes("- format: markdown") || !first.includes("- fileWriteAllowed: false") || !first.includes("- no contract execution") || !first.includes("Controlled project generation contract bundle: Markdown Export Bundle")) throw new Error(`controlled contract bundle Markdown export mismatch: ${first}`);
+    console.log("PASS controlled-project-generation-contract-export-markdown");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-export-markdown");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractExportRenderingUnit() {
+  try {
+    const exportModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationContractExport.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const payload = exportModule.createControlledProjectGenerationContractExportPayload({
+      title: "Render Export",
+      format: "json",
+      dataType: "contract-stack",
+      metadata: { version: "v12.9", source: "render-export", readonly: true, previewOnly: true },
+      data: exportModule.createControlledProjectGenerationContractStack()
+    });
+    const rendered = renderers.renderControlledProjectGenerationContractExportPayload(payload);
+    const cliArtifact = require(path.join(projectRoot, "dist", "cli", "render", "cliArtifactRenderer.js"));
+    const cliRendered = cliArtifact.renderCliControlledProjectGenerationContractExportPayload(payload);
+    if (!rendered.includes("Controlled project generation contract export payload: Render Export") || !rendered.includes("contractExecutionAllowed: false") || !rendered.includes("no file writes")) throw new Error(`controlled contract export rendering mismatch: ${rendered}`);
+    if (!cliRendered.includes("Controlled project generation contract export payload") || !cliRendered.includes("stdout-only export preview") || !cliRendered.includes("contractAuditExecutionAllowed: false")) throw new Error(`controlled contract export CLI rendering mismatch: ${cliRendered}`);
+    console.log("PASS controlled-project-generation-contract-export-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-export-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractExportCliOutputUnit() {
+  try {
+    const auditJson = runCliHelpCommand(["governance", "controlled-project-generation-contract-audit", "--export", "json"]);
+    if (auditJson.status !== 0) throw new Error(`contract audit export json failed: ${auditJson.stderr || auditJson.stdout}`);
+    const parsed = JSON.parse(auditJson.stdout);
+    if (parsed.format !== "json" || parsed.dataType !== "contract-audit" || parsed.fileWriteAllowed !== false || parsed.contractExecutionAllowed !== false || parsed.contractAuditExecutionAllowed !== false || parsed.projectGenerationEnabled !== false) throw new Error(`contract audit export json mismatch: ${auditJson.stdout}`);
+    const auditMarkdown = runCliHelpCommand(["governance", "controlled-project-generation-contract-audit", "--export", "markdown"]);
+    if (auditMarkdown.status !== 0 || !auditMarkdown.stdout.includes("# Controlled Project Generation Contract Audit Export Preview") || !auditMarkdown.stdout.includes("- no file writes by default") || !auditMarkdown.stdout.includes("Controlled project generation contract audit:")) throw new Error(`contract audit export markdown mismatch: ${auditMarkdown.stdout || auditMarkdown.stderr}`);
+    const bundleJson = runCliHelpCommand(["governance", "controlled-project-generation-contract-bundle", "--export", "json"]);
+    const bundleParsed = JSON.parse(bundleJson.stdout);
+    if (bundleJson.status !== 0 || bundleParsed.dataType !== "contract-bundle" || bundleParsed.contractBundleExecutionAllowed !== false || bundleParsed.data.contractBundleExecutionAllowed !== false) throw new Error(`contract bundle export json mismatch: ${bundleJson.stdout || bundleJson.stderr}`);
+    console.log("PASS controlled-project-generation-contract-export-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-export-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationContractExportHelpOutputUnit() {
+  try {
+    const auditHelp = runCliHelpCommand(["governance", "controlled-project-generation-contract-audit", "--help"]);
+    const bundleHelp = runCliHelpCommand(["governance", "controlled-project-generation-contract-bundle", "--help"]);
+    for (const help of [auditHelp, bundleHelp]) {
+      if (help.status !== 0) throw new Error(`contract export help command failed: ${help.stderr || help.stdout}`);
+      assertHelpIncludes(help.stdout, [
+        "--export <json|markdown>",
+        "preview-only",
+        "read-only",
+        "stdout-only",
+        "do not write files by default",
+        "no runtime execution",
+        "no contract execution",
+        "no project generation",
+        "install dependencies",
+        "mutate package.json",
+        "activate governance",
+        "enforce policy"
+      ]);
+    }
+    console.log("PASS controlled-project-generation-contract-export-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-contract-export-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -32800,11 +32934,13 @@ function runCliScopeFilteringConsistencyUnit() {
 function runCliScopeControlledGenerationSelectionUnit() {
   try {
     const names = getCheckNames(selectCliScenarioChecks("controlled-generation"));
-    if (names.length !== 16) throw new Error(`controlled-generation CLI scope expected 16 checks, got ${names.length}`);
+    if (names.length !== 18) throw new Error(`controlled-generation CLI scope expected 18 checks, got ${names.length}`);
     if (!names.includes("runControlledProjectGenerationContractBundleCliOutputUnit")) throw new Error("controlled-generation CLI scope missing bundle CLI output check");
     if (!names.includes("runControlledProjectGenerationContractBundleHelpOutputUnit")) throw new Error("controlled-generation CLI scope missing bundle help check");
     if (!names.includes("runControlledProjectGenerationContractAuditCliOutputUnit")) throw new Error("controlled-generation CLI scope missing audit CLI output check");
     if (!names.includes("runControlledProjectGenerationContractAuditHelpOutputUnit")) throw new Error("controlled-generation CLI scope missing audit help check");
+    if (!names.includes("runControlledProjectGenerationContractExportCliOutputUnit")) throw new Error("controlled-generation CLI scope missing export CLI output check");
+    if (!names.includes("runControlledProjectGenerationContractExportHelpOutputUnit")) throw new Error("controlled-generation CLI scope missing export help check");
     if (names.some((name) => name.startsWith("runProjectGeneration") && !name.startsWith("runControlledProjectGeneration"))) throw new Error(`controlled-generation CLI scope included project-generation checks: ${names.join(", ")}`);
     console.log("PASS cli-scope-controlled-generation-selection");
     return true;
@@ -32917,7 +33053,9 @@ const cliScenarioGroups = {
     runControlledProjectGenerationContractBundleCliOutputUnit,
     runControlledProjectGenerationContractBundleHelpOutputUnit,
     runControlledProjectGenerationContractAuditCliOutputUnit,
-    runControlledProjectGenerationContractAuditHelpOutputUnit
+    runControlledProjectGenerationContractAuditHelpOutputUnit,
+    runControlledProjectGenerationContractExportCliOutputUnit,
+    runControlledProjectGenerationContractExportHelpOutputUnit
   ],
   general: [
     runCliRenderConsistencyUnit,
@@ -33033,6 +33171,7 @@ const scenarioSuites = {
     runControlledProjectGenerationRuntimeBoundaryRenderingUnit,
     runControlledProjectGenerationContractBundleRenderingUnit,
     runControlledProjectGenerationContractAuditRenderingUnit,
+    runControlledProjectGenerationContractExportRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -33161,7 +33300,13 @@ const scenarioSuites = {
     runControlledProjectGenerationContractAuditCompletenessUnit,
     runControlledProjectGenerationContractAuditRenderingUnit,
     runControlledProjectGenerationContractAuditCliOutputUnit,
-    runControlledProjectGenerationContractAuditHelpOutputUnit
+    runControlledProjectGenerationContractAuditHelpOutputUnit,
+    runControlledProjectGenerationContractExportConsistencyUnit,
+    runControlledProjectGenerationContractExportJsonUnit,
+    runControlledProjectGenerationContractExportMarkdownUnit,
+    runControlledProjectGenerationContractExportRenderingUnit,
+    runControlledProjectGenerationContractExportCliOutputUnit,
+    runControlledProjectGenerationContractExportHelpOutputUnit
   ],
   "controlled-generation": [
     runControlledProjectGenerationContractConsistencyUnit,
@@ -33216,7 +33361,13 @@ const scenarioSuites = {
     runControlledProjectGenerationContractAuditCompletenessUnit,
     runControlledProjectGenerationContractAuditRenderingUnit,
     runControlledProjectGenerationContractAuditCliOutputUnit,
-    runControlledProjectGenerationContractAuditHelpOutputUnit
+    runControlledProjectGenerationContractAuditHelpOutputUnit,
+    runControlledProjectGenerationContractExportConsistencyUnit,
+    runControlledProjectGenerationContractExportJsonUnit,
+    runControlledProjectGenerationContractExportMarkdownUnit,
+    runControlledProjectGenerationContractExportRenderingUnit,
+    runControlledProjectGenerationContractExportCliOutputUnit,
+    runControlledProjectGenerationContractExportHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -36483,6 +36634,24 @@ async function main() {
     failed += 1;
   }
   if (!runControlledProjectGenerationContractAuditHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractExportConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractExportJsonUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractExportMarkdownUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractExportRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractExportCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationContractExportHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

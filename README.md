@@ -12181,6 +12181,102 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v12.9 - Controlled Generation Contract Export Preview Layer
+
+v12.9 adds deterministic, read-only export preview helpers for the Controlled Project Generation design-era contract stack. Export previews support future review dashboards, documentation, and approval workflows before any controlled generation runtime exists. They do not write files by default, execute contracts, execute contract bundles, execute contract audits, execute runtime behavior, activate runtime behavior, route runtime behavior, persist runtime state, generate projects, scaffold files, create files, install dependencies, mutate packages, execute approvals, persist approvals, enforce risks, execute rollback/recovery, or change repair orchestration.
+
+Controlled generation contract export model:
+
+* `src/governance/controlledProjectGenerationContractExport.ts` adds `ControlledProjectGenerationContractExportFormat`, `ControlledProjectGenerationContractExportPayload`, `ControlledProjectGenerationContractExportSummary`, `ControlledProjectGenerationContractStack`, `createControlledProjectGenerationContractExportPayload`, and `summarizeControlledProjectGenerationContractExport`.
+* Supported formats are `json` and `markdown`.
+* Export payloads explicitly preserve read-only, preview-only, stdout-only, no-file-write, no-contract-execution, no-contract-bundle-execution, no-contract-audit-execution, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-persistence, no-approval-execution, no-approval-persistence, no-mutation-execution, no-mutation-expansion, no-input-execution, no-output-execution, no-rollback-execution, no-recovery-execution, no-risk-enforcement, no-validation-execution, no-dependency-installation, no-package-mutation, no-file-creation, no-scaffold-generation, no-project-generation, and no-builder-agent-runtime guarantees.
+
+Export helpers:
+
+* `exportControlledProjectGenerationContractBundleAsJson`
+* `exportControlledProjectGenerationContractBundleAsMarkdown`
+* `exportControlledProjectGenerationContractAuditAsJson`
+* `exportControlledProjectGenerationContractAuditAsMarkdown`
+* `exportControlledProjectGenerationContractStackAsJson`
+* `exportControlledProjectGenerationContractStackAsMarkdown`
+
+Export rendering:
+
+* `renderControlledProjectGenerationContractExportSummary` renders deterministic format, data type, included sections, read-only/no-write/no-execution guarantees, warnings, and recommendations.
+* `renderControlledProjectGenerationContractExportPayload` renders stable export payload metadata and explicit no-runtime/no-project-generation/no-contract-execution notices.
+* `renderCliControlledProjectGenerationContractExportSummary` and `renderCliControlledProjectGenerationContractExportPayload` provide equivalent CLI-safe deterministic output.
+
+CLI export previews:
+
+```powershell
+node dist\cli.js governance controlled-project-generation-contract-audit --export json
+node dist\cli.js governance controlled-project-generation-contract-audit --export markdown
+node dist\cli.js governance controlled-project-generation-contract-bundle --export json
+node dist\cli.js governance controlled-project-generation-contract-bundle --export markdown
+```
+
+Export previews print to stdout only. They do not write files, create files, scaffold files, execute runtime behavior, activate runtime behavior, route runtime behavior, persist runtime state, execute contracts, execute contract audits, execute contract bundles, execute approvals, persist approval state, execute mutations, expand mutation capability, execute inputs, execute outputs, execute rollback, execute recovery, enforce risks, execute validation commands, mutate packages, install dependencies, mutate state, generate projects, implement builder agents, activate governance, enforce policy, or change repair orchestration.
+
+v12.9 deterministic checks:
+
+* controlled-project-generation-contract-export-consistency
+* controlled-project-generation-contract-export-json
+* controlled-project-generation-contract-export-markdown
+* controlled-project-generation-contract-export-rendering
+* controlled-project-generation-contract-export-cli-output
+* controlled-project-generation-contract-export-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite controlled-generation
+node scripts\run-scenarios.js --suite cli --cli-scope controlled-generation
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no ML or vector DB behavior is introduced
+* no AST parsing is introduced
+* no planner-agent runtime loops are introduced
+* no runtime self-modification is introduced
+* no multi-file mutation is introduced
+* no mutation capability expansion is introduced
+* no autonomous project generation is introduced
+* no runtime execution is introduced
+* no runtime activation is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no runtime persistence is introduced
+* no contract execution is introduced
+* no contract bundle execution is introduced
+* no contract audit execution is introduced
+* no approval execution is introduced
+* no approval persistence is introduced
+* no mutation execution is introduced
+* no output execution is introduced
+* no input execution is introduced
+* no rollback execution is introduced
+* no recovery execution is introduced
+* no risk enforcement is introduced
+* no generated-project validation execution is introduced
+* no validation command execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced by default
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

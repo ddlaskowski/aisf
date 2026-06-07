@@ -118,6 +118,14 @@ import {
   type ControlledProjectGenerationContractAudit
 } from "./governance/controlledProjectGenerationContractAudit.js";
 import {
+  createControlledProjectGenerationContractExportPayload,
+  exportControlledProjectGenerationContractAuditAsJson,
+  exportControlledProjectGenerationContractAuditAsMarkdown,
+  exportControlledProjectGenerationContractBundleAsJson,
+  exportControlledProjectGenerationContractBundleAsMarkdown,
+  type ControlledProjectGenerationContractExportFormat
+} from "./governance/controlledProjectGenerationContractExport.js";
+import {
   createProjectGenerationBlueprintPreview,
   type ProjectGenerationBlueprintPreview
 } from "./governance/projectGenerationBlueprintPreview.js";
@@ -1250,6 +1258,29 @@ function buildControlledProjectGenerationContractAuditPreview(): ControlledProje
   });
 }
 
+function buildControlledProjectGenerationContractExportMetadata(format: ControlledProjectGenerationContractExportFormat, commandName: string) {
+  return {
+    version: "v12.9",
+    source: "controlled-project-generation-contract-export-cli-preview",
+    command: `governance ${commandName} --export ${format}`,
+    readonly: true,
+    previewOnly: true
+  };
+}
+
+function parseControlledContractExportFormat(args: string[]): ControlledProjectGenerationContractExportFormat | null {
+  const exportEquals = args.find((arg) => arg.startsWith("--export="));
+  const exportIndex = args.indexOf("--export");
+  const format = exportEquals ? exportEquals.slice("--export=".length) : exportIndex === -1 ? null : args[exportIndex + 1];
+  if (format === null || format === undefined) return null;
+  if (format === "json" || format === "markdown") return format;
+  return null;
+}
+
+function hasControlledContractExportFlag(args: string[]): boolean {
+  return args.some((arg) => arg === "--export" || arg.startsWith("--export="));
+}
+
 function handleCliHelpAndGovernanceUx(argv: string[]): void {
   const args = argv.slice(2);
   const command = args[0];
@@ -1677,7 +1708,7 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "controlled-project-generation-contract-bundle") {
-    const allowed = new Set(["--json", "--help", "-h"]);
+    const allowed = new Set(["--json", "--export", "--help", "-h"]);
     for (const arg of args.slice(2)) {
       if (!arg.startsWith("-")) {
         continue;
@@ -1693,6 +1724,18 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
     }
 
     const bundle = buildControlledProjectGenerationContractBundlePreview();
+    if (hasControlledContractExportFlag(args)) {
+      const format = parseControlledContractExportFormat(args);
+      if (format === null) {
+        printAndExit("Invalid export format for governance controlled-project-generation-contract-bundle. Expected json or markdown.", 1);
+      }
+      const exportFormat = format as ControlledProjectGenerationContractExportFormat;
+      const metadata = buildControlledProjectGenerationContractExportMetadata(exportFormat, "controlled-project-generation-contract-bundle");
+      if (exportFormat === "json") {
+        printAndExit(exportControlledProjectGenerationContractBundleAsJson(bundle, metadata), 0);
+      }
+      printAndExit(exportControlledProjectGenerationContractBundleAsMarkdown(bundle, metadata), 0);
+    }
     if (args.includes("--json")) {
       printAndExit(JSON.stringify(bundle, null, 2), 0);
     }
@@ -1700,7 +1743,7 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
   }
 
   if (command === "governance" && args[1] === "controlled-project-generation-contract-audit") {
-    const allowed = new Set(["--json", "--help", "-h"]);
+    const allowed = new Set(["--json", "--export", "--help", "-h"]);
     for (const arg of args.slice(2)) {
       if (!arg.startsWith("-")) {
         continue;
@@ -1716,6 +1759,18 @@ function handleCliHelpAndGovernanceUx(argv: string[]): void {
     }
 
     const audit = buildControlledProjectGenerationContractAuditPreview();
+    if (hasControlledContractExportFlag(args)) {
+      const format = parseControlledContractExportFormat(args);
+      if (format === null) {
+        printAndExit("Invalid export format for governance controlled-project-generation-contract-audit. Expected json or markdown.", 1);
+      }
+      const exportFormat = format as ControlledProjectGenerationContractExportFormat;
+      const metadata = buildControlledProjectGenerationContractExportMetadata(exportFormat, "controlled-project-generation-contract-audit");
+      if (exportFormat === "json") {
+        printAndExit(exportControlledProjectGenerationContractAuditAsJson(audit, metadata), 0);
+      }
+      printAndExit(exportControlledProjectGenerationContractAuditAsMarkdown(audit, metadata), 0);
+    }
     if (args.includes("--json")) {
       printAndExit(JSON.stringify(audit, null, 2), 0);
     }
