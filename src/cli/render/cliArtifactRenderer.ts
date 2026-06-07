@@ -9,6 +9,7 @@ import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSummary } fr
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSummary } from "../../governance/governanceConsolidationAudit.js";
 import type { ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../../governance/controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary } from "../../governance/controlledProjectGenerationInputContract.js";
+import type { ControlledProjectGenerationOutputContract, ControlledProjectGenerationOutputContractSummary } from "../../governance/controlledProjectGenerationOutputContract.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
@@ -1011,6 +1012,71 @@ export function renderCliControlledProjectGenerationInputContract(contract: Cont
   ].join("\n");
 }
 
+export function renderCliControlledProjectGenerationOutputContractSummary(summary: ControlledProjectGenerationOutputContractSummary): string {
+  return [
+    renderCliSection("Controlled project generation output contract summary", [
+      `field count: ${summary.totalFields}`,
+      `allowed output count: ${summary.allowedOutputCount}`,
+      `forbidden output count: ${summary.forbiddenOutputCount}`,
+      `blocked output count: ${summary.blockedOutputCount}`,
+      `group distribution: ${renderCliOutputFieldGroups(summary.groupDistribution)}`,
+      `format distribution: ${renderCliOutputFieldGroups(summary.formatDistribution)}`,
+      `risk distribution: ${renderCliOutputFieldGroups(summary.riskDistribution)}`,
+      `output policy distribution: ${renderCliOutputFieldGroups(summary.outputPolicyDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `stdout-only: ${String(summary.stdoutOnly)}`,
+      `no-file-write: ${String(summary.noFileWrite)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledProjectGenerationOutputContract(contract: ControlledProjectGenerationOutputContract): string {
+  const fieldLines = contract.fields.length === 0
+    ? ["none"]
+    : contract.fields.map((field) => `${field.fieldId} | group=${field.group} | format=${field.format} | policy=${field.outputPolicy} | forbidden=${field.forbidden.length}`);
+  return [
+    renderCliSection("Controlled project generation output contract", [
+      `title: ${contract.title}`,
+      `schemaVersion: ${contract.schemaVersion}`,
+      `readonly: ${String(contract.readonly)}`,
+      `previewOnly: ${String(contract.previewOnly)}`,
+      `outputContractOnly: ${String(contract.outputContractOnly)}`,
+      `stdoutOnly: ${String(contract.stdoutOnly)}`,
+      `noFileWrite: ${String(contract.noFileWrite)}`,
+      `outputExecutionAllowed: ${String(contract.outputExecutionAllowed)}`,
+      `generationRuntimeImplemented: ${String(contract.generationRuntimeImplemented)}`,
+      `generationExecutionAllowed: ${String(contract.generationExecutionAllowed)}`,
+      `bundleExecutionAllowed: ${String(contract.bundleExecutionAllowed)}`,
+      `rollbackExecutionAllowed: ${String(contract.rollbackExecutionAllowed)}`,
+      `recoveryExecutionAllowed: ${String(contract.recoveryExecutionAllowed)}`,
+      `riskEnforcementAllowed: ${String(contract.riskEnforcementAllowed)}`,
+      `approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+      `validationExecutionAllowed: ${String(contract.validationExecutionAllowed)}`,
+      `dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+      `fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+      `scaffoldGenerationEnabled: ${String(contract.scaffoldGenerationEnabled)}`,
+      `runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+      `runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+      `policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+      `projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+      "notice: no output execution, no file write, no runtime, no project generation, no generation execution, no bundle execution, rollback execution, recovery execution, risk enforcement, approval execution, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled"
+    ]),
+    renderCliMetadata(contract.metadata),
+    renderCliControlledProjectGenerationOutputContractSummary(contract.summary),
+    renderCliSection("Output fields", fieldLines),
+    renderReadonlyNotice(contract.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1057,6 +1123,11 @@ function renderCliRollbackAppliesToGroups(groups: readonly { key: string; totalS
 }
 
 function renderCliInputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
+}
+
+function renderCliOutputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
 }

@@ -9,6 +9,7 @@ import type { GovernanceArtifactSnapshot, GovernanceArtifactSnapshotSection, Gov
 import type { GovernanceConsolidationAudit, GovernanceConsolidationAuditSection, GovernanceConsolidationAuditSummary } from "../governanceConsolidationAudit.js";
 import type { ControlledProjectGenerationContractSection, ControlledProjectGenerationContractSummary, ControlledProjectGenerationDesignContract } from "../controlledProjectGenerationDesignContract.js";
 import type { ControlledProjectGenerationInputContract, ControlledProjectGenerationInputContractSummary, ControlledProjectGenerationInputField } from "../controlledProjectGenerationInputContract.js";
+import type { ControlledProjectGenerationOutputContract, ControlledProjectGenerationOutputContractSummary, ControlledProjectGenerationOutputField } from "../controlledProjectGenerationOutputContract.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -1316,6 +1317,91 @@ export function renderControlledProjectGenerationInputContract(contract: Control
   ].join("\n");
 }
 
+export function renderControlledProjectGenerationOutputContractSummary(summary: ControlledProjectGenerationOutputContractSummary): string {
+  return [
+    "Controlled project generation output contract summary:",
+    `- field count: ${summary.totalFields}`,
+    `- allowed output count: ${summary.allowedOutputCount}`,
+    `- forbidden output count: ${summary.forbiddenOutputCount}`,
+    `- blocked output count: ${summary.blockedOutputCount}`,
+    `- group distribution: ${renderOutputFieldGroups(summary.groupDistribution)}`,
+    `- format distribution: ${renderOutputFieldGroups(summary.formatDistribution)}`,
+    `- risk distribution: ${renderOutputFieldGroups(summary.riskDistribution)}`,
+    `- output policy distribution: ${renderOutputFieldGroups(summary.outputPolicyDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- stdout-only: ${String(summary.stdoutOnly)}`,
+    `- no-file-write: ${String(summary.noFileWrite)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationOutputField(field: ControlledProjectGenerationOutputField): string {
+  return [
+    `Controlled project generation output field: ${field.fieldId}`,
+    `- group: ${field.group}`,
+    `- label: ${field.label}`,
+    `- description: ${field.description}`,
+    `- format: ${field.format}`,
+    `- status: ${field.status}`,
+    `- riskLevel: ${field.riskLevel}`,
+    `- allowed: ${field.allowed.length === 0 ? "none" : field.allowed.join(", ")}`,
+    `- forbidden: ${field.forbidden.length === 0 ? "none" : field.forbidden.join(", ")}`,
+    `- outputPolicy: ${field.outputPolicy}`,
+    `- blockedReason: ${field.blockedReason ?? "none"}`,
+    `- read-only: ${String(field.readonly)}`,
+    `- preview-only: ${String(field.previewOnly)}`,
+    `- stdout-only: ${String(field.stdoutOnly)}`,
+    `- no-file-write: ${String(field.noFileWrite)}`,
+    renderWarnings(field.warnings),
+    "Recommendations:",
+    ...(field.recommendations.length === 0 ? ["- none"] : field.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledProjectGenerationOutputContract(contract: ControlledProjectGenerationOutputContract): string {
+  const fields = contract.fields.length === 0
+    ? ["Controlled project generation output fields:", "- none"]
+    : ["Controlled project generation output fields:", ...contract.fields.map(renderControlledProjectGenerationOutputField)];
+  return [
+    `Controlled project generation output contract: ${contract.title}`,
+    `- schemaVersion: ${contract.schemaVersion}`,
+    `- readonly: ${String(contract.readonly)}`,
+    `- previewOnly: ${String(contract.previewOnly)}`,
+    `- outputContractOnly: ${String(contract.outputContractOnly)}`,
+    `- stdoutOnly: ${String(contract.stdoutOnly)}`,
+    `- noFileWrite: ${String(contract.noFileWrite)}`,
+    `- outputExecutionAllowed: ${String(contract.outputExecutionAllowed)}`,
+    `- generationRuntimeImplemented: ${String(contract.generationRuntimeImplemented)}`,
+    `- generationExecutionAllowed: ${String(contract.generationExecutionAllowed)}`,
+    `- bundleExecutionAllowed: ${String(contract.bundleExecutionAllowed)}`,
+    `- rollbackExecutionAllowed: ${String(contract.rollbackExecutionAllowed)}`,
+    `- recoveryExecutionAllowed: ${String(contract.recoveryExecutionAllowed)}`,
+    `- riskEnforcementAllowed: ${String(contract.riskEnforcementAllowed)}`,
+    `- approvalExecutionAllowed: ${String(contract.approvalExecutionAllowed)}`,
+    `- validationExecutionAllowed: ${String(contract.validationExecutionAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(contract.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(contract.packageMutationAllowed)}`,
+    `- fileWriteAllowed: ${String(contract.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(contract.fileCreationAllowed)}`,
+    `- scaffoldGenerationEnabled: ${String(contract.scaffoldGenerationEnabled)}`,
+    `- runtimeRoutingEnabled: ${String(contract.runtimeRoutingEnabled)}`,
+    `- runtimeActivationEnabled: ${String(contract.runtimeActivationEnabled)}`,
+    `- policyEnforcementEnabled: ${String(contract.policyEnforcementEnabled)}`,
+    `- projectGenerationEnabled: ${String(contract.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(contract.builderAgentRuntimeEnabled)}`,
+    "Notice: no output execution, no file write, no runtime, no project generation, no generation execution, no bundle execution, rollback execution, recovery execution, risk enforcement, approval execution, validation execution, dependency installation, package mutation, file creation, scaffold generation, builder-agent runtime, runtime activation, policy enforcement, runtime routing, mutation expansion, or file writing is enabled.",
+    renderMetadata(contract.metadata),
+    renderControlledProjectGenerationOutputContractSummary(contract.summary),
+    ...fields
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1362,6 +1448,11 @@ function renderRollbackAppliesToGroups(groups: readonly { key: string; totalStep
 }
 
 function renderInputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
+}
+
+function renderOutputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalFields}`).join(", ");
 }

@@ -31597,6 +31597,179 @@ function runControlledProjectGenerationInputContractHelpOutputUnit() {
   }
 }
 
+function runControlledProjectGenerationOutputContractConsistencyUnit() {
+  try {
+    const outputModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationOutputContract.js"));
+    const metadata = { version: "v12.2", source: "controlled-output-contract-unit", command: "unit", readonly: true, previewOnly: true };
+    const first = outputModule.createControlledProjectGenerationOutputContract({ title: "Unit Output Contract", metadata });
+    const second = outputModule.createControlledProjectGenerationOutputContract({ title: "Unit Output Contract", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled output contract output is not deterministic");
+    if (first.summary.totalFields !== 12 || first.summary.allowedOutputCount !== 12 || first.summary.forbiddenOutputCount !== 12 || first.summary.blockedOutputCount !== 0 || first.summary.completeness.score !== 88 || first.summary.completeness.level !== "contract-defined") throw new Error(`controlled output contract summary mismatch: ${JSON.stringify(first.summary)}`);
+    const falseFlags = [
+      "outputExecutionAllowed",
+      "generationRuntimeImplemented",
+      "generationExecutionAllowed",
+      "bundleExecutionAllowed",
+      "rollbackExecutionAllowed",
+      "recoveryExecutionAllowed",
+      "riskEnforcementAllowed",
+      "mitigationEnforcementEnabled",
+      "approvalExecutionAllowed",
+      "approvalDecisionApplied",
+      "projectGenerationApproved",
+      "validationExecutionAllowed",
+      "generatedProjectValidationAllowed",
+      "commandExecutionAllowed",
+      "dependencyInstallationAllowed",
+      "packageMutationAllowed",
+      "fileWriteAllowed",
+      "fileCreationAllowed",
+      "scaffoldGenerationEnabled",
+      "runtimeRoutingEnabled",
+      "runtimeActivationEnabled",
+      "policyEnforcementEnabled",
+      "projectGenerationEnabled",
+      "builderAgentRuntimeEnabled"
+    ];
+    for (const flag of falseFlags) {
+      if (first[flag] !== false) throw new Error(`controlled output contract flag ${flag} was not false`);
+    }
+    if (first.readonly !== true || first.previewOnly !== true || first.outputContractOnly !== true || first.stdoutOnly !== true || first.noFileWrite !== true) throw new Error(`controlled output contract readonly flags mismatch: ${JSON.stringify(first)}`);
+    if ("runtimeActivationExecuted" in first || "runtimeGovernanceEnabled" in first) throw new Error(`controlled output contract introduced runtime activation/governance flags: ${JSON.stringify(first)}`);
+    console.log("PASS controlled-project-generation-output-contract-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-output-contract-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationOutputFieldSortingUnit() {
+  try {
+    const outputModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationOutputContract.js"));
+    const contract = outputModule.createControlledProjectGenerationOutputContract({ title: "Sort Output Contract", metadata: { version: "v12.2", source: "sort", readonly: true, previewOnly: true } });
+    const reversed = [...contract.fields].reverse();
+    const order = outputModule.sortOutputContractFields(reversed).map((field) => field.group).join(",");
+    if (order !== "blueprintPreviewOutput,filePlanPreviewOutput,dependencyPlanPreviewOutput,validationPlanPreviewOutput,approvalPlanPreviewOutput,riskPlanPreviewOutput,rollbackPlanPreviewOutput,planBundlePreviewOutput,auditPreviewOutput,cliPreviewOutput,jsonPreviewOutput,markdownPreviewOutput") throw new Error(`controlled output field ordering mismatch: ${order}`);
+    console.log("PASS controlled-project-generation-output-field-sorting");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-output-field-sorting");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationOutputFieldFilteringUnit() {
+  try {
+    const outputModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationOutputContract.js"));
+    const contract = outputModule.createControlledProjectGenerationOutputContract({ title: "Filter Output Contract", metadata: { version: "v12.2", source: "filter", readonly: true, previewOnly: true } });
+    if (outputModule.findOutputFieldsByGroup(contract.fields, "blueprintPreviewOutput").length !== 1) throw new Error("blueprint output filter mismatch");
+    if (outputModule.findOutputFieldsByFormat(contract.fields, "structured-object").length !== 7) throw new Error("format filter mismatch");
+    if (outputModule.findOutputFieldsByRiskLevel(contract.fields, "high").length !== 5) throw new Error("risk filter mismatch");
+    if (outputModule.findBlockedOutputFields(contract.fields).length !== 0) throw new Error("blocked filter mismatch");
+    if (outputModule.findForbiddenOutputFields(contract.fields).length !== 12) throw new Error("forbidden filter mismatch");
+    console.log("PASS controlled-project-generation-output-field-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-output-field-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationOutputContractCompletenessUnit() {
+  try {
+    const outputModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationOutputContract.js"));
+    const fields = [
+      outputModule.createOutputContractField({ fieldId: "a", group: "cliPreviewOutput", label: "A", description: "A.", format: "text", status: "required", riskLevel: "low", allowed: ["a"], forbidden: ["write"], outputPolicy: "stdout-only" }),
+      outputModule.createOutputContractField({ fieldId: "b", group: "blueprintPreviewOutput", label: "B", description: "B.", format: "structured-object", status: "required", riskLevel: "medium", allowed: ["b"], forbidden: ["execute"], outputPolicy: "preview-only" })
+    ];
+    const completeness = outputModule.calculateControlledProjectGenerationOutputContractCompleteness(fields);
+    if (completeness.score !== 95 || completeness.level !== "ready-for-design") throw new Error(`controlled output completeness mismatch: ${JSON.stringify(completeness)}`);
+    const empty = outputModule.calculateControlledProjectGenerationOutputContractCompleteness([]);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty controlled output completeness mismatch: ${JSON.stringify(empty)}`);
+    const blocked = [outputModule.createOutputContractField({ fieldId: "blocked", group: "filePlanPreviewOutput", label: "Blocked", description: "Blocked.", format: "structured-object", status: "blocked", riskLevel: "critical", allowed: [], forbidden: ["file creation"], outputPolicy: "blocked", blockedReason: "Blocked for test." })];
+    const blockedCompleteness = outputModule.calculateControlledProjectGenerationOutputContractCompleteness(blocked);
+    if (blockedCompleteness.score !== 0 || blockedCompleteness.level !== "incomplete") throw new Error(`blocked controlled output completeness mismatch: ${JSON.stringify(blockedCompleteness)}`);
+    console.log("PASS controlled-project-generation-output-contract-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-output-contract-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationOutputContractRenderingUnit() {
+  try {
+    const outputModule = require(path.join(projectRoot, "dist", "governance", "controlledProjectGenerationOutputContract.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const contract = outputModule.createControlledProjectGenerationOutputContract({ title: "Render Output Contract", metadata: { version: "v12.2", source: "output-render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledProjectGenerationOutputContract(contract);
+    if (!rendered.includes("Controlled project generation output contract: Render Output Contract") || !rendered.includes("field count: 12") || !rendered.includes("forbidden output count: 12") || !rendered.includes("completeness score: 88") || !rendered.includes("outputExecutionAllowed: false") || !rendered.includes("noFileWrite: true") || !rendered.includes("no output execution")) throw new Error(`controlled output contract render mismatch: ${rendered}`);
+    console.log("PASS controlled-project-generation-output-contract-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-output-contract-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationOutputContractCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-project-generation-output-contract"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled project generation output contract:") || !human.stdout.includes("outputExecutionAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("completeness score: 88")) throw new Error(`controlled output contract human output mismatch: ${human.stdout || human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-project-generation-output-contract", "--json"]);
+    if (json.status !== 0) throw new Error(`controlled output contract json command failed: ${json.stderr || json.stdout}`);
+    const parsed = JSON.parse(json.stdout);
+    if (parsed.schemaVersion !== 1 || parsed.outputContractOnly !== true || parsed.outputExecutionAllowed !== false || parsed.generationRuntimeImplemented !== false || parsed.generationExecutionAllowed !== false || parsed.bundleExecutionAllowed !== false || parsed.rollbackExecutionAllowed !== false || parsed.recoveryExecutionAllowed !== false || parsed.riskEnforcementAllowed !== false || parsed.approvalExecutionAllowed !== false || parsed.validationExecutionAllowed !== false || parsed.dependencyInstallationAllowed !== false || parsed.packageMutationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.builderAgentRuntimeEnabled !== false || parsed.summary.totalFields !== 12 || parsed.summary.forbiddenOutputCount !== 12 || parsed.summary.completeness.score !== 88) throw new Error(`controlled output contract json output mismatch: ${json.stdout}`);
+    console.log("PASS controlled-project-generation-output-contract-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-output-contract-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledProjectGenerationOutputContractHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-project-generation-output-contract", "--help"]);
+    if (help.status !== 0) throw new Error(`help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance controlled-project-generation-output-contract",
+      "preview-only",
+      "read-only",
+      "stdout-only",
+      "no output execution",
+      "no file write",
+      "no project generation",
+      "do not write files by default",
+      "forbidden output",
+      "execute bundle",
+      "execute rollback",
+      "execute recovery",
+      "enforce risks",
+      "execute approvals",
+      "execute validation commands",
+      "install dependencies",
+      "mutate package.json",
+      "activate governance",
+      "enforce policy",
+      "route runtime behavior"
+    ]);
+    console.log("PASS controlled-project-generation-output-contract-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-project-generation-output-contract-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -31748,7 +31921,9 @@ const scenarioSuites = {
     runControlledProjectGenerationContractCliOutputUnit,
     runControlledProjectGenerationContractHelpOutputUnit,
     runControlledProjectGenerationInputContractCliOutputUnit,
-    runControlledProjectGenerationInputContractHelpOutputUnit
+    runControlledProjectGenerationInputContractHelpOutputUnit,
+    runControlledProjectGenerationOutputContractCliOutputUnit,
+    runControlledProjectGenerationOutputContractHelpOutputUnit
   ],
   export: [
     runGovernanceArtifactExportContractConsistencyUnit,
@@ -31790,6 +31965,7 @@ const scenarioSuites = {
     runProjectGenerationReadinessAuditRenderingUnit,
     runControlledProjectGenerationContractRenderingUnit,
     runControlledProjectGenerationInputContractRenderingUnit,
+    runControlledProjectGenerationOutputContractRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "project-generation": [
@@ -31878,7 +32054,14 @@ const scenarioSuites = {
     runControlledProjectGenerationInputContractCompletenessUnit,
     runControlledProjectGenerationInputContractRenderingUnit,
     runControlledProjectGenerationInputContractCliOutputUnit,
-    runControlledProjectGenerationInputContractHelpOutputUnit
+    runControlledProjectGenerationInputContractHelpOutputUnit,
+    runControlledProjectGenerationOutputContractConsistencyUnit,
+    runControlledProjectGenerationOutputFieldSortingUnit,
+    runControlledProjectGenerationOutputFieldFilteringUnit,
+    runControlledProjectGenerationOutputContractCompletenessUnit,
+    runControlledProjectGenerationOutputContractRenderingUnit,
+    runControlledProjectGenerationOutputContractCliOutputUnit,
+    runControlledProjectGenerationOutputContractHelpOutputUnit
   ],
   "controlled-generation": [
     runControlledProjectGenerationContractConsistencyUnit,
@@ -31893,7 +32076,14 @@ const scenarioSuites = {
     runControlledProjectGenerationInputContractCompletenessUnit,
     runControlledProjectGenerationInputContractRenderingUnit,
     runControlledProjectGenerationInputContractCliOutputUnit,
-    runControlledProjectGenerationInputContractHelpOutputUnit
+    runControlledProjectGenerationInputContractHelpOutputUnit,
+    runControlledProjectGenerationOutputContractConsistencyUnit,
+    runControlledProjectGenerationOutputFieldSortingUnit,
+    runControlledProjectGenerationOutputFieldFilteringUnit,
+    runControlledProjectGenerationOutputContractCompletenessUnit,
+    runControlledProjectGenerationOutputContractRenderingUnit,
+    runControlledProjectGenerationOutputContractCliOutputUnit,
+    runControlledProjectGenerationOutputContractHelpOutputUnit
   ],
   audit: [
     runGovernanceConsolidationAuditConsistencyUnit,
@@ -35002,6 +35192,27 @@ async function main() {
     failed += 1;
   }
   if (!runControlledProjectGenerationInputContractHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationOutputContractConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationOutputFieldSortingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationOutputFieldFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationOutputContractCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationOutputContractRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationOutputContractCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledProjectGenerationOutputContractHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {
