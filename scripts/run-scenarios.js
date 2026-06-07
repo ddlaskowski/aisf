@@ -32940,6 +32940,167 @@ function runControlledProjectGenerationDesignCompletionAuditHelpOutputUnit() {
   }
 }
 
+function runControlledRuntimeArchitectureConsistencyUnit() {
+  try {
+    const architectureModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeArchitecturePreview.js"));
+    const metadata = { version: "v13.0", source: "unit", command: "governance controlled-runtime-architecture", readonly: true, previewOnly: true };
+    const first = architectureModule.createControlledRuntimeArchitecturePreview({ title: "Unit Runtime Architecture", metadata });
+    const second = architectureModule.createControlledRuntimeArchitecturePreview({ title: "Unit Runtime Architecture", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled runtime architecture output is not deterministic");
+    if (
+      first.readonly !== true ||
+      first.previewOnly !== true ||
+      first.stdoutOnly !== true ||
+      first.architecturePreviewOnly !== true ||
+      first.runtimeExecutionAllowed !== false ||
+      first.runtimeActivationAllowed !== false ||
+      first.runtimeRoutingAllowed !== false ||
+      first.runtimeOrchestrationAllowed !== false ||
+      first.runtimePersistenceAllowed !== false ||
+      first.projectGenerationEnabled !== false ||
+      first.builderAgentRuntimeEnabled !== false ||
+      first.agentExecutionAllowed !== false ||
+      first.agentLoopsAllowed !== false ||
+      first.multiAgentSystemsAllowed !== false ||
+      first.approvalExecutionAllowed !== false ||
+      first.mutationExecutionAllowed !== false ||
+      first.fileWriteAllowed !== false ||
+      first.fileCreationAllowed !== false ||
+      first.dependencyInstallationAllowed !== false ||
+      first.packageMutationAllowed !== false ||
+      first.policyEnforcementEnabled !== false ||
+      first.governanceActivationAllowed !== false ||
+      first.autonomyEnabled !== false ||
+      first.selfImprovementAllowed !== false ||
+      first.selfModificationAllowed !== false
+    ) {
+      throw new Error("controlled runtime architecture invariant flags changed");
+    }
+    if (first.components.length !== 9 || first.phases.length !== 10 || first.summary.totalForbiddenActions === 0 || first.summary.noExecution !== true) {
+      throw new Error("controlled runtime architecture summary mismatch");
+    }
+    console.log("PASS controlled-runtime-architecture-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-architecture-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeArchitectureComponentOrderingUnit() {
+  try {
+    const architectureModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeArchitecturePreview.js"));
+    const preview = architectureModule.createControlledRuntimeArchitecturePreview({ title: "Sort Runtime Architecture", metadata: { version: "v13.0", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.components.map((component) => component.componentType).join(",");
+    if (order !== "input-intake,governance-validation,planning,approval,generation,validation,review,export,audit") throw new Error(`controlled runtime architecture component ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-architecture-component-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-architecture-component-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeArchitecturePhaseOrderingUnit() {
+  try {
+    const architectureModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeArchitecturePreview.js"));
+    const preview = architectureModule.createControlledRuntimeArchitecturePreview({ title: "Sort Runtime Architecture", metadata: { version: "v13.0", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.phases.map((phase) => phase.phaseType).join(",");
+    if (order !== "request-intake,contract-validation,governance-review,plan-creation,human-approval,generation,validation,review,export,completion") throw new Error(`controlled runtime architecture phase ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-architecture-phase-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-architecture-phase-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeArchitectureCompletenessUnit() {
+  try {
+    const architectureModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeArchitecturePreview.js"));
+    const preview = architectureModule.createControlledRuntimeArchitecturePreview({ title: "Score Runtime Architecture", metadata: { version: "v13.0", source: "score", readonly: true, previewOnly: true } });
+    const score = architectureModule.calculateControlledRuntimeArchitectureCompleteness(preview.components, preview.phases);
+    const empty = architectureModule.calculateControlledRuntimeArchitectureCompleteness([], []);
+    const unsafe = [{ ...preview.components[0], noExecution: false }];
+    const unsafeScore = architectureModule.calculateControlledRuntimeArchitectureCompleteness(unsafe, preview.phases);
+    if (score.score !== 100 || score.level !== "runtime-design-ready") throw new Error(`controlled runtime architecture score mismatch: ${JSON.stringify(score)}`);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty runtime architecture score mismatch: ${JSON.stringify(empty)}`);
+    if (unsafeScore.score !== 0 || unsafeScore.level !== "incomplete") throw new Error(`unsafe runtime architecture score mismatch: ${JSON.stringify(unsafeScore)}`);
+    console.log("PASS controlled-runtime-architecture-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-architecture-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeArchitectureRenderingUnit() {
+  try {
+    const architectureModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeArchitecturePreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = architectureModule.createControlledRuntimeArchitecturePreview({ title: "Render Runtime Architecture", metadata: { version: "v13.0", source: "render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledRuntimeArchitecturePreview(preview);
+    if (!rendered.includes("Controlled runtime architecture preview: Render Runtime Architecture") || !rendered.includes("No runtime execution") || !rendered.includes("no project generation") || !rendered.includes("no agent execution") || !rendered.includes("component count: 9") || !rendered.includes("lifecycle phase count: 10")) throw new Error(`controlled runtime architecture rendering mismatch: ${rendered}`);
+    console.log("PASS controlled-runtime-architecture-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-architecture-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeArchitectureCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-runtime-architecture"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled runtime architecture preview") || !human.stdout.includes("runtimeExecutionAllowed: false") || !human.stdout.includes("projectGenerationEnabled: false") || !human.stdout.includes("agentExecutionAllowed: false")) throw new Error(`controlled runtime architecture CLI output mismatch: status=${human.status} stdout=${human.stdout} stderr=${human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-runtime-architecture", "--json"]);
+    const parsed = JSON.parse(json.stdout);
+    if (json.status !== 0 || parsed.runtimeExecutionAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.agentExecutionAllowed !== false || parsed.components.length !== 9 || parsed.phases.length !== 10 || parsed.summary.completeness.level !== "runtime-design-ready") throw new Error(`controlled runtime architecture JSON output mismatch: status=${json.status} stdout=${json.stdout} stderr=${json.stderr}`);
+    console.log("PASS controlled-runtime-architecture-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-architecture-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeArchitectureHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-runtime-architecture", "--help"]);
+    if (help.status !== 0) throw new Error(`controlled runtime architecture help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, [
+      "governance controlled-runtime-architecture",
+      "read-only",
+      "preview-only",
+      "stdout-only",
+      "no-runtime-execution",
+      "no-project-generation",
+      "no-agent-execution",
+      "runtime behavior",
+      "generate projects",
+      "run builder agents",
+      "execute agents",
+      "write files",
+      "install dependencies",
+      "mutate package.json",
+      "enforce policy",
+      "activate governance"
+    ]);
+    console.log("PASS controlled-runtime-architecture-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-architecture-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -33227,7 +33388,9 @@ const cliScenarioGroups = {
     runCliScopeUnknownScopeHandlingUnit
   ],
   governance: [
-    runGovernanceReadonlyRenderingUnit
+    runGovernanceReadonlyRenderingUnit,
+    runControlledRuntimeArchitectureCliOutputUnit,
+    runControlledRuntimeArchitectureHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessCliOutputUnit,
@@ -33331,7 +33494,17 @@ const scenarioSuites = {
     runControlledProjectGenerationContractAuditRenderingUnit,
     runControlledProjectGenerationContractExportRenderingUnit,
     runControlledProjectGenerationDesignCompletionAuditRenderingUnit,
+    runControlledRuntimeArchitectureRenderingUnit,
     runReadonlyRenderConsistencyUnit
+  ],
+  "runtime-architecture": [
+    runControlledRuntimeArchitectureConsistencyUnit,
+    runControlledRuntimeArchitectureComponentOrderingUnit,
+    runControlledRuntimeArchitecturePhaseOrderingUnit,
+    runControlledRuntimeArchitectureCompletenessUnit,
+    runControlledRuntimeArchitectureRenderingUnit,
+    runControlledRuntimeArchitectureCliOutputUnit,
+    runControlledRuntimeArchitectureHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessConsistencyUnit,
@@ -36841,6 +37014,27 @@ async function main() {
     failed += 1;
   }
   if (!runControlledProjectGenerationDesignCompletionAuditHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeArchitectureConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeArchitectureComponentOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeArchitecturePhaseOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeArchitectureCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeArchitectureRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeArchitectureCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeArchitectureHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

@@ -12389,6 +12389,109 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v13.0 - Controlled Runtime Architecture Preview Layer
+
+v13.0 begins the Runtime Architecture Era with a deterministic, read-only controlled runtime architecture preview. It describes future controlled project-generation runtime architecture components and lifecycle phases without implementing runtime execution, project generation, builder agents, agent execution, routing, orchestration, activation, governance enforcement, file writing, dependency installation, or mutation expansion.
+
+Controlled runtime architecture model:
+
+* `src/governance/controlledRuntimeArchitecturePreview.ts` adds `ControlledRuntimeArchitecturePreview`, `ControlledRuntimeArchitectureComponent`, `ControlledRuntimeArchitecturePhase`, `ControlledRuntimeArchitectureSummary`, `createControlledRuntimeArchitecturePreview`, `summarizeControlledRuntimeArchitecturePreview`, and `calculateControlledRuntimeArchitectureCompleteness`.
+* The preview explicitly preserves read-only, preview-only, stdout-only, architecture-preview-only, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-project-generation, no-builder-agent-runtime, no-agent-execution, no-agent-loops, no-multi-agent-systems, no-approval-execution, no-mutation-execution, no-file-writing, no-file-creation, no-dependency-installation, no-package-mutation, no-policy-enforcement, no-governance-activation, no-autonomy, no-self-improvement, and no-self-modification guarantees.
+
+Architecture components:
+
+* Input Intake Layer
+* Governance Validation Layer
+* Planning Layer
+* Approval Layer
+* Generation Layer
+* Validation Layer
+* Review Layer
+* Export Layer
+* Audit Layer
+
+Lifecycle phases:
+
+* Request Intake
+* Contract Validation
+* Governance Review
+* Plan Creation
+* Human Approval
+* Generation
+* Validation
+* Review
+* Export
+* Completion
+
+Completeness scoring:
+
+* `calculateControlledRuntimeArchitectureCompleteness` deterministically computes a 0-100 advisory architecture completeness score.
+* Completeness levels are `incomplete`, `partial`, `architecture-defined`, and `runtime-design-ready`.
+* Scoring is advisory only and does not execute, activate, route, orchestrate, persist, generate projects, execute agents, approve, enforce, mutate, write files, or change runtime behavior.
+
+Controlled runtime architecture rendering:
+
+* `renderControlledRuntimeArchitecturePreview` renders the architecture title, invariant flags, metadata, summary, components, lifecycle phases, warnings, and recommendations.
+* `renderControlledRuntimeArchitectureSummary` renders deterministic component counts, phase counts, forbidden action counts, completeness score, and read-only/preview-only/no-execution guarantees.
+* `renderControlledRuntimeArchitectureComponent` renders stable component details.
+* `renderCliControlledRuntimeArchitecturePreview` and `renderCliControlledRuntimeArchitectureSummary` provide equivalent CLI-safe deterministic output.
+
+CLI architecture preview:
+
+```powershell
+node dist\cli.js governance controlled-runtime-architecture
+node dist\cli.js governance controlled-runtime-architecture --json
+```
+
+Controlled runtime architecture previews print to stdout only. They do not write files, create files, scaffold files, install dependencies, mutate packages, execute runtime behavior, activate runtime behavior, route runtime behavior, orchestrate runtime behavior, persist runtime state, generate projects, implement builder agents, execute agents, run agent loops, enable multi-agent systems, execute approvals, execute mutations, enforce policies, activate governance, enable autonomy, self-improve, self-modify, or change repair orchestration.
+
+v13.0 deterministic checks:
+
+* controlled-runtime-architecture-consistency
+* controlled-runtime-architecture-component-ordering
+* controlled-runtime-architecture-phase-ordering
+* controlled-runtime-architecture-completeness
+* controlled-runtime-architecture-rendering
+* controlled-runtime-architecture-cli-output
+* controlled-runtime-architecture-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite runtime-architecture
+node scripts\run-scenarios.js --suite renderers
+node scripts\run-scenarios.js --suite cli
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no project generation is introduced
+* no builder agents are introduced
+* no agent execution is introduced
+* no runtime execution is introduced
+* no runtime activation is introduced
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no runtime persistence is introduced
+* no approval execution is introduced
+* no mutation execution or expansion is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 * trend analysis does not change governance, release, trust, review, insight, CI summary, diff, or repair behavior
 * trend analysis does not bypass any safety gate
 

@@ -17,6 +17,7 @@ import type { ControlledProjectGenerationInputContract, ControlledProjectGenerat
 import type { ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../../governance/controlledProjectGenerationMutationBoundaryContract.js";
 import type { ControlledProjectGenerationOutputContract, ControlledProjectGenerationOutputContractSummary } from "../../governance/controlledProjectGenerationOutputContract.js";
 import type { ControlledProjectGenerationRuntimeBoundaryContract, ControlledProjectGenerationRuntimeBoundarySummary } from "../../governance/controlledProjectGenerationRuntimeBoundaryContract.js";
+import type { ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../../governance/controlledRuntimeArchitecturePreview.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
@@ -1605,6 +1606,72 @@ export function renderCliControlledProjectGenerationDesignCompletionAudit(audit:
     renderCliSection("Preview-only guarantees", audit.previewOnlyGuarantees),
     renderCliSection("No-execution guarantees", audit.noExecutionGuarantees),
     renderReadonlyNotice(audit.previewOnly)
+  ].join("\n");
+}
+
+export function renderCliControlledRuntimeArchitectureSummary(summary: ControlledRuntimeArchitectureSummary): string {
+  return [
+    renderCliSection("Controlled runtime architecture summary", [
+      `component count: ${summary.totalComponents}`,
+      `lifecycle phase count: ${summary.totalPhases}`,
+      `forbidden actions: ${summary.totalForbiddenActions}`,
+      `runtime design ready: ${String(summary.runtimeDesignReady)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `conceptual-only: ${String(summary.conceptualOnly)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledRuntimeArchitecturePreview(preview: ControlledRuntimeArchitecturePreview): string {
+  const componentLines = preview.components.length === 0
+    ? ["none"]
+    : preview.components.map((component) => `${component.componentType} | status=${component.status} | score=${component.score} | noExecution=${String(component.noExecution)} | title=${component.title}`);
+  const phaseLines = preview.phases.length === 0
+    ? ["none"]
+    : preview.phases.map((phase) => `${phase.phaseType} | status=${phase.status} | score=${phase.score} | noExecution=${String(phase.noExecution)} | requiresHumanApproval=${String(phase.requiresHumanApproval)}`);
+  return [
+    renderCliSection("Controlled runtime architecture preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `architecturePreviewOnly: ${String(preview.architecturePreviewOnly)}`,
+      `runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+      `runtimeActivationAllowed: ${String(preview.runtimeActivationAllowed)}`,
+      `runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+      `runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+      `runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      `agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+      `agentLoopsAllowed: ${String(preview.agentLoopsAllowed)}`,
+      `multiAgentSystemsAllowed: ${String(preview.multiAgentSystemsAllowed)}`,
+      `approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+      `mutationExecutionAllowed: ${String(preview.mutationExecutionAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `governanceActivationAllowed: ${String(preview.governanceActivationAllowed)}`,
+      `autonomyEnabled: ${String(preview.autonomyEnabled)}`,
+      `selfImprovementAllowed: ${String(preview.selfImprovementAllowed)}`,
+      `selfModificationAllowed: ${String(preview.selfModificationAllowed)}`,
+      "notice: read-only, preview-only controlled runtime architecture only. No runtime execution, no runtime activation, no runtime routing, no runtime orchestration, no runtime persistence, no project generation, no builder-agent runtime, no agent execution, no agent loops, no multi-agent systems, no approval execution, no mutation execution, no file writing, no file creation, no dependency installation, no package mutation, no policy enforcement, no governance activation, no autonomy, no self-improvement, and no self-modification is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliControlledRuntimeArchitectureSummary(preview.summary),
+    renderCliSection("Architecture components", componentLines),
+    renderCliSection("Lifecycle phases", phaseLines),
+    renderReadonlyNotice(preview.previewOnly)
   ].join("\n");
 }
 

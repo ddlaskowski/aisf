@@ -17,6 +17,7 @@ import type { ControlledProjectGenerationInputContract, ControlledProjectGenerat
 import type { ControlledProjectGenerationMutationBoundary, ControlledProjectGenerationMutationBoundaryContract, ControlledProjectGenerationMutationBoundarySummary } from "../controlledProjectGenerationMutationBoundaryContract.js";
 import type { ControlledProjectGenerationOutputContract, ControlledProjectGenerationOutputContractSummary, ControlledProjectGenerationOutputField } from "../controlledProjectGenerationOutputContract.js";
 import type { ControlledProjectGenerationRuntimeBoundary, ControlledProjectGenerationRuntimeBoundaryContract, ControlledProjectGenerationRuntimeBoundarySummary } from "../controlledProjectGenerationRuntimeBoundaryContract.js";
+import type { ControlledRuntimeArchitectureComponent, ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../controlledRuntimeArchitecturePreview.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -2033,6 +2034,92 @@ export function renderControlledProjectGenerationDesignCompletionAudit(audit: Co
     renderMetadata(audit.metadata),
     renderControlledProjectGenerationDesignCompletionAuditSummary(audit.summary),
     ...sections
+  ].join("\n");
+}
+
+export function renderControlledRuntimeArchitectureSummary(summary: ControlledRuntimeArchitectureSummary): string {
+  return [
+    "Controlled runtime architecture summary:",
+    `- component count: ${summary.totalComponents}`,
+    `- lifecycle phase count: ${summary.totalPhases}`,
+    `- forbidden actions: ${summary.totalForbiddenActions}`,
+    `- runtime design ready: ${String(summary.runtimeDesignReady)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- conceptual-only: ${String(summary.conceptualOnly)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledRuntimeArchitectureComponent(component: ControlledRuntimeArchitectureComponent): string {
+  return [
+    `Controlled runtime architecture component: ${component.componentType}`,
+    `- id: ${component.id}`,
+    `- title: ${component.title}`,
+    `- responsibility: ${component.responsibility}`,
+    `- status: ${component.status}`,
+    `- score: ${component.score}`,
+    `- dependencies: ${component.dependencies.length === 0 ? "none" : component.dependencies.join(", ")}`,
+    `- forbidden actions: ${component.forbiddenActions.length}`,
+    `- read-only: ${String(component.readonly)}`,
+    `- preview-only: ${String(component.previewOnly)}`,
+    `- conceptual-only: ${String(component.conceptualOnly)}`,
+    `- no-execution: ${String(component.noExecution)}`,
+    renderWarnings(component.warnings),
+    "Recommendations:",
+    ...(component.recommendations.length === 0 ? ["- none"] : component.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledRuntimeArchitecturePreview(preview: ControlledRuntimeArchitecturePreview): string {
+  const components = preview.components.length === 0
+    ? ["Controlled runtime architecture components:", "- none"]
+    : ["Controlled runtime architecture components:", ...preview.components.map(renderControlledRuntimeArchitectureComponent)];
+  const phases = preview.phases.length === 0
+    ? ["Controlled runtime architecture lifecycle phases:", "- none"]
+    : [
+        "Controlled runtime architecture lifecycle phases:",
+        ...preview.phases.map((phase) => `${phase.phaseType} | title=${phase.title} | status=${phase.status} | score=${phase.score} | noExecution=${String(phase.noExecution)} | requiresHumanApproval=${String(phase.requiresHumanApproval)}`)
+      ];
+  return [
+    `Controlled runtime architecture preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- architecturePreviewOnly: ${String(preview.architecturePreviewOnly)}`,
+    `- runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(preview.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    `- agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+    `- agentLoopsAllowed: ${String(preview.agentLoopsAllowed)}`,
+    `- multiAgentSystemsAllowed: ${String(preview.multiAgentSystemsAllowed)}`,
+    `- approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+    `- mutationExecutionAllowed: ${String(preview.mutationExecutionAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- governanceActivationAllowed: ${String(preview.governanceActivationAllowed)}`,
+    `- autonomyEnabled: ${String(preview.autonomyEnabled)}`,
+    `- selfImprovementAllowed: ${String(preview.selfImprovementAllowed)}`,
+    `- selfModificationAllowed: ${String(preview.selfModificationAllowed)}`,
+    "Notice: read-only, preview-only controlled runtime architecture only. No runtime execution, no runtime activation, no runtime routing, no runtime orchestration, no runtime persistence, no project generation, no builder-agent runtime, no agent execution, no agent loops, no multi-agent systems, no approval execution, no mutation execution, no file writing, no file creation, no dependency installation, no package mutation, no policy enforcement, no governance activation, no autonomy, no self-improvement, and no self-modification is enabled.",
+    renderMetadata(preview.metadata),
+    renderControlledRuntimeArchitectureSummary(preview.summary),
+    ...components,
+    ...phases
   ].join("\n");
 }
 
