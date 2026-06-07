@@ -33268,6 +33268,136 @@ function runControlledRuntimeComponentContractHelpOutputUnit() {
   }
 }
 
+function runControlledRuntimeFlowConsistencyUnit() {
+  try {
+    const flowModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeFlowPreview.js"));
+    const metadata = { version: "v13.2", source: "unit", command: "governance controlled-runtime-flow", readonly: true, previewOnly: true };
+    const first = flowModule.createControlledRuntimeFlowPreview({ title: "Unit Runtime Flow", metadata });
+    const second = flowModule.createControlledRuntimeFlowPreview({ title: "Unit Runtime Flow", metadata });
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("controlled runtime flow output is not deterministic");
+    if (first.runtimeExecutionAllowed !== false || first.runtimeRoutingAllowed !== false || first.runtimeOrchestrationAllowed !== false || first.flowExecutionAllowed !== false || first.projectGenerationEnabled !== false || first.builderAgentRuntimeEnabled !== false || first.agentExecutionAllowed !== false || first.fileWriteAllowed !== false) throw new Error("controlled runtime flow invariant flags changed");
+    if (first.steps.length !== 11 || first.transitions.length !== 10 || first.summary.noRouting !== true || first.summary.noExecution !== true) throw new Error("controlled runtime flow summary mismatch");
+    console.log("PASS controlled-runtime-flow-consistency");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-flow-consistency");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeFlowStepOrderingUnit() {
+  try {
+    const flowModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeFlowPreview.js"));
+    const preview = flowModule.createControlledRuntimeFlowPreview({ title: "Sort Runtime Flow", metadata: { version: "v13.2", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.steps.map((step) => step.stepId).join(",");
+    if (order !== "request-intake,contract-validation,governance-review,plan-bundle-review,human-approval-check,generation-preview,validation-preview,review-pack-preview,export-preview,audit-preview,completion-preview") throw new Error(`controlled runtime flow step ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-flow-step-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-flow-step-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeFlowTransitionOrderingUnit() {
+  try {
+    const flowModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeFlowPreview.js"));
+    const preview = flowModule.createControlledRuntimeFlowPreview({ title: "Sort Runtime Flow", metadata: { version: "v13.2", source: "sort", readonly: true, previewOnly: true } });
+    const order = preview.transitions.map((transition) => transition.transitionId).join(",");
+    if (order !== "controlled-runtime-flow-transition-001,controlled-runtime-flow-transition-002,controlled-runtime-flow-transition-003,controlled-runtime-flow-transition-004,controlled-runtime-flow-transition-005,controlled-runtime-flow-transition-006,controlled-runtime-flow-transition-007,controlled-runtime-flow-transition-008,controlled-runtime-flow-transition-009,controlled-runtime-flow-transition-010") throw new Error(`controlled runtime flow transition ordering mismatch: ${order}`);
+    console.log("PASS controlled-runtime-flow-transition-ordering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-flow-transition-ordering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeFlowFilteringUnit() {
+  try {
+    const flowModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeFlowPreview.js"));
+    const preview = flowModule.createControlledRuntimeFlowPreview({ title: "Filter Runtime Flow", metadata: { version: "v13.2", source: "filter", readonly: true, previewOnly: true } });
+    if (flowModule.findRuntimeFlowStepsByComponent(preview.steps, "audit").length !== 2) throw new Error("component filter mismatch");
+    if (flowModule.findRuntimeFlowStepsByStatus(preview.steps, "approval-required").length < 1) throw new Error("status filter mismatch");
+    if (flowModule.findBlockedRuntimeFlowSteps(preview.steps).length !== 0) throw new Error("blocked filter mismatch");
+    if (flowModule.findApprovalRequiredRuntimeFlowSteps(preview.steps).length < 1) throw new Error("approval-required filter mismatch");
+    console.log("PASS controlled-runtime-flow-filtering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-flow-filtering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeFlowCompletenessUnit() {
+  try {
+    const flowModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeFlowPreview.js"));
+    const preview = flowModule.createControlledRuntimeFlowPreview({ title: "Score Runtime Flow", metadata: { version: "v13.2", source: "score", readonly: true, previewOnly: true } });
+    const score = flowModule.calculateControlledRuntimeFlowCompleteness(preview.steps, preview.transitions);
+    const empty = flowModule.calculateControlledRuntimeFlowCompleteness([], []);
+    const unsafeScore = flowModule.calculateControlledRuntimeFlowCompleteness(preview.steps, [{ ...preview.transitions[0], noRouting: false }]);
+    if (score.score !== 100 || score.level !== "ready-for-orchestration-design") throw new Error(`flow score mismatch: ${JSON.stringify(score)}`);
+    if (empty.score !== 0 || empty.level !== "incomplete") throw new Error(`empty flow score mismatch: ${JSON.stringify(empty)}`);
+    if (unsafeScore.score !== 0 || unsafeScore.level !== "incomplete") throw new Error(`unsafe flow score mismatch: ${JSON.stringify(unsafeScore)}`);
+    console.log("PASS controlled-runtime-flow-completeness");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-flow-completeness");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeFlowRenderingUnit() {
+  try {
+    const flowModule = require(path.join(projectRoot, "dist", "governance", "controlledRuntimeFlowPreview.js"));
+    const renderers = require(path.join(projectRoot, "dist", "governance", "renderers", "governanceRenderers.js"));
+    const preview = flowModule.createControlledRuntimeFlowPreview({ title: "Render Runtime Flow", metadata: { version: "v13.2", source: "render", readonly: true, previewOnly: true } });
+    const rendered = renderers.renderControlledRuntimeFlowPreview(preview);
+    if (!rendered.includes("Controlled runtime flow preview: Render Runtime Flow") || !rendered.includes("No runtime routing") || !rendered.includes("no runtime orchestration") || !rendered.includes("no project generation") || !rendered.includes("handoffPayload") || !rendered.includes("transitionPolicy")) throw new Error(`flow rendering mismatch: ${rendered}`);
+    console.log("PASS controlled-runtime-flow-rendering");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-flow-rendering");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeFlowCliOutputUnit() {
+  try {
+    const human = runCliHelpCommand(["governance", "controlled-runtime-flow"]);
+    if (human.status !== 0 || !human.stdout.includes("Controlled runtime flow preview") || !human.stdout.includes("runtimeRoutingAllowed: false") || !human.stdout.includes("runtimeOrchestrationAllowed: false") || !human.stdout.includes("flowExecutionAllowed: false")) throw new Error(`flow CLI output mismatch: status=${human.status} stdout=${human.stdout} stderr=${human.stderr}`);
+    const json = runCliHelpCommand(["governance", "controlled-runtime-flow", "--json"]);
+    const parsed = JSON.parse(json.stdout);
+    if (json.status !== 0 || parsed.runtimeRoutingAllowed !== false || parsed.runtimeExecutionAllowed !== false || parsed.runtimeOrchestrationAllowed !== false || parsed.projectGenerationEnabled !== false || parsed.steps.length !== 11 || parsed.transitions.length !== 10 || parsed.summary.completeness.level !== "ready-for-orchestration-design") throw new Error(`flow JSON output mismatch: status=${json.status} stdout=${json.stdout} stderr=${json.stderr}`);
+    console.log("PASS controlled-runtime-flow-cli-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-flow-cli-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function runControlledRuntimeFlowHelpOutputUnit() {
+  try {
+    const help = runCliHelpCommand(["governance", "controlled-runtime-flow", "--help"]);
+    if (help.status !== 0) throw new Error(`flow help command failed: ${help.stderr || help.stdout}`);
+    assertHelpIncludes(help.stdout, ["governance controlled-runtime-flow", "read-only", "preview-only", "stdout-only", "no-runtime-execution", "no-runtime-routing", "no-runtime-orchestration", "no-project-generation", "no-agent-execution", "execute flows", "route runtime behavior", "orchestrate runtime behavior", "generate projects", "run builder agents"]);
+    console.log("PASS controlled-runtime-flow-help-output");
+    return true;
+  } catch (error) {
+    console.log("FAIL controlled-runtime-flow-help-output");
+    console.log(`  ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function runCliRenderNormalizationUnit() {
   try {
     const cliRenderers = require(path.join(projectRoot, "dist", "cli", "render", "cliRenderers.js"));
@@ -33559,7 +33689,9 @@ const cliScenarioGroups = {
     runControlledRuntimeArchitectureCliOutputUnit,
     runControlledRuntimeArchitectureHelpOutputUnit,
     runControlledRuntimeComponentContractCliOutputUnit,
-    runControlledRuntimeComponentContractHelpOutputUnit
+    runControlledRuntimeComponentContractHelpOutputUnit,
+    runControlledRuntimeFlowCliOutputUnit,
+    runControlledRuntimeFlowHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessCliOutputUnit,
@@ -33665,6 +33797,7 @@ const scenarioSuites = {
     runControlledProjectGenerationDesignCompletionAuditRenderingUnit,
     runControlledRuntimeArchitectureRenderingUnit,
     runControlledRuntimeComponentContractRenderingUnit,
+    runControlledRuntimeFlowRenderingUnit,
     runReadonlyRenderConsistencyUnit
   ],
   "runtime-architecture": [
@@ -33681,7 +33814,15 @@ const scenarioSuites = {
     runControlledRuntimeComponentContractCompletenessUnit,
     runControlledRuntimeComponentContractRenderingUnit,
     runControlledRuntimeComponentContractCliOutputUnit,
-    runControlledRuntimeComponentContractHelpOutputUnit
+    runControlledRuntimeComponentContractHelpOutputUnit,
+    runControlledRuntimeFlowConsistencyUnit,
+    runControlledRuntimeFlowStepOrderingUnit,
+    runControlledRuntimeFlowTransitionOrderingUnit,
+    runControlledRuntimeFlowFilteringUnit,
+    runControlledRuntimeFlowCompletenessUnit,
+    runControlledRuntimeFlowRenderingUnit,
+    runControlledRuntimeFlowCliOutputUnit,
+    runControlledRuntimeFlowHelpOutputUnit
   ],
   "project-generation": [
     runProjectGenerationReadinessConsistencyUnit,
@@ -37233,6 +37374,30 @@ async function main() {
     failed += 1;
   }
   if (!runControlledRuntimeComponentContractHelpOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeFlowConsistencyUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeFlowStepOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeFlowTransitionOrderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeFlowFilteringUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeFlowCompletenessUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeFlowRenderingUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeFlowCliOutputUnit()) {
+    failed += 1;
+  }
+  if (!runControlledRuntimeFlowHelpOutputUnit()) {
     failed += 1;
   }
   if (!runCliHelpMainUnit()) {

@@ -19,6 +19,7 @@ import type { ControlledProjectGenerationOutputContract, ControlledProjectGenera
 import type { ControlledProjectGenerationRuntimeBoundaryContract, ControlledProjectGenerationRuntimeBoundarySummary } from "../../governance/controlledProjectGenerationRuntimeBoundaryContract.js";
 import type { ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../../governance/controlledRuntimeArchitecturePreview.js";
 import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractSummary } from "../../governance/controlledRuntimeComponentContract.js";
+import type { ControlledRuntimeFlowPreview, ControlledRuntimeFlowSummary } from "../../governance/controlledRuntimeFlowPreview.js";
 import type { ProjectGenerationApprovalPlanPreview, ProjectGenerationApprovalPlanSummary } from "../../governance/projectGenerationApprovalPlanPreview.js";
 import type { ProjectGenerationBlueprintPreview, ProjectGenerationBlueprintSummary } from "../../governance/projectGenerationBlueprintPreview.js";
 import type { ProjectGenerationCapabilityMap, ProjectGenerationCapabilitySummary } from "../../governance/projectGenerationCapabilityMap.js";
@@ -1738,6 +1739,75 @@ export function renderCliControlledRuntimeComponentContract(contract: Controlled
   ].join("\n");
 }
 
+export function renderCliControlledRuntimeFlowSummary(summary: ControlledRuntimeFlowSummary): string {
+  return [
+    renderCliSection("Controlled runtime flow summary", [
+      `step count: ${summary.totalSteps}`,
+      `transition count: ${summary.totalTransitions}`,
+      `blocked count: ${summary.blockedCount}`,
+      `approval-required count: ${summary.approvalRequiredCount}`,
+      `preview-only count: ${summary.previewOnlyCount}`,
+      `risk distribution: ${renderCliRuntimeFlowRiskGroups(summary.riskDistribution)}`,
+      `transition policies: ${renderCliRuntimeFlowTransitionPolicyGroups(summary.transitionPolicyDistribution)}`,
+      `completeness score: ${summary.completeness.score}`,
+      `completeness level: ${summary.completeness.level}`,
+      `completeness reason: ${summary.completeness.reason}`,
+      `read-only: ${String(summary.readonly)}`,
+      `preview-only: ${String(summary.previewOnly)}`,
+      `no-routing: ${String(summary.noRouting)}`,
+      `no-execution: ${String(summary.noExecution)}`
+    ]),
+    renderCliWarnings(summary.warnings),
+    renderCliSection("Recommendations", summary.recommendations.length === 0 ? ["none"] : summary.recommendations)
+  ].join("\n");
+}
+
+export function renderCliControlledRuntimeFlowPreview(preview: ControlledRuntimeFlowPreview): string {
+  const stepLines = preview.steps.length === 0
+    ? ["none"]
+    : preview.steps.map((step) => `${step.stepId} | component=${step.componentId} | status=${step.status} | risk=${step.riskLevel} | approvalRequired=${String(step.approvalRequired)} | noExecution=${String(step.noExecution)}`);
+  const transitionLines = preview.transitions.length === 0
+    ? ["none"]
+    : preview.transitions.map((transition) => `${transition.transitionId} | from=${transition.fromStep} | to=${transition.toStep} | policy=${transition.transitionPolicy} | noRouting=${String(transition.noRouting)} | payload=${transition.handoffPayload}`);
+  return [
+    renderCliSection("Controlled runtime flow preview", [
+      `title: ${preview.title}`,
+      `schemaVersion: ${preview.schemaVersion}`,
+      `readonly: ${String(preview.readonly)}`,
+      `previewOnly: ${String(preview.previewOnly)}`,
+      `stdoutOnly: ${String(preview.stdoutOnly)}`,
+      `flowPreviewOnly: ${String(preview.flowPreviewOnly)}`,
+      `runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+      `runtimeActivationAllowed: ${String(preview.runtimeActivationAllowed)}`,
+      `runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+      `runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+      `runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+      `flowExecutionAllowed: ${String(preview.flowExecutionAllowed)}`,
+      `projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+      `builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+      `agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+      `approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+      `mutationExecutionAllowed: ${String(preview.mutationExecutionAllowed)}`,
+      `inputExecutionAllowed: ${String(preview.inputExecutionAllowed)}`,
+      `outputExecutionAllowed: ${String(preview.outputExecutionAllowed)}`,
+      `contractExecutionAllowed: ${String(preview.contractExecutionAllowed)}`,
+      `fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+      `fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+      `dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+      `packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+      `generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+      `policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+      `governanceActivationAllowed: ${String(preview.governanceActivationAllowed)}`,
+      "notice: read-only, preview-only runtime flow only. No runtime routing, no runtime orchestration, no runtime execution, no runtime activation, no runtime persistence, no flow execution, no project generation, no builder-agent runtime, no agent execution, no approval execution, no mutation execution, no input execution, no output execution, no contract execution, no file writing, no file creation, no dependency installation, no package mutation, no generated-project validation, no policy enforcement, and no governance activation is enabled"
+    ]),
+    renderCliMetadata(preview.metadata),
+    renderCliControlledRuntimeFlowSummary(preview.summary),
+    renderCliSection("Runtime flow steps", stepLines),
+    renderCliSection("Runtime flow transitions", transitionLines),
+    renderReadonlyNotice(preview.previewOnly)
+  ].join("\n");
+}
+
 function renderCliIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -1786,6 +1856,16 @@ function renderCliRollbackAppliesToGroups(groups: readonly { key: string; totalS
 function renderCliRuntimeComponentRiskGroups(groups: readonly { key: string; totalContracts: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalContracts}`).join(", ");
+}
+
+function renderCliRuntimeFlowRiskGroups(groups: readonly { key: string; totalSteps: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
+}
+
+function renderCliRuntimeFlowTransitionPolicyGroups(groups: readonly { key: string; totalTransitions: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalTransitions}`).join(", ");
 }
 
 function renderCliMutationBoundaryGroups(groups: readonly { key: string; totalBoundaries: number }[]): string {

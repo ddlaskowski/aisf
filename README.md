@@ -12389,6 +12389,120 @@ Safety guarantees:
 * no repair orchestration behavior changes are introduced
 * no governance activation or policy enforcement path is introduced
 
+## v13.2 - Controlled Runtime Flow Preview Layer
+
+v13.2 adds a deterministic, read-only runtime flow preview for the future Controlled Runtime Architecture. It describes how future runtime components may hand off preview data and responsibility between phases without implementing runtime routing, orchestration, execution, persistence, activation, project generation, builder agents, agent execution, policy enforcement, governance activation, file writing, dependency installation, package mutation, or autonomous behavior.
+
+Controlled runtime flow preview model:
+
+* `src/governance/controlledRuntimeFlowPreview.ts` adds `ControlledRuntimeFlowPreview`, `ControlledRuntimeFlowStep`, `ControlledRuntimeFlowTransition`, `ControlledRuntimeFlowSummary`, `createControlledRuntimeFlowPreview`, `summarizeControlledRuntimeFlowPreview`, and `calculateControlledRuntimeFlowCompleteness`.
+* Runtime flow previews explicitly preserve read-only, preview-only, stdout-only, flow-preview-only, no-runtime-execution, no-runtime-activation, no-runtime-routing, no-runtime-orchestration, no-runtime-persistence, no-flow-execution, no-project-generation, no-builder-agent-runtime, no-agent-execution, no-approval-execution, no-mutation-execution, no-input-execution, no-output-execution, no-contract-execution, no-file-writing, no-file-creation, no-dependency-installation, no-package-mutation, no-generated-project-validation, no-policy-enforcement, and no-governance-activation guarantees.
+
+Flow steps:
+
+* `request-intake`
+* `contract-validation`
+* `governance-review`
+* `plan-bundle-review`
+* `human-approval-check`
+* `generation-preview`
+* `validation-preview`
+* `review-pack-preview`
+* `export-preview`
+* `audit-preview`
+* `completion-preview`
+
+Flow helpers:
+
+* `createRuntimeFlowStep`
+* `createRuntimeFlowTransition`
+* `sortRuntimeFlowSteps`
+* `sortRuntimeFlowTransitions`
+* `findRuntimeFlowStepsByComponent`
+* `findRuntimeFlowStepsByStatus`
+* `findBlockedRuntimeFlowSteps`
+* `findApprovalRequiredRuntimeFlowSteps`
+
+Flow transitions:
+
+* Transitions include deterministic `handoffType`, `handoffPayload`, `transitionPolicy`, approval markers, no-routing guarantees, and no-execution guarantees.
+* Transition policies are `preview-only`, `manual-approval-required`, `blocked`, and `not-applicable`.
+* Handoff payloads are represented as preview data only and are not routed or executed.
+
+Completeness scoring:
+
+* `calculateControlledRuntimeFlowCompleteness` deterministically computes a 0-100 advisory flow completeness score.
+* Completeness levels are `incomplete`, `partial`, `flow-defined`, and `ready-for-orchestration-design`.
+* Scoring is advisory only and does not execute, route, orchestrate, activate, enforce, approve, generate projects, run agents, mutate files, write files, install dependencies, or change runtime behavior.
+
+Runtime flow rendering:
+
+* `renderControlledRuntimeFlowPreview` renders the flow title, invariant flags, metadata, summary, steps, transitions, handoff payloads, transition policies, warnings, and recommendations.
+* `renderControlledRuntimeFlowSummary` renders deterministic step counts, transition counts, blocked counts, approval-required counts, risk distribution, transition policies, completeness score, no-routing guarantees, and no-execution guarantees.
+* `renderControlledRuntimeFlowStep` and `renderControlledRuntimeFlowTransition` render stable flow details.
+* `renderCliControlledRuntimeFlowPreview` and `renderCliControlledRuntimeFlowSummary` provide equivalent CLI-safe deterministic output.
+
+CLI runtime flow preview:
+
+```powershell
+node dist\cli.js governance controlled-runtime-flow
+node dist\cli.js governance controlled-runtime-flow --json
+```
+
+Controlled runtime flow previews print to stdout only. They do not write files, create files, scaffold files, install dependencies, mutate packages, route runtime behavior, orchestrate runtime behavior, execute runtime behavior, activate runtime behavior, persist runtime state, execute flows, execute contracts, execute inputs, execute outputs, execute generated-project validation, generate projects, implement builder agents, execute agents, execute approvals, execute mutations, enforce policies, activate governance, or change repair orchestration.
+
+v13.2 deterministic checks:
+
+* controlled-runtime-flow-consistency
+* controlled-runtime-flow-step-ordering
+* controlled-runtime-flow-transition-ordering
+* controlled-runtime-flow-filtering
+* controlled-runtime-flow-completeness
+* controlled-runtime-flow-rendering
+* controlled-runtime-flow-cli-output
+* controlled-runtime-flow-help-output
+
+Scenario suite filtering:
+
+```powershell
+node scripts\run-scenarios.js --suite runtime-architecture
+node scripts\run-scenarios.js --suite cli --cli-scope governance
+node scripts\run-scenarios.js --suite renderers
+```
+
+Safety guarantees:
+
+* Safe Patch Engine remains the sole mutation layer
+* single-file mutation invariant remains unchanged
+* runtime governance remains disabled
+* runtime autonomy remains disabled
+* runtime activation remains disabled
+* policy enforcement remains disabled
+* governance remains preview-only
+* deterministic outputs are preserved
+* no runtime routing is introduced
+* no runtime orchestration is introduced
+* no runtime execution is introduced
+* no runtime activation is introduced
+* no runtime persistence is introduced
+* no project generation is introduced
+* no builder agents are introduced
+* no agent execution is introduced
+* no flow execution is introduced
+* no contract execution is introduced
+* no input or output execution is introduced
+* no approval execution is introduced
+* no mutation execution or expansion is introduced
+* no generated-project validation execution is introduced
+* no dependency installation is introduced
+* no package mutation is introduced
+* no scaffold generation is introduced
+* no file creation is introduced
+* no file writing is introduced
+* no runtime behavior changes are introduced
+* no repair orchestration behavior changes are introduced
+* no governance activation or policy enforcement path is introduced
+
 ## v13.1 - Controlled Runtime Component Contract Layer
 
 v13.1 adds deterministic, read-only component contracts for the future Controlled Runtime Architecture. It defines future component responsibilities, allowed inputs, allowed outputs, dependencies, forbidden actions, risk levels, and safety boundaries before any runtime execution exists. It does not add runtime execution, runtime activation, runtime routing, runtime orchestration, runtime persistence, project generation, builder agents, agent execution, approval execution, mutation execution, file writing, dependency installation, package mutation, policy enforcement, governance activation, or autonomous behavior.

@@ -19,6 +19,7 @@ import type { ControlledProjectGenerationOutputContract, ControlledProjectGenera
 import type { ControlledProjectGenerationRuntimeBoundary, ControlledProjectGenerationRuntimeBoundaryContract, ControlledProjectGenerationRuntimeBoundarySummary } from "../controlledProjectGenerationRuntimeBoundaryContract.js";
 import type { ControlledRuntimeArchitectureComponent, ControlledRuntimeArchitecturePreview, ControlledRuntimeArchitectureSummary } from "../controlledRuntimeArchitecturePreview.js";
 import type { ControlledRuntimeComponentContract, ControlledRuntimeComponentContractEntry, ControlledRuntimeComponentContractSummary } from "../controlledRuntimeComponentContract.js";
+import type { ControlledRuntimeFlowPreview, ControlledRuntimeFlowStep, ControlledRuntimeFlowSummary, ControlledRuntimeFlowTransition } from "../controlledRuntimeFlowPreview.js";
 import type { GovernanceMetadata } from "../governanceMetadata.js";
 import type { GovernanceReadonlyContract } from "../governanceReadonlyContract.js";
 import { renderReadonlyContract } from "../governanceReadonlyContract.js";
@@ -2205,6 +2206,112 @@ export function renderControlledRuntimeComponentContract(contract: ControlledRun
   ].join("\n");
 }
 
+export function renderControlledRuntimeFlowSummary(summary: ControlledRuntimeFlowSummary): string {
+  return [
+    "Controlled runtime flow summary:",
+    `- step count: ${summary.totalSteps}`,
+    `- transition count: ${summary.totalTransitions}`,
+    `- blocked count: ${summary.blockedCount}`,
+    `- approval-required count: ${summary.approvalRequiredCount}`,
+    `- preview-only count: ${summary.previewOnlyCount}`,
+    `- risk distribution: ${renderRuntimeFlowRiskGroups(summary.riskDistribution)}`,
+    `- transition policies: ${renderRuntimeFlowTransitionPolicyGroups(summary.transitionPolicyDistribution)}`,
+    `- completeness score: ${summary.completeness.score}`,
+    `- completeness level: ${summary.completeness.level}`,
+    `- completeness reason: ${summary.completeness.reason}`,
+    `- read-only: ${String(summary.readonly)}`,
+    `- preview-only: ${String(summary.previewOnly)}`,
+    `- no-routing: ${String(summary.noRouting)}`,
+    `- no-execution: ${String(summary.noExecution)}`,
+    renderWarnings(summary.warnings),
+    "Recommendations:",
+    ...(summary.recommendations.length === 0 ? ["- none"] : summary.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledRuntimeFlowStep(step: ControlledRuntimeFlowStep): string {
+  return [
+    `Controlled runtime flow step: ${step.stepId}`,
+    `- title: ${step.title}`,
+    `- componentId: ${step.componentId}`,
+    `- phase: ${step.phase}`,
+    `- status: ${step.status}`,
+    `- riskLevel: ${step.riskLevel}`,
+    `- approvalRequired: ${String(step.approvalRequired)}`,
+    `- allowed inputs: ${step.allowedInputs.length === 0 ? "none" : step.allowedInputs.join(", ")}`,
+    `- allowed outputs: ${step.allowedOutputs.length === 0 ? "none" : step.allowedOutputs.join(", ")}`,
+    `- previous steps: ${step.requiredPreviousSteps.length === 0 ? "none" : step.requiredPreviousSteps.join(", ")}`,
+    `- next steps: ${step.nextSteps.length === 0 ? "none" : step.nextSteps.join(", ")}`,
+    `- blockedReason: ${step.blockedReason ?? "none"}`,
+    `- read-only: ${String(step.readonly)}`,
+    `- preview-only: ${String(step.previewOnly)}`,
+    `- no-execution: ${String(step.noExecution)}`,
+    renderWarnings(step.warnings),
+    "Recommendations:",
+    ...(step.recommendations.length === 0 ? ["- none"] : step.recommendations.map((recommendation) => `- ${recommendation}`))
+  ].join("\n");
+}
+
+export function renderControlledRuntimeFlowTransition(transition: ControlledRuntimeFlowTransition): string {
+  return [
+    `Controlled runtime flow transition: ${transition.transitionId}`,
+    `- fromStep: ${transition.fromStep}`,
+    `- toStep: ${transition.toStep}`,
+    `- handoffType: ${transition.handoffType}`,
+    `- handoffPayload: ${transition.handoffPayload}`,
+    `- transitionPolicy: ${transition.transitionPolicy}`,
+    `- approvalRequired: ${String(transition.approvalRequired)}`,
+    `- blockedReason: ${transition.blockedReason ?? "none"}`,
+    `- read-only: ${String(transition.readonly)}`,
+    `- preview-only: ${String(transition.previewOnly)}`,
+    `- no-routing: ${String(transition.noRouting)}`,
+    `- no-execution: ${String(transition.noExecution)}`
+  ].join("\n");
+}
+
+export function renderControlledRuntimeFlowPreview(preview: ControlledRuntimeFlowPreview): string {
+  const steps = preview.steps.length === 0
+    ? ["Controlled runtime flow steps:", "- none"]
+    : ["Controlled runtime flow steps:", ...preview.steps.map(renderControlledRuntimeFlowStep)];
+  const transitions = preview.transitions.length === 0
+    ? ["Controlled runtime flow transitions:", "- none"]
+    : ["Controlled runtime flow transitions:", ...preview.transitions.map(renderControlledRuntimeFlowTransition)];
+  return [
+    `Controlled runtime flow preview: ${preview.title}`,
+    `- schemaVersion: ${preview.schemaVersion}`,
+    `- readonly: ${String(preview.readonly)}`,
+    `- previewOnly: ${String(preview.previewOnly)}`,
+    `- stdoutOnly: ${String(preview.stdoutOnly)}`,
+    `- flowPreviewOnly: ${String(preview.flowPreviewOnly)}`,
+    `- runtimeExecutionAllowed: ${String(preview.runtimeExecutionAllowed)}`,
+    `- runtimeActivationAllowed: ${String(preview.runtimeActivationAllowed)}`,
+    `- runtimeRoutingAllowed: ${String(preview.runtimeRoutingAllowed)}`,
+    `- runtimeOrchestrationAllowed: ${String(preview.runtimeOrchestrationAllowed)}`,
+    `- runtimePersistenceAllowed: ${String(preview.runtimePersistenceAllowed)}`,
+    `- flowExecutionAllowed: ${String(preview.flowExecutionAllowed)}`,
+    `- projectGenerationEnabled: ${String(preview.projectGenerationEnabled)}`,
+    `- builderAgentRuntimeEnabled: ${String(preview.builderAgentRuntimeEnabled)}`,
+    `- agentExecutionAllowed: ${String(preview.agentExecutionAllowed)}`,
+    `- approvalExecutionAllowed: ${String(preview.approvalExecutionAllowed)}`,
+    `- mutationExecutionAllowed: ${String(preview.mutationExecutionAllowed)}`,
+    `- inputExecutionAllowed: ${String(preview.inputExecutionAllowed)}`,
+    `- outputExecutionAllowed: ${String(preview.outputExecutionAllowed)}`,
+    `- contractExecutionAllowed: ${String(preview.contractExecutionAllowed)}`,
+    `- fileWriteAllowed: ${String(preview.fileWriteAllowed)}`,
+    `- fileCreationAllowed: ${String(preview.fileCreationAllowed)}`,
+    `- dependencyInstallationAllowed: ${String(preview.dependencyInstallationAllowed)}`,
+    `- packageMutationAllowed: ${String(preview.packageMutationAllowed)}`,
+    `- generatedProjectValidationAllowed: ${String(preview.generatedProjectValidationAllowed)}`,
+    `- policyEnforcementEnabled: ${String(preview.policyEnforcementEnabled)}`,
+    `- governanceActivationAllowed: ${String(preview.governanceActivationAllowed)}`,
+    "Notice: read-only, preview-only runtime flow only. No runtime routing, no runtime orchestration, no runtime execution, no runtime activation, no runtime persistence, no flow execution, no project generation, no builder-agent runtime, no agent execution, no approval execution, no mutation execution, no input execution, no output execution, no contract execution, no file writing, no file creation, no dependency installation, no package mutation, no generated-project validation, no policy enforcement, and no governance activation is enabled.",
+    renderMetadata(preview.metadata),
+    renderControlledRuntimeFlowSummary(preview.summary),
+    ...steps,
+    ...transitions
+  ].join("\n");
+}
+
 function renderIndexGroups(groups: readonly { key: string; totalEntries: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalEntries}`).join(", ");
@@ -2253,6 +2360,16 @@ function renderRollbackAppliesToGroups(groups: readonly { key: string; totalStep
 function renderRuntimeComponentRiskGroups(groups: readonly { key: string; totalContracts: number }[]): string {
   if (groups.length === 0) return "none";
   return groups.map((group) => `${group.key}=${group.totalContracts}`).join(", ");
+}
+
+function renderRuntimeFlowRiskGroups(groups: readonly { key: string; totalSteps: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalSteps}`).join(", ");
+}
+
+function renderRuntimeFlowTransitionPolicyGroups(groups: readonly { key: string; totalTransitions: number }[]): string {
+  if (groups.length === 0) return "none";
+  return groups.map((group) => `${group.key}=${group.totalTransitions}`).join(", ");
 }
 
 function renderInputFieldGroups(groups: readonly { key: string; totalFields: number }[]): string {
